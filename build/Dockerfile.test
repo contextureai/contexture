@@ -1,0 +1,34 @@
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache \
+    git \
+    make \
+    bash \
+    openssh-client \
+    ca-certificates \
+    tzdata \
+    gcc \
+    musl-dev \
+    libc-dev
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GO111MODULE=on
+RUN make build
+
+RUN mkdir -p /go/pkg/mod && \
+    mkdir -p /go/bin && \
+    mkdir -p /app/test-output
+
+ENV GOMODCACHE=/go/pkg/mod
+ENV GOCACHE=/go/cache
+RUN mkdir -p /go/cache
+
+CMD ["make", "integration"]

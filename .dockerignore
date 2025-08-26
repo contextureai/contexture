@@ -1,0 +1,49 @@
+# Ignore build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Ignore test outputs
+test-output/
+coverage.out
+coverage.html
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore Git files (except .git itself for version info)
+.gitignore
+
+# Ignore Docker files to prevent recursive copying
+Dockerfile*
+docker-compose*.yml
+
+# Ignore documentation that's not needed for tests
+*.md
+docs/
+
+# Ignore CI/CD files
+.github/
+
+# Ignore temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Keep go.mod, go.sum, and source code
+!go.mod
+!go.sum
+!**/*.go
+!Makefile
+!testdata/

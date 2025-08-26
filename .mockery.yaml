@@ -1,0 +1,50 @@
+template: testify
+packages:
+  github.com/contextureai/contexture/internal/format:
+    interfaces:
+      Handler:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_format_handler.go"
+          inpackage: true
+  github.com/contextureai/contexture/internal/git:
+    interfaces:
+      Repository:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_repository.go"
+          inpackage: true
+  github.com/contextureai/contexture/internal/rule:
+    interfaces:
+      Fetcher:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_fetcher.go"
+          inpackage: true
+      Parser:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_parser.go"
+          inpackage: true
+      Processor:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_processor.go"
+          inpackage: true
+      Validator:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_validator.go"
+          inpackage: true
+      TemplateEngine:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_template_engine.go"
+          inpackage: true
+  github.com/contextureai/contexture/internal/template:
+    interfaces:
+      Engine:
+        config:
+          dir: "{{.InterfaceDir}}"
+          filename: "mock_engine.go"
+          inpackage: true

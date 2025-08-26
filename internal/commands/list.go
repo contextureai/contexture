@@ -1,0 +1,130 @@
+// Package commands provides CLI command implementations
+package commands
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/contextureai/contexture/internal/dependencies"
+	"github.com/contextureai/contexture/internal/domain"
+	"github.com/contextureai/contexture/internal/format"
+	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/project"
+	"github.com/contextureai/contexture/internal/rule"
+	"github.com/contextureai/contexture/internal/tui"
+	"github.com/urfave/cli/v3"
+)
+
+// ListCommand implements the list command
+type ListCommand struct {
+	projectManager *project.Manager
+	ruleFetcher    rule.Fetcher
+	registry       *format.Registry
+}
+
+// NewListCommand creates a new list command
+func NewListCommand(deps *dependencies.Dependencies) *ListCommand {
+	return &ListCommand{
+		projectManager: project.NewManager(deps.FS),
+		ruleFetcher:    rule.NewFetcher(deps.FS, git.NewRepository(deps.FS), rule.FetcherConfig{}),
+		registry:       format.GetDefaultRegistry(deps.FS),
+	}
+}
+
+// Execute runs the list command
+func (c *ListCommand) Execute(ctx context.Context, cmd *cli.Command) error {
+	return c.listInstalledRules(ctx, cmd)
+}
+
+// listInstalledRules lists rules configured in the current project
+func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) error {
+	// Get current directory and load configuration
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
+	if err != nil {
+		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+	}
+
+	config := configResult.Config
+
+	// Apply filters if provided
+	filteredRuleRefs := c.applyFilters(config.Rules, cmd)
+
+	// Fetch the actual rules from the rule references
+	rules, err := c.fetchRulesFromReferences(ctx, filteredRuleRefs)
+	if err != nil {
+		return fmt.Errorf("failed to fetch rules: %w", err)
+	}
+
+	// Use interactive rule selector for display
+	return c.showInteractiveList(rules, "Installed Rules")
+}
+
+// applyFilters applies filters to a list of rules (currently no filters available)
+func (c *ListCommand) applyFilters(rules []domain.RuleRef, _ *cli.Command) []domain.RuleRef {
+	// No filters available since --search and --tags flags were removed
+	return rules
+}
+
+// fetchRulesFromReferences fetches the actual rule content from rule references
+func (c *ListCommand) fetchRulesFromReferences(
+	ctx context.Context,
+	ruleRefs []domain.RuleRef,
+) ([]*domain.Rule, error) {
+	if len(ruleRefs) == 0 {
+		return []*domain.Rule{}, nil
+	}
+
+	rules := make([]*domain.Rule, 0, len(ruleRefs))
+	var lastError error
+
+	for _, ruleRef := range ruleRefs {
+		// Convert RuleRef to rule ID format expected by the fetcher
+		ruleID := ruleRef.ID
+		if ruleID == "" {
+			// If no ID, skip this rule
+			continue
+		}
+
+		// Fetch the rule content
+		rule, err := c.ruleFetcher.FetchRule(ctx, ruleID)
+		if err != nil {
+			lastError = err
+			// Log the error but continue with other rules
+			fmt.Printf("Warning: Failed to fetch rule %s: %v\n", ruleID, err)
+			continue
+		}
+
+		rules = append(rules, rule)
+	}
+
+	// If we failed to fetch any rules and had errors, return the last error
+	if len(rules) == 0 && len(ruleRefs) > 0 && lastError != nil {
+		return nil, fmt.Errorf("failed to fetch any rules: %w", lastError)
+	}
+
+	return rules, nil
+}
+
+// showInteractiveList displays rules using the interactive rule selector
+func (c *ListCommand) showInteractiveList(rules []*domain.Rule, title string) error {
+	if len(rules) == 0 {
+		fmt.Printf("No rules found.\n")
+		return nil
+	}
+
+	// Create rule selector and display rules
+	selector := tui.NewRuleSelector()
+	return selector.DisplayRules(rules, title)
+}
+
+// ListAction is the CLI action handler for the list command
+func ListAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Dependencies) error {
+	listCmd := NewListCommand(deps)
+	return listCmd.Execute(ctx, cmd)
+}
