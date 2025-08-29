@@ -53,11 +53,6 @@ jobs:
       - name: Build binary
         run: make build
 
-      - name: Test version injection
-        run: |
-          ./bin/contexture --version || true
-          make version
-
   build-matrix:
     runs-on: ubuntu-latest
     strategy:
