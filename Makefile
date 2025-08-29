@@ -1,6 +1,6 @@
 .PHONY: build test lint fmt generate integration e2e docker-integration docker-e2e install deps tag
 
-export GOBIN ?= $(go env GOPATH)/bin
+export GOBIN ?= $(shell pwd)/bin
 
 BINARY_NAME=contexture
 BINARY_DIR=bin
