@@ -1,5 +1,7 @@
 .PHONY: build test lint fmt generate integration e2e docker-integration docker-e2e install deps tag
 
+export GOBIN ?= $(go env GOPATH)/bin
+
 BINARY_NAME=contexture
 BINARY_DIR=bin
 GO_FILES=$(shell find . -name '*.go' -not -path "./vendor/*")
@@ -9,17 +11,22 @@ COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE?=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS=-X main.Version=$(VERSION)
 
-$(mockery):
+MOCKERY = $(GOBIN)/mockery
+GOIMPORTS = $(GOBIN)/goimports
+GOFUMPT = $(GOBIN)/gofumpt
+GOLANGCI_LINT = $(GOBIN)/golangci-lint
+
+$(MOCKERY):
 	go install github.com/vektra/mockery/v3@latest
 
-$(goimports):
+$(GOIMPORTS):
 	go install golang.org/x/tools/cmd/goimports@latest
 
-$(gofumpt):
+$(GOFUMPT):
 	go install mvdan.cc/gofumpt@latest
 
-$(golangci-lint):
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.4.0
+$(GOLANGCI_LINT):
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v2.4.0
  
 build:
 	@echo "Building $(BINARY_NAME) $(VERSION)..."
@@ -29,18 +36,18 @@ build:
 test:
 	@go test -race -cover -coverprofile=coverage.out -timeout=5m $(shell go list ./... | grep -v -E '/(e2e|integration)$$')
 
-lint: $(golangci-lint)
+lint: $(GOLANGCI_LINT)
 	@echo "Running linter..."
-	@golangci-lint run
+	$(GOLANGCI_LINT) run
 
-fmt: $(goimports) $(gofumpt)
+fmt: $(GOIMPORTS) $(GOFUMPT)
 	@echo "Formatting code..."
-	@goimports -w $(GO_FILES)
-	@gofumpt -e -l -w $(GO_FILES)
+	$(GOIMPORTS) -w $(GO_FILES)
+	$(GOFUMPT) -e -l -w $(GO_FILES)
 
-generate: $(mockery)
+generate: $(MOCKERY)
 	@echo "Generating mocks..."
-	@mockery
+	$(MOCKERY)
 
 integration:
 	@go test -v -race -timeout=10m ./integration/...
@@ -87,3 +94,8 @@ tag:
 	@git tag -a $(VERSION) -m "Release $(VERSION)"
 	@git push origin $(VERSION)
 	@echo "Tag $(VERSION) created and pushed. GitHub Actions will now create the release."
+
+build-release:
+	@echo "Building $(BINARY_NAME) $(VERSION) for release..."
+	@mkdir -p $(BINARY_DIR)
+	@go build -ldflags "$(LDFLAGS) -s -w" -o $(BINARY_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE)
