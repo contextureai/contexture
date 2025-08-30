@@ -33,6 +33,159 @@ The tui package bridges the gap between the command-line interface and user-frie
 - **Icon Usage**: Contextual icons and visual indicators for enhanced usability
 - **Color Coordination**: Coordinated color usage for status, selection, and emphasis
 
+### TUI Component Architecture
+
+```mermaid
+graph TB
+    subgraph "TUI Package"
+        RULESELECTOR[Rule Selector]
+        FILEBROWSER[File Browser]
+        PROMPT[Prompt System]
+        SHARED[Shared Styling]
+        FORMATTER[Rule Formatter]
+    end
+    
+    subgraph "Charmbracelet Libraries"
+        HUH[huh Forms]
+        LIPGLOSS[lipgloss Styling]
+        BUBBLETEA[Bubble Tea Framework]
+    end
+    
+    subgraph "UI Integration"
+        THEME[UI Theme System]
+        STYLES[UI Styles]
+        COLORS[Adaptive Colors]
+    end
+    
+    subgraph "Domain Integration"
+        RULES[Rule Entities]
+        CONFIG[Configuration]
+        VALIDATION[Input Validation]
+    end
+    
+    subgraph "Client Commands"
+        ADD[Add Command]
+        REMOVE[Remove Command]
+        LIST[List Command]
+        UPDATE[Update Command]
+        INIT[Init Command]
+    end
+    
+    RULESELECTOR --> HUH
+    FILEBROWSER --> HUH
+    PROMPT --> HUH
+    
+    SHARED --> LIPGLOSS
+    FORMATTER --> LIPGLOSS
+    RULESELECTOR --> LIPGLOSS
+    
+    SHARED --> THEME
+    FORMATTER --> STYLES
+    RULESELECTOR --> COLORS
+    
+    RULESELECTOR --> RULES
+    FILEBROWSER --> CONFIG
+    PROMPT --> VALIDATION
+    
+    ADD --> RULESELECTOR
+    ADD --> FILEBROWSER
+    REMOVE --> RULESELECTOR
+    LIST --> RULESELECTOR
+    UPDATE --> RULESELECTOR
+    INIT --> PROMPT
+    
+    style RULESELECTOR fill:#e1f5fe
+    style SHARED fill:#f3e5f5
+    style HUH fill:#e8f5e8
+    style THEME fill:#fff3e0
+```
+
+### Interactive Selection Flow
+
+```mermaid
+sequenceDiagram
+    participant Cmd as Command
+    participant TUI as TUI Component
+    participant Huh as Huh Forms
+    participant User as User
+    participant Theme as UI Theme
+    participant Rules as Rule Data
+    
+    Cmd->>TUI: ShowRuleSelector(rules)
+    TUI->>Theme: Get theme colors
+    Theme-->>TUI: Adaptive colors
+    
+    TUI->>Rules: Format rule display
+    Rules-->>TUI: Formatted rule list
+    
+    TUI->>Huh: Create multi-select form
+    Huh->>User: Display interactive list
+    
+    User->>Huh: Navigate with arrow keys
+    User->>Huh: Toggle selection with space
+    User->>Huh: Preview rule with enter
+    
+    TUI->>TUI: Render rule preview
+    TUI->>User: Show formatted preview
+    
+    User->>Huh: Confirm selection
+    Huh-->>TUI: Selected rules
+    
+    alt User cancels
+        User->>Huh: Press ESC
+        Huh->>TUI: ErrUserAborted
+        TUI-->>Cmd: ErrUserCancelled
+    else User confirms
+        TUI-->>Cmd: Selected rule list
+    end
+    
+    note over TUI: Features:<br/>• Live preview<br/>• Multi-selection<br/>• Keyboard navigation<br/>• Theme integration
+```
+
+### Component Integration Pattern
+
+```mermaid
+flowchart TD
+    START([User Interaction Needed]) --> COMPONENT{Component Type?}
+    
+    COMPONENT -->|Rule Selection| RULESELECTOR[Rule Selector]
+    COMPONENT -->|File Navigation| FILEBROWSER[File Browser] 
+    COMPONENT -->|Input Prompt| PROMPT[Prompt Form]
+    
+    RULESELECTOR --> LOADRULES[Load Available Rules]
+    FILEBROWSER --> LOADFILES[Load File System]
+    PROMPT --> VALIDATION[Setup Validation]
+    
+    LOADRULES --> THEMING[Apply UI Theming]
+    LOADFILES --> THEMING
+    VALIDATION --> THEMING
+    
+    THEMING --> RENDER[Render Interactive UI]
+    RENDER --> USERINTERACTION[User Interaction Loop]
+    
+    USERINTERACTION --> KEYPRESS{Key Press Event}
+    
+    KEYPRESS -->|Navigation| NAVIGATE[Update Selection]
+    KEYPRESS -->|Toggle| TOGGLE[Toggle Selection]
+    KEYPRESS -->|Preview| PREVIEW[Show Preview]
+    KEYPRESS -->|Submit| SUBMIT[Confirm Selection]
+    KEYPRESS -->|Cancel| CANCEL[User Cancellation]
+    
+    NAVIGATE --> USERINTERACTION
+    TOGGLE --> USERINTERACTION
+    PREVIEW --> SHOWPREVIEW[Display Rule Preview]
+    SHOWPREVIEW --> USERINTERACTION
+    
+    SUBMIT --> SUCCESS[Return Selection]
+    CANCEL --> CANCELLED[Return Cancellation]
+    
+    style COMPONENT fill:#e1f5fe
+    style THEMING fill:#f3e5f5
+    style USERINTERACTION fill:#e8f5e8
+    style SUCCESS fill:#c8e6c9
+    style CANCELLED fill:#ffcdd2
+```
+
 ## Charmbracelet Integration
 
 Built on the charmbracelet ecosystem:

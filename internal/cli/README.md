@@ -27,6 +27,125 @@ The cli package enhances the standard urfave/cli experience by providing customi
 - **Terminal Detection**: Automatic color support detection based on terminal capabilities
 - **Theme Consistency**: Coordinated styling across all user-facing components
 
+### Help System Architecture
+
+```mermaid
+graph TB
+    subgraph "CLI Framework"
+        URFAVE[urfave/cli]
+        COMMAND[CLI Commands]
+        FLAGS[Global Flags]
+    end
+    
+    subgraph "CLI Package"
+        HELPPRINTER[HelpPrinter]
+        TEMPLATES[Help Templates]
+        FORMATTER[Text Formatter]
+        COLORIZER[Color Support]
+    end
+    
+    subgraph "UI Integration"
+        THEME[UI Theme System]
+        TERMINAL[Terminal Detection]
+        STYLES[Text Styling]
+    end
+    
+    subgraph "Output"
+        STDOUT[Formatted Help Output]
+        COLORS[Colored Text]
+        LAYOUT[Structured Layout]
+    end
+    
+    URFAVE --> HELPPRINTER
+    COMMAND --> HELPPRINTER
+    FLAGS --> HELPPRINTER
+    
+    HELPPRINTER --> TEMPLATES
+    HELPPRINTER --> FORMATTER
+    HELPPRINTER --> COLORIZER
+    
+    TEMPLATES --> THEME
+    FORMATTER --> STYLES
+    COLORIZER --> TERMINAL
+    
+    THEME --> STDOUT
+    STYLES --> LAYOUT
+    TERMINAL --> COLORS
+    
+    STDOUT --> LAYOUT
+    COLORS --> LAYOUT
+    
+    style HELPPRINTER fill:#e1f5fe
+    style TEMPLATES fill:#f3e5f5
+    style FORMATTER fill:#e8f5e8
+    style THEME fill:#fff3e0
+```
+
+### Help Rendering Pipeline
+
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant CLI as CLI Framework
+    participant Help as HelpPrinter
+    participant Template as Template Engine
+    participant Theme as UI Theme
+    participant Term as Terminal
+    
+    User->>CLI: --help flag
+    CLI->>Help: Print(writer, template, data)
+    
+    Help->>Term: Check terminal capabilities
+    Term-->>Help: Color support status
+    
+    Help->>Template: Render help template
+    Template->>Template: Process template data
+    Template->>Template: Apply formatting rules
+    Template-->>Help: Rendered content
+    
+    Help->>Theme: Apply color styling
+    Theme->>Theme: Select adaptive colors
+    Theme-->>Help: Styled content
+    
+    Help->>Help: Format layout structure
+    Help->>Help: Add visual hierarchy
+    
+    Help->>Term: Write formatted output
+    Term-->>User: Enhanced help display
+    
+    note over Help: Features:<br/>• Custom templates<br/>• Color detection<br/>• Structured layout<br/>• Visual hierarchy
+```
+
+### Template System Integration
+
+```mermaid
+flowchart TD
+    START([Help Request]) --> DETECT[Detect Terminal Capabilities]
+    
+    DETECT --> LOADTEMPLATE[Load Help Template]
+    LOADTEMPLATE --> PROCESSDATA[Process Command Data]
+    
+    PROCESSDATA --> APPLYTEMPLATE[Apply Template Formatting]
+    APPLYTEMPLATE --> ADDCOLORS{Colors Supported?}
+    
+    ADDCOLORS -->|Yes| COLORIZE[Apply Color Styling]
+    ADDCOLORS -->|No| PLAINTEXT[Use Plain Text]
+    
+    COLORIZE --> LAYOUT[Apply Layout Structure]
+    PLAINTEXT --> LAYOUT
+    
+    LAYOUT --> HIERARCHY[Add Visual Hierarchy]
+    HIERARCHY --> OUTPUT[Generate Final Output]
+    
+    OUTPUT --> SUCCESS([Display Help])
+    
+    style DETECT fill:#e1f5fe
+    style APPLYTEMPLATE fill:#f3e5f5
+    style COLORIZE fill:#e8f5e8
+    style LAYOUT fill:#fff3e0
+    style SUCCESS fill:#c8e6c9
+```
+
 ## Usage Within Project
 
 This package is used by:
