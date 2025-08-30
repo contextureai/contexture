@@ -1,46 +1,27 @@
 # UI Package
 
-This package provides the core user interface theming and styling system for Contexture, implementing a comprehensive component library with adaptive colors and consistent visual design using the lipgloss styling framework.
+This package provides a centralized theming and styling system for all user interface components in the application. It uses the `lipgloss` framework to create a consistent visual design with adaptive colors.
 
-## Purpose
+## Theming System
 
-The ui package establishes the visual foundation for all user-facing components in Contexture. It provides a unified theming system, pre-styled components, and consistent visual patterns that create a cohesive user experience across the entire CLI application.
-
-## Adaptive Theming System
-
-### Theme Architecture
-- **Adaptive Colors**: Automatic light/dark theme detection and color adjustment
-- **Semantic Color Mapping**: Colors mapped to semantic meanings (success, error, warning, info)
-- **Consistent Palette**: Coordinated color scheme based on CharmTheme for consistency
-- **Terminal Compatibility**: Graceful fallbacks for terminals with limited color support
-
-### Color Categories
-- **Status Colors**: Success, error, warning, and info indicators
-- **Interface Colors**: Primary, secondary, background, foreground, and border colors
-- **Special Colors**: Update notifications and muted text styling
-- **Interactive Colors**: Selection and focus state colors
+- **Adaptive Colors**: Automatically detects and adjusts for light/dark terminal themes.
+- **Semantic Colors**: Maps colors to meanings such as `success`, `error`, `warning`, and `info`.
+- **Consistent Palette**: Uses a coordinated color scheme for a consistent appearance.
+- **Terminal Compatibility**: Provides graceful fallbacks for terminals with limited color support.
 
 ## Component Library
 
-### Text Components
-- **Headers**: Styled section headers with icon prefixes and consistent spacing
-- **Status Messages**: Success, warning, error, and info messages with appropriate icons
-- **Body Text**: Regular content text with proper contrast and readability
+The package includes a library of pre-styled components:
 
-### Layout Components
-- **Cards**: Bordered content containers with padding and styling
-- **Dividers**: Visual separators with consistent styling and spacing
-- **Sidebars**: Navigation and information panels with structured layout
+- **Text Components**: `Headers`, `Status Messages` (Success, Warning, Error, Info), and `Body Text`.
+- **Layout Components**: `Cards` for bordered content, `Dividers`, and `Sidebars`.
+- **Utility Components**: `Loading Indicators`, `Banners`, and `Status Indicators`.
 
-### Interactive Components
-- **Menus**: Styled menu interfaces with selection and navigation support
-- **Progress Bars**: Visual progress indicators for long-running operations
-- **Notifications**: Temporary status messages with appropriate styling
+## Icon System
 
-### Utility Components
-- **Loading Indicators**: Animated loading states for async operations
-- **Banners**: Prominent messages and announcements with emphasis styling
-- **Status Indicators**: Compact status displays with color coding
+A consistent set of icons is used across all components for statuses and navigation, including:
+- **Status Icons**: `✓` (success), `✗` (error), `⚠` (warning), `ⓘ` (info)
+- **Navigation Icons**: `▶` (expand), `◀` (collapse)
 
 ### UI Component Hierarchy
 
@@ -203,42 +184,23 @@ flowchart TD
     style SUCCESS fill:#c8e6c9
 ```
 
-## Icon System
-
-Consistent iconography across all components:
-- **Status Icons**: ✓ (success), ✗ (error), ⚠ (warning), ⓘ (info)
-- **Navigation Icons**: ▶ (expand), ◀ (collapse), arrows for direction
-- **Action Icons**: Contextual icons for different types of operations
-
 ## Lipgloss Integration
 
-Built on the lipgloss styling framework:
-- **Style Composition**: Reusable style definitions and composition patterns
-- **Layout Support**: Flexible layout system with padding, margins, and alignment
-- **Color Management**: Advanced color handling with adaptive color support
-- **Terminal Rendering**: Optimized rendering for various terminal capabilities
+This package is built on the `lipgloss` styling framework, using it for:
+- **Style Composition**: Creating reusable style definitions.
+- **Layout**: Managing padding, margins, and alignment.
+- **Color Management**: Handling adaptive colors.
 
-## Usage Within Project
+## Usage
 
-This package is used throughout the application:
-- **TUI Package**: Interactive components use UI theming for consistent visual presentation
-- **CLI Package**: Help and command output use UI styling for enhanced readability
-- **Commands Package**: Command output uses UI components for status messages and formatting
-- **Format Package**: Generated output may include UI-styled content for visual enhancement
+This package is used by:
+- `tui` package: For theming interactive components.
+- `cli` package: For styling help and command output.
+- `commands` package: For formatting command output and status messages.
 
 ## API
 
-### Theme Management
-- `DefaultTheme()`: Returns the default adaptive theme with semantic colors
-- `NewStyles(theme)`: Creates a styles instance with theme-specific rendering functions
-- Theme struct provides all semantic colors as adaptive color definitions
-
-### Styled Text Functions
-- `Header(text)`, `Success(text)`, `Error(text)`, `Warning(text)`, `Info(text)`
-- `Muted(text)`, `Bold(text)`, `Italic(text)` for text emphasis
-- All functions include appropriate icon prefixes and semantic coloring
-
-### Component Functions
-- Card, divider, menu, progress, notification, and other component constructors
-- Consistent parameter patterns and styling options across all components
-- Responsive design support for different terminal widths and capabilities
+- `DefaultTheme() -> Theme`: Returns the default adaptive theme.
+- `NewStyles(theme) -> Styles`: Creates a `Styles` instance with rendering functions based on the provided theme.
+- **Styled Text Functions**: `Header(text)`, `Success(text)`, `Error(text)`, etc., which return styled strings with appropriate icons and colors.
+- **Component Functions**: Functions for creating card, divider, and other UI components.

@@ -1,27 +1,14 @@
 # Cache Package
 
-This package provides a simple repository caching mechanism for Contexture, enabling cross-session persistence of Git repositories with human-readable cache directory names.
+This package provides a simple, cross-session caching mechanism for Git repositories. It uses human-readable directory names and stores repositories in the system's temporary directory.
 
-## Purpose
+## Features
 
-The cache package improves performance by storing cloned repositories locally, avoiding redundant clone operations across CLI sessions. It manages repository updates intelligently and provides clean, predictable cache keys for easy maintenance.
-
-## Key Features
-
-- **Cross-Session Persistence**: Repositories remain cached between CLI invocations
-- **Human-Readable Cache Keys**: Generated from repository URLs and Git references (e.g., `github.com_user_repo-main`)
-- **Smart Updates**: Supports both cached retrieval and forced updates with git pull
-- **URL Format Support**: Handles both HTTPS and SSH Git URLs with proper parsing
-- **Automatic Cleanup**: Failed clones are cleaned up automatically
-- **Temp Directory Storage**: Uses system temp directory for cache storage
-
-## Cache Key Generation
-
-The package creates predictable cache directory names by:
-- Parsing repository URLs (both `https://` and `git@` formats)
-- Extracting hostname and path components
-- Sanitizing special characters to filesystem-safe names
-- Appending the Git reference (branch/tag/commit)
+- **Cross-Session Persistence**: Repositories are cached between CLI invocations, improving performance by avoiding redundant clones.
+- **Human-Readable Cache Keys**: Cache directories are named based on the repository URL and Git reference (e.g., `github.com_user_repo-main`).
+- **Smart Updates**: Supports both retrieving from the cache and forcing an update via `git pull`.
+- **URL Support**: Handles both HTTPS and SSH Git URLs.
+- **Automatic Cleanup**: Automatically removes failed clone directories.
 
 ### Cache Operations Flow
 
@@ -141,14 +128,14 @@ sequenceDiagram
     note over KeyGen: Examples:<br/>github.com_user_repo-main<br/>gitlab.com_org_project-develop
 ```
 
-## Usage Within Project
+## Usage
 
 This package is used by:
-- **Rule Package**: Git fetcher uses caching for repository-based rule retrieval
-- **Integration Tests**: Repository operations leverage caching for test performance
+- The `rule` package for caching repositories when fetching rules.
+- Integration tests to improve performance.
 
 ## API
 
-- `NewSimpleCache(fs, repository)`: Creates a cache instance with filesystem and git repository dependencies
-- `GetRepository(ctx, repoURL, gitRef)`: Returns cached repository path or clones if not cached
-- `GetRepositoryWithUpdate(ctx, repoURL, gitRef)`: Forces updates to cached repositories with latest changes
+- `NewSimpleCache(fs, repository) -> SimpleCache`: Creates a new cache instance.
+- `GetRepository(ctx, repoURL, gitRef) -> string`: Returns the path to a cached repository, cloning it if it's not already cached.
+- `GetRepositoryWithUpdate(ctx, repoURL, gitRef) -> string`: Forces an update of a cached repository by pulling the latest changes.

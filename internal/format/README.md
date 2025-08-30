@@ -1,27 +1,12 @@
 # Format Package
 
-This package manages output format implementations for different AI assistant platforms, providing a registry system for format discovery, a builder pattern for format instantiation, and base utilities for format development.
-
-## Purpose
-
-The format package enables Contexture to generate output files tailored to specific AI assistant platforms (Claude, Cursor, Windsurf) while maintaining a consistent interface for format operations. It provides the infrastructure for format extensibility and management.
+This package manages the output format implementations for various AI assistant platforms. It uses a registry for format discovery and a builder pattern for creating format instances.
 
 ## Architecture
 
-### Registry Pattern
-- **Format Registry**: Central registry for discovering and managing available formats
-- **Handler Interface**: UI integration for format selection and configuration
-- **Dynamic Registration**: Support for runtime format registration and discovery
-
-### Builder Pattern
-- **Format Builder**: Factory for creating format implementations with configuration
-- **Constructor Functions**: Type-safe format instantiation with validation
-- **Options Support**: Flexible configuration through option maps
-
-### Base Infrastructure
-- **Common Interfaces**: Shared contracts for all format implementations
-- **Directory Management**: Utilities for output directory creation and management
-- **UI Integration**: Format-specific user interface components
+- **Registry Pattern**: A central registry is used to discover and manage available formats (e.g., `claude`, `cursor`). It includes UI handlers for format selection and configuration.
+- **Builder Pattern**: A factory pattern is used to create format instances with their specific configurations.
+- **Base Infrastructure**: Provides common interfaces, directory management utilities, and UI integration for all formats.
 
 ### Registry and Builder Pattern
 
@@ -176,41 +161,22 @@ flowchart TD
 
 ## Supported Formats
 
-### Built-in Formats
-- **Claude**: AI assistant format optimized for Claude's interface and capabilities
-- **Cursor**: Code editor format tailored for Cursor's AI features
-- **Windsurf**: Development environment format designed for Windsurf workflows
+The following formats are built-in:
+- `claude`: For Anthropic's Claude.
+- `cursor`: For the Cursor IDE.
+- `windsurf`: For the Windsurf IDE.
 
-### Format Capabilities
-- **Single/Multi-file Output**: Support for both single-file and directory-based outputs
-- **File Extension Management**: Automatic file extension handling based on format type
-- **Template Processing**: Integration with template engine for dynamic content generation
-- **Configuration Validation**: Format-specific configuration validation and constraints
+## Usage
 
-## Directory Management
-
-- **Output Directory Creation**: Automatic creation of format-specific output directories
-- **File Organization**: Structured organization of generated files
-- **Path Resolution**: Intelligent path resolution for various output scenarios
-- **Cleanup Support**: Utilities for managing generated file lifecycles
-
-## Usage Within Project
-
-This package is used by:
-- **Commands Package**: Build command uses formats for output generation
-- **Domain Package**: Format interfaces define contracts for format implementations
-- **Project Package**: Configuration management includes format settings
+This package is primarily used by:
+- The `commands` package's `build` command, which uses this package to generate the final output.
+- The `project` package, which manages format settings in the project configuration.
 
 ## API
 
-### Registry Operations
-- `NewRegistry(fs)`: Creates format registry with filesystem support
-- `GetDefaultRegistry(fs)`: Returns registry with all built-in formats
-- `Register(formatType, handler)`: Adds format to registry
-- `CreateFormat(type, fs, options)`: Creates format implementation
-
-### Builder Operations
-- `NewBuilder()`: Creates format builder with built-in formats
-- `Register(type, constructor)`: Adds constructor function
-- `Build(type, fs, options)`: Instantiates format with configuration
-- `GetSupportedFormats()`: Lists available format types
+- `GetDefaultRegistry(fs) -> Registry`: Returns a registry with all built-in formats.
+- `Register(formatType, handler)`: Adds a new format to the registry.
+- `CreateFormat(type, fs, options) -> Formatter`: Creates a format implementation instance.
+- `NewBuilder() -> Builder`: Creates a format builder.
+- `Build(type, fs, options) -> Formatter`: Builds a format instance with the given configuration.
+- `GetSupportedFormats() -> []string`: Returns a list of available format types.

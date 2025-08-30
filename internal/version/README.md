@@ -1,23 +1,19 @@
 # Version Package
 
-This package provides comprehensive build-time version information for the Contexture CLI application. It captures essential metadata about the binary including version, commit hash, build date, and runtime environment details.
+This package provides build-time version information for the application. It captures metadata including the version, commit hash, build date, and runtime environment details, which are embedded into the binary at compile time via `ldflags`.
 
-## Purpose
+## Features
 
-The version package serves as the central source of truth for application versioning and build metadata. It enables the CLI to report detailed version information to users and supports debugging by providing build context.
+- **Build-time Variables**: Captures version, commit hash, build date, and builder information.
+- **Runtime Information**: Automatically includes the Go version and platform (OS/architecture).
+- **Multiple Output Formats**: Provides both a short version string and a detailed output.
+- **Default Fallbacks**: If build-time variables are not set, it defaults to `dev` for the version and `unknown` for other fields.
 
-## Key Features
+## Usage
 
-- **Build-time Variables**: Version, commit hash, build date, and builder information set via ldflags during compilation
-- **Runtime Information**: Automatically captures Go version and platform (OS/architecture)
-- **Multiple Output Formats**: Short version string for basic usage, detailed output for comprehensive information
-- **Default Fallbacks**: Graceful handling when build-time variables aren't set (defaults to "dev" and "unknown")
-
-## Usage Within Project
-
-This package is used by:
-- **App Package**: For version commands and CLI metadata
-- **Rule Variable Manager**: For template variable substitution in rules
+This package is primarily used by:
+- The `app` package for the `version` command and other CLI metadata.
+- The rule variable manager for template variable substitution.
 
 ### Version Information Flow
 
@@ -112,7 +108,7 @@ sequenceDiagram
 
 ## API
 
-- `Get()`: Returns complete version information as an `Info` struct
-- `GetShort()`: Returns just the version string
-- `Info.String()`: Formatted version string for display
-- `Info.Detailed()`: Comprehensive version information including all metadata
+- `Get() -> Info`: Returns a complete `Info` struct containing all version information.
+- `GetShort() -> string`: Returns only the version string.
+- `Info.String() -> string`: Returns a formatted string of the version information for display.
+- `Info.Detailed() -> string`: Returns a comprehensive, multi-line string containing all version metadata.

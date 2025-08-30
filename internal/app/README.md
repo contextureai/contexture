@@ -1,26 +1,15 @@
 # App Package
 
-This package provides the main application structure for the Contexture CLI, serving as the central orchestrator that initializes dependencies, configures the CLI framework, and manages the application lifecycle.
+This package provides the main application structure for the CLI. It serves as the composition root, initializing dependencies, configuring the CLI framework, and managing the application lifecycle.
 
-## Purpose
+## Features
 
-The app package acts as the composition root for the entire application, bringing together all components through proper dependency injection. It provides a clean separation between application structure and command logic while ensuring consistent error handling and execution flow.
-
-## Key Features
-
-- **Application Lifecycle Management**: Complete setup and teardown of application resources
-- **Dependency Injection**: Centralized dependency creation and distribution to commands
-- **CLI Framework Integration**: Configuration and setup of the urfave/cli framework
-- **Command Orchestration**: Registration and organization of all CLI commands and subcommands
-- **Error Handling**: Unified error display and exit code management
-- **Testable Actions**: Command action wrappers that enable comprehensive testing
-
-## Application Structure
-
-- **Main Application**: Core application instance with dependency management
-- **Command Actions**: Testable wrappers around command implementations
-- **CLI Builder**: Construction of the complete CLI application structure with commands, flags, and help
-- **Global Setup**: Configuration of logging, help templates, and global application state
+- **Application Lifecycle Management**: Handles the setup and teardown of application resources.
+- **Dependency Injection**: Provides a central point for creating dependencies and distributing them to commands.
+- **CLI Framework Integration**: Configures and sets up the `urfave/cli` framework.
+- **Command Orchestration**: Registers and organizes all CLI commands and subcommands.
+- **Error Handling**: Implements unified error display and exit code management.
+- **Testable Actions**: Wraps command actions to enable comprehensive testing.
 
 ### Application Architecture
 
@@ -173,23 +162,12 @@ flowchart TD
     style FLAGS fill:#fff3e0
 ```
 
-## Command Organization
+## Usage
 
-The package organizes CLI commands into logical groups:
-- **Project Commands**: `init` for project initialization
-- **Rule Management**: `add`, `remove`, `list`, `update` for rule operations
-- **Build System**: `build` for generating output files
-- **Configuration**: `config` with subcommands for project settings
-
-## Usage Within Project
-
-This package is used by:
-- **Main Entry Point**: The `cmd/contexture` package uses this as the application runner
-- **Testing**: Integration tests use the application structure for end-to-end testing
+This package is used by the main entry point (`cmd/contexture/main.go`) to run the application. It is also used in integration tests.
 
 ## API
 
-- `New(deps)`: Creates application instance with dependency injection
-- `Run(args)`: Main entry point with complete error handling and exit codes
-- `Execute(ctx, args)`: Executes the CLI application with context
-- Command action methods provide testable interfaces to all CLI operations
+- `New(deps) -> Application`: Creates a new application instance with the provided dependencies.
+- `Run(args) -> int`: The main entry point for the application. It returns an exit code.
+- `Execute(ctx, args) -> error`: Executes the CLI application with a given context and arguments.

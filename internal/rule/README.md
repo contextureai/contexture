@@ -1,23 +1,14 @@
 # Rule Package
 
-This package provides comprehensive rule processing functionality for Contexture, implementing a modular architecture with separate components for fetching, parsing, processing, and validating rules from various sources.
-
-## Purpose
-
-The rule package serves as the core engine for rule management, handling everything from retrieving rules from local files or Git repositories to processing templates and validating rule structure. It provides a clean interface for rule operations while supporting multiple data sources and processing requirements.
+This package handles rule processing, including fetching, parsing, and validating rules from various sources.
 
 ## Architecture
 
-### Component-Based Design
-- **Fetcher**: Retrieves rules from local files and Git repositories with intelligent caching
-- **Parser**: Processes rule content including frontmatter parsing and metadata extraction
-- **Processor**: Handles template processing, variable substitution, and context management
-- **Validator**: Validates rule structure, content, and business logic constraints
-
-### Rule Sources
-- **Local Files**: Direct access to filesystem-based rules for development workflows
-- **Git Repositories**: Remote rule fetching with repository caching and branch/commit support
-- **Composite Fetching**: Intelligent routing between local and Git sources based on rule ID format
+The package is designed with a component-based architecture:
+- **Fetcher**: A composite fetcher that retrieves rules from local files or Git repositories, with support for caching.
+- **Parser**: Parses rule content, extracting frontmatter and metadata.
+- **Processor**: Processes templates, substitutes variables, and manages context.
+- **Validator**: Validates the rule's structure, content, and business logic.
 
 ### Component Interaction Diagram
 
@@ -147,46 +138,22 @@ flowchart TD
     style VALIDATE fill:#fce4ec
 ```
 
-## Key Features
+## Features
 
-- **Multi-Source Support**: Seamless handling of both local and remote rule sources
-- **Template Processing**: Dynamic content generation using Go templates with custom functions
-- **Variable Management**: Context-aware variable substitution and dependency tracking
-- **Repository Caching**: Efficient Git repository caching for improved performance
-- **Rule ID Parsing**: Sophisticated parsing of complex rule reference formats
-- **Attribution Generation**: Automatic attribution information for rule sources and metadata
+- **Multi-Source Support**: Handles rules from both local files and remote Git repositories.
+- **Template Processing**: Uses Go templates with custom functions for dynamic content generation.
+- **Variable Management**: Supports context-aware variable substitution.
+- **Repository Caching**: Caches Git repositories for improved performance.
+- **Rule ID Parsing**: Parses various rule ID formats.
+- **Attribution Generation**: Automatically generates attribution for rule sources.
 
-## Rule Processing Pipeline
-
-1. **Fetching**: Retrieve rule content from configured sources
-2. **Parsing**: Extract frontmatter metadata and rule body content
-3. **Validation**: Verify rule structure and business rule compliance
-4. **Processing**: Apply template processing with variable context
-5. **Attribution**: Generate source attribution for tracking and compliance
-
-## Rule ID Formats
-
-The package supports various rule ID formats:
-- Simple paths: `path/to/rule.md`
-- Contexture format: `[contexture:path/to/rule]`
-- Repository format: `[contexture(repo-url):path,branch]`
-- Local references: Direct filesystem paths
-
-## Usage Within Project
+## Usage
 
 This package is used by:
-- **Commands Package**: All rule-related CLI commands use this package for rule operations
-- **Format Package**: Rule processing provides processed rules for format generation
-- **Build System**: Template processing and rule compilation for output generation
+- The `commands` package for all rule-related operations.
+- The `format` package, which uses processed rules to generate output.
 
 ## API
 
-### Core Interfaces
-- `Fetcher`: `FetchRule()`, `FetchRules()`, `ParseRuleID()`, `ListAvailableRules()`
-- `Parser`: `ParseRule()`, `ParseContent()`, `ValidateRule()`
-- `Processor`: `ProcessRule()`, `ProcessRules()`, `ProcessTemplate()`, `GenerateAttribution()`
-
-### Factory Functions
-- `NewFetcher(fs, repository, config)`: Creates composite fetcher with Git and local support
-- `NewParser()`: Creates rule parser with frontmatter support
-- `NewProcessor(templateEngine, validator)`: Creates rule processor with template engine
+- **Interfaces**: Provides `Fetcher`, `Parser`, and `Processor` interfaces.
+- **Factory Functions**: `NewFetcher()`, `NewParser()`, and `NewProcessor()` for creating instances of the components.

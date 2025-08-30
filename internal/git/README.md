@@ -1,50 +1,25 @@
 # Git Package
 
-This package provides secure Git repository operations with comprehensive error handling, configurable timeouts, authentication management, and retry logic for robust repository interactions.
+This package provides an interface for Git repository operations, including cloning, pulling, and retrieving commit information. It includes features for security, authentication, and error handling.
 
-## Purpose
+## Features
 
-The git package abstracts Git operations behind a clean interface, handling the complexity of authentication, network issues, and repository management. It ensures secure, reliable access to Git repositories while providing detailed progress reporting and error recovery.
+- **Secure Operations**: Enforces URL validation and a configurable host allowlist.
+- **Authentication**: Supports HTTP basic auth, SSH keys, and token-based authentication.
+- **Resilience**: Implements configurable timeouts and automatic retries for transient network failures.
+- **Progress Reporting**: Provides real-time progress updates for long-running operations like `clone` and `pull`.
+- **Repository Validation**: Includes functions to check for valid Git repositories and remote URLs.
+- **Commit Information**: Allows for retrieval of commit metadata and file history.
 
-## Key Features
-
-- **Secure Operations**: Comprehensive URL validation and host allowlisting
-- **Authentication Support**: HTTP basic auth, SSH keys, and token-based authentication
-- **Timeout Management**: Configurable timeouts for clone and pull operations
-- **Retry Logic**: Automatic retry for transient network failures
-- **Progress Reporting**: Real-time progress updates for long-running operations
-- **Repository Validation**: Checks for valid Git repositories and remote URLs
-- **Commit Information**: Retrieval of commit metadata and file history
-
-## Security Features
-
-- **URL Validation**: Strict validation of repository URLs and schemes
-- **Host Allowlisting**: Configurable list of allowed Git hosts
-- **Scheme Restrictions**: Support for HTTPS, HTTP, SSH, and git protocols only
-- **Authentication Abstraction**: Pluggable authentication providers
-
-## Operation Types
-
-- **Clone**: Full repository cloning with branch/tag specification
-- **Pull**: Updates to existing repositories with conflict resolution
-- **Commit Info**: Retrieval of commit metadata and file-specific history
-- **File Access**: Reading files at specific commits or branches
-- **Repository Validation**: Checking repository validity and remote access
-
-## Usage Within Project
+## Usage
 
 This package is used by:
-- **Cache Package**: Repository caching relies on git operations for clone and pull
-- **Rule Package**: Git fetcher uses this package for repository-based rule retrieval
-- **Integration Tests**: End-to-end testing uses git operations for test repositories
+- `cache` package: For cloning and pulling repositories for caching.
+- `rule` package: For fetching rules from Git repositories.
 
 ## Interface Design
 
-The package follows Go interface conventions with a clean `Repository` interface that:
-- Enables easy testing through mock implementations
-- Supports different Git backends (go-git, system git, etc.)
-- Provides consistent error handling across all operations
-- Allows for progress monitoring and cancellation
+The core of the package is the `Repository` interface, which abstracts Git operations. This design allows for mock implementations in tests and supports different backend Git libraries.
 
 ### Git Operations Architecture
 
@@ -227,6 +202,6 @@ flowchart TD
 
 ## API
 
-- `NewClient(fs, config)`: Creates a new Git client with filesystem and configuration
-- Repository interface includes `Clone()`, `Pull()`, `GetLatestCommitHash()`, `ValidateURL()`
-- Configuration supports timeouts, authentication, progress handlers, and security settings
+- `NewClient(fs, config) -> Client`: Creates a new Git client.
+- The `Repository` interface provides methods such as `Clone()`, `Pull()`, `GetLatestCommitHash()`, and `ValidateURL()`.
+- The configuration struct allows for setting timeouts, authentication methods, progress handlers, and security options.
