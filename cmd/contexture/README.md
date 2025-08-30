@@ -27,24 +27,24 @@ graph TB
     end
     
     subgraph "cmd/contexture Package"
-        MAIN[main()]
+        MAIN[main function]
         OSARGS[os.Args]
-        OSEXIT[os.Exit()]
+        OSEXIT[os.Exit function]
     end
     
     subgraph "Internal Application"
-        APPRUN[app.Run()]
+        APPRUN[app.Run function]
         DEPENDENCIES[Dependencies]
         CLI[CLI Framework]
         COMMANDS[Command Actions]
     end
     
     subgraph "Exit Code Sources"
-        SUCCESS[Success: 0]
-        USAGE[Usage Error: 1]
-        CONFIG[Config Error: 2]
-        NETWORK[Network Error: 3]
-        PERMISSION[Permission Error: 4]
+        SUCCESS[Success - 0]
+        USAGE[Usage Error - 1]
+        CONFIG[Config Error - 2]
+        NETWORK[Network Error - 3]
+        PERMISSION[Permission Error - 4]
     end
     
     OS --> MAIN
@@ -142,8 +142,8 @@ flowchart TD
     BINARY --> DEPLOY[Deployment]
     
     DEPLOY --> USER[User Execution]
-    USER --> RUNTIME[Runtime: main()]
-    RUNTIME --> APPRUN[Delegate to app.Run()]
+    USER --> RUNTIME[Runtime main function]
+    RUNTIME --> APPRUN[Delegate to app.Run function]
     
     APPRUN --> VERSIONCMD{Version Command?}
     

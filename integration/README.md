@@ -361,17 +361,17 @@ flowchart TD
     TESTTYPE -->|Format Test| FORMATFLOW[Format Generation Flow]
     TESTTYPE -->|Error Test| ERRORFLOW[Error Handling Flow]
     
-    CONFIGFLOW --> INITCONFIG[InitConfig()]
-    INITCONFIG --> LOADCONFIG[LoadConfig()]
+    CONFIGFLOW --> INITCONFIG[InitConfig]
+    INITCONFIG --> LOADCONFIG[LoadConfig]
     LOADCONFIG --> VALIDATE1[Validate Config State]
     
-    RULEFLOW --> ADDRULE[AddRule()]
-    ADDRULE --> HASRULE[HasRule()]
-    HASRULE --> REMOVERULE[RemoveRule()]
+    RULEFLOW --> ADDRULE[AddRule]
+    ADDRULE --> HASRULE[HasRule]
+    HASRULE --> REMOVERULE[RemoveRule]
     REMOVERULE --> VALIDATE2[Validate Rule State]
     
     FORMATFLOW --> ENABLEFORMAT[Enable Formats]
-    ENABLEFORMAT --> GETFORMATS[GetEnabledFormats()]
+    ENABLEFORMAT --> GETFORMATS[GetEnabledFormats]
     GETFORMATS --> FORMATCONFIG[Format Configuration]
     FORMATCONFIG --> VALIDATE3[Validate Format State]
     
