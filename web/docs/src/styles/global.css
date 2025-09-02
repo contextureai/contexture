@@ -1,0 +1,53 @@
+@layer base, starlight, theme, components, utilities, overrides;
+
+@import '@astrojs/starlight-tailwind';
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+    --font-sans: "Geist Sans";
+    --font-mono: "Geist Mono Variable";
+}
+
+@layer overrides {
+    :root {
+        --font-sans: "Geist Sans";
+        --font-mono: "Geist Mono Variable";
+        --sl-color-text: #ece9da;
+        --sl-color-gray-2: #ece9da;
+        --sl-color-hairline-shade: var(--color-zinc-800);
+        --sl-color-bg-nav: var(--color-zinc-800);
+        --sl-color-bg-sidebar: var(--color-zinc-800);
+        --sl-color-bg: var(--color-zinc-800);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .main-pane {
+        position: relative;
+        background-image: url("/assets/noise.webp");
+        background-repeat: repeat;
+        background-size: 180px;
+        background-attachment: local;
+        opacity: 1;
+    }
+
+    .main-pane > * {
+        position: relative;
+        background-color: oklch(from var(--sl-color-bg) l c h / calc(alpha - 0.022))
+    }
+
+    .right-sidebar-container::before {
+        content: "";
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        position: absolute;
+        background-image: url("/assets/noise.webp");
+        background-repeat: repeat;
+        background-size: 180px;
+        opacity: 0.022;
+        z-index: -1;
+    }
+}
