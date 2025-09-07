@@ -238,6 +238,16 @@ func TestValidateRuleID(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "valid format with variables",
+			ruleID:  "[contexture:languages/go/code-organization]{\"extended\": true}",
+			wantErr: false,
+		},
+		{
+			name:    "valid format with complex variables",
+			ruleID:  "[contexture:templates/readme]{\"project_name\": \"MyApp\", \"features\": [\"auth\", \"logging\"], \"config\": {\"debug\": true, \"level\": \"info\"}}",
+			wantErr: false,
+		},
+		{
 			name:    "missing closing bracket",
 			ruleID:  "[contexture:test/rule",
 			wantErr: true,

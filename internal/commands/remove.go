@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -129,13 +130,25 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 
 	// List the removed rules like in add command
 	for _, ruleID := range removedRules {
-		// Convert full format to simple format for display
-		displayID := ruleID
+		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
+		displayRuleID := ruleID
+		var variables map[string]any
 		if strings.HasPrefix(ruleID, "[contexture:") {
-			displayID = strings.TrimPrefix(ruleID, "[contexture:")
-			displayID = strings.TrimSuffix(displayID, "]")
+			// Parse to extract just the path component
+			parsed, err := c.ruleFetcher.ParseRuleID(ruleID)
+			if err == nil && parsed.RulePath != "" {
+				displayRuleID = parsed.RulePath
+				variables = parsed.Variables
+			}
 		}
-		fmt.Printf("  %s\n", displayID)
+		fmt.Printf("  %s\n", displayRuleID)
+
+		// Show variables on separate line if they exist
+		if len(variables) > 0 {
+			if variablesJSON, err := json.Marshal(variables); err == nil {
+				fmt.Printf("    Variables: %s\n", string(variablesJSON))
+			}
+		}
 	}
 
 	log.Debug("Rules removed",

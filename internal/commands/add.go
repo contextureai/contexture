@@ -110,11 +110,21 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 				return fmt.Errorf("invalid rule ID '%s'.\n\nRule IDs should be in one of these formats:\n  - [contexture:path/to/rule]           (from default repository)\n  - [contexture(source):path/to/rule]   (from custom source)\n  - path/to/rule                        (shorthand for default registry)\n\nExamples:\n  - [contexture:languages/go/testing]\n  - languages/go/testing\n\nOriginal error: %w", ruleID, err)
 			}
 
-			// Convert simple format to full format for storage
-			fullRuleID := ruleID
+			// Convert simple format to full format for storage (without variables)
+			var fullRuleID string
 			if !strings.HasPrefix(ruleID, "[contexture") {
 				// This is a simple format, convert to full format
 				fullRuleID = fmt.Sprintf("[contexture:%s]", ruleID)
+			} else {
+				// Extract the rule ID without variables for storage
+				if strings.Contains(ruleID, "]{") {
+					// Remove variables part from the rule ID for storage
+					if bracketIdx := strings.Index(ruleID, "]{"); bracketIdx != -1 {
+						fullRuleID = ruleID[:bracketIdx] + "]"
+					}
+				} else {
+					fullRuleID = ruleID
+				}
 			}
 
 			// Check if rule already exists (check both formats)
@@ -240,7 +250,25 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	fmt.Println(successStyle.Render("Rules added successfully!"))
 
 	for _, ruleRefWithOrig := range validRuleRefs {
-		fmt.Printf("  %s\n", ruleRefWithOrig.originalID)
+		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
+		displayRuleID := ruleRefWithOrig.originalID
+		var variables map[string]any
+		if strings.HasPrefix(ruleRefWithOrig.originalID, "[contexture:") {
+			// Parse to extract just the path component
+			parsed, err := c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID)
+			if err == nil && parsed.RulePath != "" {
+				displayRuleID = parsed.RulePath
+				variables = parsed.Variables
+			}
+		}
+		fmt.Printf("  %s\n", displayRuleID)
+
+		// Show variables on separate line if they exist
+		if len(variables) > 0 {
+			if variablesJSON, err := json.Marshal(variables); err == nil {
+				fmt.Printf("    Variables: %s\n", string(variablesJSON))
+			}
+		}
 	}
 
 	log.Debug("Rules added",

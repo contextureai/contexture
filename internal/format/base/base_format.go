@@ -447,9 +447,10 @@ func (bf *Base) CreateTrackingComment(ruleID string, variables map[string]any) s
 
 // CreateTrackingCommentFromParsed creates a tracking comment from a ParsedRuleID
 func (bf *Base) CreateTrackingCommentFromParsed(parsed *domain.ParsedRuleID) string {
-	// Reconstruct the rule ID string
+	// Reconstruct the rule ID string (already includes variables)
 	ruleID := bf.FormatRuleID(parsed)
-	return bf.CreateTrackingComment(ruleID, parsed.Variables)
+	// Don't pass variables again since they're already included in the formatted rule ID
+	return bf.CreateTrackingComment(ruleID, nil)
 }
 
 // FormatRuleID converts a ParsedRuleID back to its string representation
@@ -530,7 +531,12 @@ func (bf *Base) RemoveTrackingComment(content, ruleID string) string {
 func (bf *Base) AppendTrackingComment(
 	content string, ruleID string, variables map[string]any,
 ) string {
-	trackingComment := bf.CreateTrackingComment(ruleID, variables)
+	// If the ruleID already contains variables (has }), don't add them again
+	var passVariables map[string]any
+	if !strings.Contains(ruleID, "]{") {
+		passVariables = variables
+	}
+	trackingComment := bf.CreateTrackingComment(ruleID, passVariables)
 
 	// Ensure there's a newline before the comment if content doesn't end with one
 	if !strings.HasSuffix(content, "\n") {

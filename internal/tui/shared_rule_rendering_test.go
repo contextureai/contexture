@@ -44,6 +44,16 @@ func TestExtractRulePath(t *testing.T) {
 			ruleID:   "[contexture:frontend/react/component-naming]",
 			expected: "frontend/react/component-naming",
 		},
+		{
+			name:     "rule with variables",
+			ruleID:   "[contexture:languages/go/code-organization]{\"extended\": true}",
+			expected: "languages/go/code-organization",
+		},
+		{
+			name:     "rule with branch and variables",
+			ruleID:   "[contexture:typescript/strict,v2.0.0]{\"target\": \"es2022\"}",
+			expected: "typescript/strict",
+		},
 	}
 
 	for _, tt := range tests {
@@ -54,12 +64,69 @@ func TestExtractRulePath(t *testing.T) {
 	}
 }
 
+func TestExtractRuleVariables(t *testing.T) {
+	tests := []struct {
+		name     string
+		ruleID   string
+		expected string
+	}{
+		{
+			name:     "empty rule ID",
+			ruleID:   "",
+			expected: "",
+		},
+		{
+			name:     "rule ID without variables",
+			ruleID:   "[contexture:languages/go/testing]",
+			expected: "",
+		},
+		{
+			name:     "rule ID with simple boolean variable",
+			ruleID:   "[contexture:languages/go/testing]{\"extended\": true}",
+			expected: "{\"extended\": true}",
+		},
+		{
+			name:     "rule ID with multiple variables",
+			ruleID:   "[contexture:templates/readme]{\"project_name\": \"MyApp\", \"features\": [\"auth\", \"logging\"], \"config\": {\"debug\": true, \"level\": \"info\"}}",
+			expected: "{\"project_name\": \"MyApp\", \"features\": [\"auth\", \"logging\"], \"config\": {\"debug\": true, \"level\": \"info\"}}",
+		},
+		{
+			name:     "rule ID with source and variables",
+			ruleID:   "[contexture(local):languages/go/testing]{\"strict\": false}",
+			expected: "{\"strict\": false}",
+		},
+		{
+			name:     "rule ID with branch and variables",
+			ruleID:   "[contexture:typescript/strict,v2.0.0]{\"target\": \"es2022\", \"strict\": true}",
+			expected: "{\"target\": \"es2022\", \"strict\": true}",
+		},
+		{
+			name:     "rule ID with complex nested variables",
+			ruleID:   "[contexture:config/eslint]{\"rules\": {\"no-console\": \"error\", \"prefer-const\": \"warn\"}, \"extends\": [\"@typescript-eslint/recommended\"]}",
+			expected: "{\"rules\": {\"no-console\": \"error\", \"prefer-const\": \"warn\"}, \"extends\": [\"@typescript-eslint/recommended\"]}",
+		},
+		{
+			name:     "malformed rule ID with variables",
+			ruleID:   "languages/go/testing{\"extended\": true}",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractRuleVariables(tt.ruleID)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestBuildRuleMetadata(t *testing.T) {
 	tests := []struct {
-		name                string
-		rule                *domain.Rule
-		expectedBasicMeta   string
-		expectedTriggerLine string
+		name                  string
+		rule                  *domain.Rule
+		expectedBasicMeta     string
+		expectedTriggerLine   string
+		expectedVariablesLine string
 	}{
 		{
 			name: "rule with all metadata",
@@ -72,32 +139,36 @@ func TestBuildRuleMetadata(t *testing.T) {
 					Globs: []string{"*.tsx", "*.jsx"},
 				},
 			},
-			expectedBasicMeta:   "Languages: TypeScript, JavaScript • Frameworks: React, Next.js • Tags: frontend, component",
-			expectedTriggerLine: "Trigger: glob (*.tsx, *.jsx)",
+			expectedBasicMeta:     "Languages: TypeScript, JavaScript • Frameworks: React, Next.js • Tags: frontend, component",
+			expectedTriggerLine:   "Trigger: glob (*.tsx, *.jsx)",
+			expectedVariablesLine: "",
 		},
 		{
 			name: "rule with only languages",
 			rule: &domain.Rule{
 				Languages: []string{"Go", "Python"},
 			},
-			expectedBasicMeta:   "Languages: Go, Python",
-			expectedTriggerLine: "",
+			expectedBasicMeta:     "Languages: Go, Python",
+			expectedTriggerLine:   "",
+			expectedVariablesLine: "",
 		},
 		{
 			name: "rule with only frameworks",
 			rule: &domain.Rule{
 				Frameworks: []string{"Django", "Flask"},
 			},
-			expectedBasicMeta:   "Frameworks: Django, Flask",
-			expectedTriggerLine: "",
+			expectedBasicMeta:     "Frameworks: Django, Flask",
+			expectedTriggerLine:   "",
+			expectedVariablesLine: "",
 		},
 		{
 			name: "rule with only tags",
 			rule: &domain.Rule{
 				Tags: []string{"backend", "api"},
 			},
-			expectedBasicMeta:   "Tags: backend, api",
-			expectedTriggerLine: "",
+			expectedBasicMeta:     "Tags: backend, api",
+			expectedTriggerLine:   "",
+			expectedVariablesLine: "",
 		},
 		{
 			name: "rule with trigger but no globs",
@@ -106,22 +177,53 @@ func TestBuildRuleMetadata(t *testing.T) {
 					Type: "manual",
 				},
 			},
-			expectedBasicMeta:   "",
-			expectedTriggerLine: "Trigger: manual",
+			expectedBasicMeta:     "",
+			expectedTriggerLine:   "Trigger: manual",
+			expectedVariablesLine: "",
 		},
 		{
-			name:                "empty rule",
-			rule:                &domain.Rule{},
-			expectedBasicMeta:   "",
-			expectedTriggerLine: "",
+			name: "rule with variables",
+			rule: &domain.Rule{
+				ID:        "[contexture:languages/go/testing]",
+				Languages: []string{"Go"},
+				Variables: map[string]any{
+					"extended": true,
+				},
+			},
+			expectedBasicMeta:     "Languages: Go",
+			expectedTriggerLine:   "",
+			expectedVariablesLine: "Variables: {\"extended\":true}",
+		},
+		{
+			name: "rule with complex variables",
+			rule: &domain.Rule{
+				ID:        "[contexture:templates/readme]",
+				Languages: []string{"TypeScript"},
+				Tags:      []string{"template"},
+				Variables: map[string]any{
+					"project_name": "MyApp",
+					"features":     []string{"auth", "logging"},
+				},
+			},
+			expectedBasicMeta:     "Languages: TypeScript • Tags: template",
+			expectedTriggerLine:   "",
+			expectedVariablesLine: "Variables: {\"features\":[\"auth\",\"logging\"],\"project_name\":\"MyApp\"}",
+		},
+		{
+			name:                  "empty rule",
+			rule:                  &domain.Rule{},
+			expectedBasicMeta:     "",
+			expectedTriggerLine:   "",
+			expectedVariablesLine: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			basicMeta, triggerLine := buildRuleMetadata(tt.rule)
+			basicMeta, triggerLine, variablesLine := buildRuleMetadata(tt.rule)
 			assert.Equal(t, tt.expectedBasicMeta, basicMeta)
 			assert.Equal(t, tt.expectedTriggerLine, triggerLine)
+			assert.Equal(t, tt.expectedVariablesLine, variablesLine)
 		})
 	}
 }
@@ -386,7 +488,7 @@ func TestBuildRuleMetadataIntegration(t *testing.T) {
 		},
 	}
 
-	basicMeta, triggerLine := buildRuleMetadata(rule)
+	basicMeta, triggerLine, _ := buildRuleMetadata(rule)
 
 	expectedBasicMeta := "Languages: TypeScript • Frameworks: Next.js, React • Tags: typescript, config, strict"
 	expectedTriggerLine := "Trigger: glob (tsconfig.json, *.ts, *.tsx)"

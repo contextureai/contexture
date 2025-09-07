@@ -503,3 +503,143 @@ func TestBaseFormat_ProcessTemplateWithVars_RuleIDVariables(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateTrackingComment(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	base := NewBaseFormat(fs, domain.FormatClaude)
+
+	tests := []struct {
+		name      string
+		ruleID    string
+		variables map[string]any
+		expected  string
+	}{
+		{
+			name:      "simple rule ID without variables",
+			ruleID:    "[contexture:languages/go/testing]",
+			variables: nil,
+			expected:  "<!-- id: [contexture:languages/go/testing] -->",
+		},
+		{
+			name:      "rule ID with simple variables",
+			ruleID:    "[contexture:languages/go/testing]",
+			variables: map[string]any{"extended": true},
+			expected:  "<!-- id: [contexture:languages/go/testing]{\"extended\":true} -->",
+		},
+		{
+			name:   "rule ID with complex variables",
+			ruleID: "[contexture:templates/readme]",
+			variables: map[string]any{
+				"project_name": "MyApp",
+				"features":     []string{"auth", "logging"},
+				"config":       map[string]any{"debug": true, "level": "info"},
+			},
+			expected: "<!-- id: [contexture:templates/readme]{\"config\":{\"debug\":true,\"level\":\"info\"},\"features\":[\"auth\",\"logging\"],\"project_name\":\"MyApp\"} -->",
+		},
+		{
+			name:      "rule ID already containing variables (no duplication)",
+			ruleID:    "[contexture:languages/go/testing]{\"extended\": true}",
+			variables: nil,
+			expected:  "<!-- id: [contexture:languages/go/testing]{\"extended\": true} -->",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := base.CreateTrackingComment(tt.ruleID, tt.variables)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCreateTrackingCommentFromParsed(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	base := NewBaseFormat(fs, domain.FormatClaude)
+
+	tests := []struct {
+		name     string
+		parsed   *domain.ParsedRuleID
+		expected string
+	}{
+		{
+			name: "parsed rule without variables",
+			parsed: &domain.ParsedRuleID{
+				Source:   "https://github.com/contextureai/rules.git",
+				RulePath: "languages/go/testing",
+				Ref:      "main",
+			},
+			expected: "<!-- id: [contexture:languages/go/testing] -->",
+		},
+		{
+			name: "parsed rule with variables",
+			parsed: &domain.ParsedRuleID{
+				Source:   "https://github.com/contextureai/rules.git",
+				RulePath: "languages/go/testing",
+				Ref:      "main",
+				Variables: map[string]any{
+					"extended": true,
+					"strict":   false,
+				},
+			},
+			expected: "<!-- id: [contexture:languages/go/testing]{\"extended\":true,\"strict\":false} -->",
+		},
+		{
+			name: "parsed rule with custom source",
+			parsed: &domain.ParsedRuleID{
+				Source:   "https://github.com/custom/rules.git",
+				RulePath: "custom/rule",
+				Ref:      "main",
+				Variables: map[string]any{
+					"config": map[string]any{"enabled": true},
+				},
+			},
+			expected: "<!-- id: [contexture(https://github.com/custom/rules.git):custom/rule]{\"config\":{\"enabled\":true}} -->",
+		},
+		{
+			name: "parsed rule with branch and variables",
+			parsed: &domain.ParsedRuleID{
+				Source:   "https://github.com/contextureai/rules.git",
+				RulePath: "typescript/strict",
+				Ref:      "v2.0.0",
+				Variables: map[string]any{
+					"target": "es2022",
+					"strict": true,
+				},
+			},
+			expected: "<!-- id: [contexture:typescript/strict,v2.0.0]{\"strict\":true,\"target\":\"es2022\"} -->",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := base.CreateTrackingCommentFromParsed(tt.parsed)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTrackingCommentNoDuplication(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	base := NewBaseFormat(fs, domain.FormatClaude)
+
+	// This test specifically verifies that variables aren't duplicated
+	// when using CreateTrackingCommentFromParsed
+	parsed := &domain.ParsedRuleID{
+		Source:   "https://github.com/contextureai/rules.git",
+		RulePath: "languages/go/testing",
+		Ref:      "main",
+		Variables: map[string]any{
+			"extended": true,
+		},
+	}
+
+	result := base.CreateTrackingCommentFromParsed(parsed)
+
+	// Should only contain variables once, not duplicated
+	expected := "<!-- id: [contexture:languages/go/testing]{\"extended\":true} -->"
+	assert.Equal(t, expected, result)
+
+	// Verify no duplication by checking that the result doesn't contain
+	// the variables JSON twice
+	assert.NotContains(t, result, "{\"extended\":true}{\"extended\":true}")
+}

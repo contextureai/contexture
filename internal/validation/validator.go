@@ -317,14 +317,17 @@ func (v *defaultValidator) ValidateRuleID(ruleID string) error {
 		return fmt.Errorf("rule ID exceeds maximum length of %d characters", MaxRuleIDLength)
 	}
 
-	// Check if it's a full format [contexture:path] or [contexture(source):path,branch]
+	// Check if it's a full format [contexture:path] or [contexture(source):path,branch]{variables}
 	if strings.HasPrefix(ruleID, "[contexture") {
-		if !strings.HasSuffix(ruleID, "]") {
-			return fmt.Errorf("invalid rule ID format: missing closing bracket")
-		}
-		// Validate contexture rule ID format
-		if !strings.Contains(ruleID, ":") {
-			return fmt.Errorf("invalid rule ID format: missing colon separator")
+		// Use the existing regex pattern to validate the complete format
+		if !domain.RuleIDPatternRegex.MatchString(ruleID) {
+			if !strings.HasSuffix(ruleID, "]") && !strings.HasSuffix(ruleID, "}") {
+				return fmt.Errorf("invalid rule ID format: missing closing bracket")
+			}
+			if !strings.Contains(ruleID, ":") {
+				return fmt.Errorf("invalid rule ID format: missing colon separator")
+			}
+			return fmt.Errorf("invalid rule ID format")
 		}
 	} else {
 		// For non-contexture rule IDs, check for invalid characters

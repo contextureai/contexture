@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -85,7 +86,7 @@ func createRuleItemStyles() ruleItemStyles {
 }
 
 // extractRulePath extracts the rule path from a contexture rule ID
-// Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch]
+// Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch]{variables}
 func extractRulePath(ruleID string) string {
 	if ruleID == "" {
 		return ""
@@ -101,11 +102,42 @@ func extractRulePath(ruleID string) string {
 		}
 	}
 	pathPart = strings.TrimSuffix(pathPart, "]")
+
+	// Remove variables part if present (path/rule,branch]{variables} or path/rule]{variables})
+	if bracketIdx := strings.Index(pathPart, "]{"); bracketIdx != -1 {
+		pathPart = pathPart[:bracketIdx]
+	}
+
 	// Remove branch suffix if present (path/rule,branch)
 	if commaIdx := strings.Index(pathPart, ","); commaIdx != -1 {
 		pathPart = pathPart[:commaIdx]
 	}
 	return pathPart
+}
+
+// extractRuleVariables extracts variables from a contexture rule ID
+// Returns the variables as a JSON string, or empty string if no variables
+func extractRuleVariables(ruleID string) string {
+	if ruleID == "" {
+		return ""
+	}
+
+	// Look for variables part: {variables}
+	if startIdx := strings.Index(ruleID, "]{"); startIdx != -1 {
+		// Found variables after the bracket
+		variablesPart := ruleID[startIdx+2:] // Skip "]{"
+		if endIdx := strings.LastIndex(variablesPart, "}"); endIdx != -1 {
+			return "{" + variablesPart[:endIdx+1]
+		}
+	} else if startIdx := strings.Index(ruleID, "}{"); startIdx != -1 {
+		// Handle case where there's no closing bracket before variables
+		variablesPart := ruleID[startIdx+2:] // Skip "}{"
+		if endIdx := strings.LastIndex(variablesPart, "}"); endIdx != -1 {
+			return "{" + variablesPart[:endIdx+1]
+		}
+	}
+
+	return ""
 }
 
 // extractRulePathWithLocalIndicator extracts the rule path and adds a local indicator for local rules
@@ -123,10 +155,10 @@ func extractRulePathWithLocalIndicator(rule *domain.Rule) string {
 	return rulePath
 }
 
-// buildRuleMetadata builds the metadata lines for a rule (tags, languages, frameworks, trigger)
-func buildRuleMetadata(rule *domain.Rule) (string, string) {
+// buildRuleMetadata builds the metadata lines for a rule (tags, languages, frameworks, trigger, variables)
+func buildRuleMetadata(rule *domain.Rule) (string, string, string) {
 	var basicMetadataParts []string
-	var basicMetadataLine, triggerLine string
+	var basicMetadataLine, triggerLine, variablesLine string
 
 	// Add Languages and Frameworks
 	if len(rule.Languages) > 0 {
@@ -158,7 +190,14 @@ func buildRuleMetadata(rule *domain.Rule) (string, string) {
 		}
 	}
 
-	return basicMetadataLine, triggerLine
+	// Build variables line if variables exist
+	if len(rule.Variables) > 0 {
+		if variablesJSON, err := json.Marshal(rule.Variables); err == nil {
+			variablesLine = "Variables: " + string(variablesJSON)
+		}
+	}
+
+	return basicMetadataLine, triggerLine, variablesLine
 }
 
 // applyHighlightsGeneric applies highlighting by finding matches within text

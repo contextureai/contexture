@@ -199,7 +199,7 @@ func (n *RuleNode) GetBreadcrumb() []string {
 }
 
 // ExtractRulePath extracts the rule path from a contexture rule ID
-// Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch]
+// Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch], [contexture:path/rule]{variables}
 func ExtractRulePath(ruleID string) string {
 	if ruleID == "" {
 		return ""
@@ -215,6 +215,12 @@ func ExtractRulePath(ruleID string) string {
 		}
 	}
 	pathPart = strings.TrimSuffix(pathPart, "]")
+
+	// Remove variables part if present (path/rule,branch]{variables} or path/rule]{variables})
+	if bracketIdx := strings.Index(pathPart, "]{"); bracketIdx != -1 {
+		pathPart = pathPart[:bracketIdx]
+	}
+
 	// Remove branch suffix if present (path/rule,branch)
 	if commaIdx := strings.Index(pathPart, ","); commaIdx != -1 {
 		pathPart = pathPart[:commaIdx]

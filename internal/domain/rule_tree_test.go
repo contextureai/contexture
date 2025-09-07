@@ -351,6 +351,24 @@ func TestExtractRulePath(t *testing.T) {
 		path := ExtractRulePath(ruleID)
 		assert.Equal(t, "frameworks/react/advanced-patterns", path)
 	})
+
+	t.Run("extracts path from rule ID with variables", func(t *testing.T) {
+		ruleID := "[contexture:languages/go/code-organization]{\"extended\": true}"
+		path := ExtractRulePath(ruleID)
+		assert.Equal(t, "languages/go/code-organization", path)
+	})
+
+	t.Run("extracts path from rule ID with branch and variables", func(t *testing.T) {
+		ruleID := "[contexture:typescript/strict,v2.0.0]{\"target\": \"es2022\"}"
+		path := ExtractRulePath(ruleID)
+		assert.Equal(t, "typescript/strict", path)
+	})
+
+	t.Run("extracts path from rule ID with source and variables", func(t *testing.T) {
+		ruleID := "[contexture(local):languages/go/testing]{\"strict\": false}"
+		path := ExtractRulePath(ruleID)
+		assert.Equal(t, "languages/go/testing", path)
+	})
 }
 
 func TestRuleTreeEdgeCases(t *testing.T) {

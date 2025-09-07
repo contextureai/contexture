@@ -158,31 +158,15 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 
 	f.LogDebug("Writing Windsurf format files", "rules", len(rules), "mode", f.mode)
 
-	// Check character limits based on mode
-	if f.mode == ModeSingleFile {
-		// Single-file mode: check total characters across all rules
-		totalChars := 0
-		for _, rule := range rules {
-			totalChars += len(rule.Content)
-		}
-		if totalChars > domain.WindsurfMaxTotalChars {
+	// Check character limits for each rule individually
+	for _, rule := range rules {
+		if len(rule.Content) > domain.WindsurfMaxSingleRuleChars {
 			return fmt.Errorf(
-				"total content exceeds Windsurf single-file limit of %d characters (current: %d)",
-				domain.WindsurfMaxTotalChars,
-				totalChars,
+				"rule '%s' exceeds Windsurf per-file limit of %d characters (current: %d)",
+				rule.Rule.ID,
+				domain.WindsurfMaxSingleRuleChars,
+				len(rule.Content),
 			)
-		}
-	} else {
-		// Multi-file mode: check each rule individually
-		for _, rule := range rules {
-			if len(rule.Content) > domain.WindsurfMaxSingleRuleChars {
-				return fmt.Errorf(
-					"rule '%s' exceeds Windsurf per-file limit of %d characters (current: %d)",
-					rule.Rule.ID,
-					domain.WindsurfMaxSingleRuleChars,
-					len(rule.Content),
-				)
-			}
 		}
 	}
 
