@@ -1,5 +1,13 @@
 package domain
 
+// FormatMetadata contains metadata about a format implementation
+type FormatMetadata struct {
+	Type        FormatType
+	DisplayName string
+	Description string
+	IsDirectory bool // true if format outputs to directories, false for single files
+}
+
 // Format defines the interface for output format implementations
 type Format interface {
 	// Transform converts a processed rule to format-specific representation
@@ -16,4 +24,16 @@ type Format interface {
 
 	// List returns all currently installed rules for this format
 	List(config *FormatConfig) ([]*InstalledRule, error)
+
+	// GetOutputPath returns the output path for this format
+	GetOutputPath(config *FormatConfig) string
+
+	// CleanupEmptyDirectories handles cleanup of empty directories for this format
+	CleanupEmptyDirectories(config *FormatConfig) error
+
+	// CreateDirectories creates necessary directories for this format
+	CreateDirectories(config *FormatConfig) error
+
+	// GetMetadata returns metadata about this format
+	GetMetadata() *FormatMetadata
 }

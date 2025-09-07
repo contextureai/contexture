@@ -359,3 +359,32 @@ func (f *Format) extractRuleFromSection(section string) (string, string) {
 
 	return ruleID, title
 }
+
+// GetOutputPath returns the full output path for the Claude format file
+func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
+	return f.getOutputPath(config)
+}
+
+// CleanupEmptyDirectories handles cleanup for Claude format (no-op since it's file-based)
+func (f *Format) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+	// Claude format creates a single file, not directories, so no cleanup needed
+	f.LogDebug("Claude format doesn't need directory cleanup (file-based)")
+	return nil
+}
+
+// CreateDirectories creates necessary directories for Claude format (no-op since it's file-based)
+func (f *Format) CreateDirectories(config *domain.FormatConfig) error {
+	// Claude format creates a single file, not directories, so no directory creation needed
+	f.LogDebug("Claude format doesn't need directory creation (file-based)")
+	return nil
+}
+
+// GetMetadata returns metadata about Claude format
+func (f *Format) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        domain.FormatClaude,
+		DisplayName: "Claude AI Assistant",
+		Description: "Single-file format for Claude AI assistant (CLAUDE.md)",
+		IsDirectory: false,
+	}
+}

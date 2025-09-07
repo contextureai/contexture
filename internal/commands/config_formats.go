@@ -879,16 +879,24 @@ func (fm *FormatManager) getFormatDisplayName(formatType domain.FormatType) stri
 
 // getFormatOutputPath returns the output file/directory path for a given format type
 func (fm *FormatManager) getFormatOutputPath(formatType domain.FormatType) string {
-	switch formatType {
-	case domain.FormatClaude:
-		return domain.ClaudeOutputFile
-	case domain.FormatCursor:
-		return domain.CursorOutputDir + "/"
-	case domain.FormatWindsurf:
-		return domain.WindsurfOutputDir + "/"
-	default:
+	// Create a format instance to get the output path
+	format, err := fm.registry.CreateFormat(formatType, fm.fs, nil)
+	if err != nil {
+		log.Debug("Failed to create format for output path", "formatType", formatType, "error", err)
 		return "unknown"
 	}
+	
+	// Use empty config to get the default path
+	config := &domain.FormatConfig{Type: formatType}
+	outputPath := format.GetOutputPath(config)
+	
+	// Add trailing slash for directory-based formats
+	metadata := format.GetMetadata()
+	if metadata.IsDirectory && !strings.HasSuffix(outputPath, "/") {
+		return outputPath + "/"
+	}
+	
+	return outputPath
 }
 
 // enableFormatInProjectConfig enables a format in project configuration

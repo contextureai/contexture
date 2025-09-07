@@ -576,3 +576,34 @@ func (bf *Base) CleanupEmptyDirectory(dir string) {
 		}
 	}
 }
+
+// GetOutputPath returns the default output path for the format (to be overridden by specific formats)
+func (bf *Base) GetOutputPath(config *domain.FormatConfig) string {
+	// Default implementation returns empty string, should be overridden by specific formats
+	bf.LogDebug("Using default GetOutputPath implementation, should be overridden", "formatType", bf.formatType)
+	return ""
+}
+
+// CleanupEmptyDirectories handles cleanup of empty directories (default implementation does nothing)
+func (bf *Base) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+	// Default implementation does nothing, can be overridden by specific formats
+	bf.LogDebug("Using default CleanupEmptyDirectories implementation", "formatType", bf.formatType)
+	return nil
+}
+
+// CreateDirectories creates necessary directories for this format (default implementation does nothing)
+func (bf *Base) CreateDirectories(config *domain.FormatConfig) error {
+	// Default implementation does nothing, can be overridden by specific formats
+	bf.LogDebug("Using default CreateDirectories implementation", "formatType", bf.formatType)
+	return nil
+}
+
+// GetMetadata returns metadata about this format (default implementation with basic info)
+func (bf *Base) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        bf.formatType,
+		DisplayName: string(bf.formatType),
+		Description: "Base format implementation",
+		IsDirectory: false, // Default to file-based, override in directory-based formats
+	}
+}

@@ -4,15 +4,12 @@ package commands
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
-	"github.com/contextureai/contexture/internal/format/cursor"
-	"github.com/contextureai/contexture/internal/format/windsurf"
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
@@ -152,42 +149,9 @@ func (c *BuildCommand) getTargetFormats(
 
 // cleanupEmptyFormatDirectory removes empty output directories for formats that support it
 func (c *BuildCommand) cleanupEmptyFormatDirectory(format domain.Format, config *domain.FormatConfig) {
-	// Calculate the output directory based on format type and config
-	var outputDir string
-
-	switch config.Type {
-	case domain.FormatCursor:
-		baseDir := config.BaseDir
-		if baseDir == "" {
-			baseDir = "."
-		}
-		outputDir = filepath.Join(baseDir, domain.CursorOutputDir)
-		parentDir := filepath.Join(baseDir, ".cursor")
-
-		if cursorFormat, ok := format.(*cursor.Format); ok {
-			// First clean up the rules directory
-			cursorFormat.CleanupEmptyDirectory(outputDir)
-			// Then clean up the parent .cursor directory if it's also empty
-			cursorFormat.CleanupEmptyDirectory(parentDir)
-		}
-
-	case domain.FormatWindsurf:
-		baseDir := config.BaseDir
-		if baseDir == "" {
-			baseDir = "."
-		}
-		outputDir = filepath.Join(baseDir, domain.WindsurfOutputDir)
-		parentDir := filepath.Join(baseDir, ".windsurf")
-
-		if windsurfFormat, ok := format.(*windsurf.Format); ok {
-			// First clean up the rules directory
-			windsurfFormat.CleanupEmptyDirectory(outputDir)
-			// Then clean up the parent .windsurf directory if it's also empty
-			windsurfFormat.CleanupEmptyDirectory(parentDir)
-		}
-
-	case domain.FormatClaude:
-		// Claude format doesn't need cleanup as it creates a single file, not a directory
+	// Use the format's own cleanup method - no need for format-specific logic here
+	if err := format.CleanupEmptyDirectories(config); err != nil {
+		log.Warn("Failed to cleanup empty directories", "format", config.Type, "error", err)
 	}
 }
 
