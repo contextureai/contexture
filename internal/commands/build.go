@@ -4,16 +4,20 @@ package commands
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
+	"github.com/contextureai/contexture/internal/format/cursor"
+	"github.com/contextureai/contexture/internal/format/windsurf"
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
+	"github.com/spf13/afero"
 	"github.com/urfave/cli/v3"
 )
 
@@ -41,10 +45,6 @@ func NewBuildCommand(deps *dependencies.Dependencies) *BuildCommand {
 
 // Execute runs the build command
 func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
-	// Show command header
-	fmt.Println(ui.CommandHeader("build"))
-	fmt.Println()
-
 	// Load project configuration
 	configLoad, err := LoadProjectConfig(c.projectManager)
 	if err != nil {
@@ -54,9 +54,25 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	config := configLoad.Config
 
 	if len(config.Rules) == 0 {
-		log.Debug("No rules configured")
+		log.Info("No rules configured")
+
+		// Clean up empty directories for all enabled formats even when no rules exist
+		targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
+		for _, formatConfig := range targetFormats {
+			format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+			if err != nil {
+				log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
+				continue
+			}
+			c.cleanupEmptyFormatDirectory(format, &formatConfig)
+		}
+
 		return nil
 	}
+
+	// Show command header only when we have rules to build
+	fmt.Println(ui.CommandHeader("build"))
+	fmt.Println()
 
 	// Get target formats (either user-specified or all enabled)
 	targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
@@ -132,6 +148,47 @@ func (c *BuildCommand) getTargetFormats(
 	}
 
 	return targetFormats
+}
+
+// cleanupEmptyFormatDirectory removes empty output directories for formats that support it
+func (c *BuildCommand) cleanupEmptyFormatDirectory(format domain.Format, config *domain.FormatConfig) {
+	// Calculate the output directory based on format type and config
+	var outputDir string
+
+	switch config.Type {
+	case domain.FormatCursor:
+		baseDir := config.BaseDir
+		if baseDir == "" {
+			baseDir = "."
+		}
+		outputDir = filepath.Join(baseDir, domain.CursorOutputDir)
+		parentDir := filepath.Join(baseDir, ".cursor")
+
+		if cursorFormat, ok := format.(*cursor.Format); ok {
+			// First clean up the rules directory
+			cursorFormat.CleanupEmptyDirectory(outputDir)
+			// Then clean up the parent .cursor directory if it's also empty
+			cursorFormat.CleanupEmptyDirectory(parentDir)
+		}
+
+	case domain.FormatWindsurf:
+		baseDir := config.BaseDir
+		if baseDir == "" {
+			baseDir = "."
+		}
+		outputDir = filepath.Join(baseDir, domain.WindsurfOutputDir)
+		parentDir := filepath.Join(baseDir, ".windsurf")
+
+		if windsurfFormat, ok := format.(*windsurf.Format); ok {
+			// First clean up the rules directory
+			windsurfFormat.CleanupEmptyDirectory(outputDir)
+			// Then clean up the parent .windsurf directory if it's also empty
+			windsurfFormat.CleanupEmptyDirectory(parentDir)
+		}
+
+	case domain.FormatClaude:
+		// Claude format doesn't need cleanup as it creates a single file, not a directory
+	}
 }
 
 // BuildAction is the CLI action handler for the build command

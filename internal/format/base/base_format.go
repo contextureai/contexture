@@ -546,3 +546,33 @@ func (bf *Base) AppendTrackingComment(
 	// Add an extra newline for separation, then the tracking comment
 	return content + "\n" + trackingComment
 }
+
+// RemoveDirectory removes a directory using the filesystem
+func (bf *Base) RemoveDirectory(dir string) error {
+	return bf.fs.RemoveAll(dir)
+}
+
+// CleanupEmptyDirectory removes the directory if it's empty
+func (bf *Base) CleanupEmptyDirectory(dir string) {
+	// Check if directory exists
+	exists, err := bf.DirExists(dir)
+	if err != nil || !exists {
+		return
+	}
+
+	// List directory contents
+	files, err := bf.ListDirectory(dir)
+	if err != nil {
+		bf.LogDebug("Could not list directory for cleanup", "dir", dir, "error", err)
+		return
+	}
+
+	// Remove directory if empty
+	if len(files) == 0 {
+		if err := bf.RemoveDirectory(dir); err != nil {
+			bf.LogDebug("Could not remove empty directory", "dir", dir, "error", err)
+		} else {
+			bf.LogDebug("Removed empty directory", "dir", dir)
+		}
+	}
+}

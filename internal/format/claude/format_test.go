@@ -407,3 +407,42 @@ func TestFormat_getOutputFilename(t *testing.T) {
 	filename := f.getOutputFilename()
 	assert.Equal(t, domain.ClaudeOutputFile, filename)
 }
+
+func TestFormat_extractBasePath(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	f := NewFormat(fs)
+
+	tests := []struct {
+		name     string
+		ruleID   string
+		expected string
+	}{
+		{
+			name:     "simple rule ID",
+			ruleID:   "test/rule1",
+			expected: "test/rule1",
+		},
+		{
+			name:     "full format without variables",
+			ruleID:   "[contexture:test/rule1]",
+			expected: "test/rule1",
+		},
+		{
+			name:     "full format with variables",
+			ruleID:   "[contexture:test/rule1]{\"extended\": true}",
+			expected: "test/rule1",
+		},
+		{
+			name:     "complex path with variables",
+			ruleID:   "[contexture:languages/go/advanced-patterns]{\"strict\": false, \"target\": \"es2022\"}",
+			expected: "languages/go/advanced-patterns",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := f.extractBasePath(tt.ruleID)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

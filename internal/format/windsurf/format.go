@@ -366,6 +366,9 @@ func (f *Format) removeMultiFile(ruleID string, outputDir string) error {
 		return fmt.Errorf("failed to remove rule file: %w", err)
 	}
 
+	// Check if directory is now empty and remove it if so
+	f.CleanupEmptyDirectory(outputDir)
+
 	f.LogInfo("Successfully removed Windsurf rule file", "ruleID", ruleID, "path", filePath)
 	return nil
 }
