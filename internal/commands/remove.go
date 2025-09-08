@@ -83,6 +83,19 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		return nil
 	}
 
+	// Capture variables for display BEFORE removing rules from configuration
+	ruleVariablesMap := make(map[string]map[string]any)
+	for _, ruleID := range rulesToRemove {
+		for _, configRule := range configResult.Config.Rules {
+			if configRule.ID == ruleID ||
+				configRule.ID == fmt.Sprintf("[contexture:%s]", ruleID) ||
+				strings.TrimPrefix(strings.TrimSuffix(configRule.ID, "]"), "[contexture:") == ruleID {
+				ruleVariablesMap[ruleID] = configRule.Variables
+				break
+			}
+		}
+	}
+
 	// Remove rules from configuration
 	var removedRules []string
 	for _, ruleID := range rulesToRemove {
@@ -153,7 +166,9 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 			parsed, err := c.ruleFetcher.ParseRuleID(ruleID)
 			if err == nil && parsed.RulePath != "" {
 				displayRuleID = parsed.RulePath
-				variables = parsed.Variables
+
+				// Get the configured variables we captured before removal
+				variables = ruleVariablesMap[ruleID]
 
 				// Fetch the full rule to get default variables
 				if fetchedRule, fetchErr := c.ruleFetcher.FetchRule(context.Background(), ruleID); fetchErr == nil {
@@ -275,7 +290,7 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 	ctx context.Context,
 	cmd *cli.Command,
 	ruleIDs []string,
-	_ *domain.ConfigResult,
+	configResult *domain.ConfigResult,
 ) error {
 	// Fetch detailed rule information with spinner
 	detailSpinner := ui.NewBubblesSpinner("Loading rule details")
@@ -311,6 +326,25 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 			detailedRules = append(detailedRules, minimalRule)
 			continue
 		}
+
+		// Find the configured variables for this rule from the project configuration
+		var configuredVariables map[string]any
+		for _, configRule := range configResult.Config.Rules {
+			// Use the same matching logic as HasRule to find the corresponding config rule
+			if configRule.ID == ruleID ||
+				configRule.ID == fmt.Sprintf("[contexture:%s]", ruleID) ||
+				strings.TrimPrefix(strings.TrimSuffix(configRule.ID, "]"), "[contexture:") == ruleID {
+				configuredVariables = configRule.Variables
+				break
+			}
+		}
+
+		// Merge configured variables with the fetched rule
+		// The fetched rule already has DefaultVariables populated, we just need to set Variables
+		if configuredVariables != nil {
+			rule.Variables = configuredVariables
+		}
+
 		detailedRules = append(detailedRules, rule)
 	}
 	detailSpinner.Stop("") // Stop without message
