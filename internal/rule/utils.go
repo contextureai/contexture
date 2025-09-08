@@ -4,6 +4,7 @@ package rule
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/contextureai/contexture/internal/domain"
@@ -165,4 +166,55 @@ func ParseRules(parser Parser, rules []Content) *ParseResult {
 	}
 
 	return result
+}
+
+// ShouldDisplayVariables determines if variables should be displayed in UI
+// by checking if any variable differs from its default value
+func ShouldDisplayVariables(variables, defaults map[string]any) bool {
+	if len(variables) == 0 {
+		return false
+	}
+
+	// If no defaults are provided, show variables if they exist
+	if len(defaults) == 0 {
+		return true
+	}
+
+	// Check if any variable differs from its default
+	for key, value := range variables {
+		defaultValue, hasDefault := defaults[key]
+		if !hasDefault {
+			// Variable exists but has no default - should display
+			return true
+		}
+		if !reflect.DeepEqual(value, defaultValue) {
+			// Variable differs from default - should display
+			return true
+		}
+	}
+
+	// All variables match their defaults - no need to display
+	return false
+}
+
+// FilterNonDefaultVariables returns only variables that differ from their defaults
+func FilterNonDefaultVariables(variables, defaults map[string]any) map[string]any {
+	if len(variables) == 0 {
+		return nil
+	}
+
+	filtered := make(map[string]any)
+
+	for key, value := range variables {
+		defaultValue, hasDefault := defaults[key]
+		if !hasDefault || !reflect.DeepEqual(value, defaultValue) {
+			filtered[key] = value
+		}
+	}
+
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	return filtered
 }

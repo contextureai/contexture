@@ -101,8 +101,8 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 	for _, rule := range rules {
 		filePath := filepath.Join(outputDir, rule.Filename)
 
-		// Append tracking comment at the end instead of header at beginning
-		content := f.AppendTrackingComment(rule.Content, rule.Rule.ID, rule.Rule.Variables)
+		// Append tracking comment at the end instead of header at beginning, only including non-default variables
+		content := f.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		if err := f.WriteFile(filePath, []byte(content)); err != nil {
 			errors = append(errors, fmt.Errorf("failed to write rule %s: %w", rule.Rule.ID, err))

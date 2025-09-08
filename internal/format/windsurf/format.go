@@ -300,8 +300,8 @@ func (f *Format) writeSingleFile(rules []*domain.TransformedRule, outputDir stri
 			content.WriteString("\n\n---\n\n")
 		}
 
-		// Write rule content with tracking comment appended
-		ruleContent := f.AppendTrackingComment(rule.Content, rule.Rule.ID, rule.Rule.Variables)
+		// Write rule content with tracking comment appended, only including non-default variables
+		ruleContent := f.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 		content.WriteString(ruleContent)
 	}
 
@@ -326,8 +326,8 @@ func (f *Format) writeMultiFile(rules []*domain.TransformedRule, outputDir strin
 	for _, rule := range rules {
 		filePath := filepath.Join(outputDir, rule.Filename)
 
-		// Append tracking comment at the end instead of header at beginning
-		content := f.AppendTrackingComment(rule.Content, rule.Rule.ID, rule.Rule.Variables)
+		// Append tracking comment at the end instead of header at beginning, only including non-default variables
+		content := f.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		if err := f.WriteFile(filePath, []byte(content)); err != nil {
 			errors = append(errors, fmt.Errorf("failed to write rule %s: %w", rule.Rule.ID, err))

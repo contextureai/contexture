@@ -97,8 +97,9 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 
 	// Parse and validate rule IDs with progress indicators
 	type ruleRefWithOriginal struct {
-		ruleRef    domain.RuleRef
-		originalID string
+		ruleRef     domain.RuleRef
+		originalID  string
+		defaultVars map[string]any
 	}
 	var validRuleRefs []ruleRefWithOriginal
 
@@ -204,8 +205,9 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 			}
 
 			validRuleRefs = append(validRuleRefs, ruleRefWithOriginal{
-				ruleRef:    ruleRef,
-				originalID: ruleID,
+				ruleRef:     ruleRef,
+				originalID:  ruleID,
+				defaultVars: fetchedRule.DefaultVariables,
 			})
 		}
 		return nil
@@ -263,8 +265,8 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 		}
 		fmt.Printf("  %s\n", displayRuleID)
 
-		// Show variables on separate line if they exist
-		if len(variables) > 0 {
+		// Show variables only if they differ from defaults
+		if rule.ShouldDisplayVariables(variables, ruleRefWithOrig.defaultVars) {
 			if variablesJSON, err := json.Marshal(variables); err == nil {
 				fmt.Printf("    Variables: %s\n", string(variablesJSON))
 			}

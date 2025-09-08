@@ -274,3 +274,121 @@ func TestFetchRulesParallel_ContextCancellation(t *testing.T) {
 	// Rules could be empty or contain results depending on timing, but should be non-nil
 	require.NotNil(t, rules)
 }
+
+func TestShouldDisplayVariables(t *testing.T) {
+	tests := []struct {
+		name      string
+		variables map[string]any
+		defaults  map[string]any
+		expected  bool
+	}{
+		{
+			name:      "empty variables",
+			variables: map[string]any{},
+			defaults:  map[string]any{"extended": false},
+			expected:  false,
+		},
+		{
+			name:      "nil variables",
+			variables: nil,
+			defaults:  map[string]any{"extended": false},
+			expected:  false,
+		},
+		{
+			name:      "variables match defaults exactly",
+			variables: map[string]any{"extended": false, "strict": true},
+			defaults:  map[string]any{"extended": false, "strict": true},
+			expected:  false,
+		},
+		{
+			name:      "variable differs from default",
+			variables: map[string]any{"extended": true},
+			defaults:  map[string]any{"extended": false},
+			expected:  true,
+		},
+		{
+			name:      "variable not in defaults",
+			variables: map[string]any{"custom": "value"},
+			defaults:  map[string]any{"extended": false},
+			expected:  true,
+		},
+		{
+			name:      "no defaults provided",
+			variables: map[string]any{"extended": false},
+			defaults:  nil,
+			expected:  true,
+		},
+		{
+			name:      "empty defaults",
+			variables: map[string]any{"extended": false},
+			defaults:  map[string]any{},
+			expected:  true,
+		},
+		{
+			name:      "mixed - some match, some differ",
+			variables: map[string]any{"extended": false, "strict": false},
+			defaults:  map[string]any{"extended": false, "strict": true},
+			expected:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ShouldDisplayVariables(tt.variables, tt.defaults)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFilterNonDefaultVariables(t *testing.T) {
+	tests := []struct {
+		name      string
+		variables map[string]any
+		defaults  map[string]any
+		expected  map[string]any
+	}{
+		{
+			name:      "empty variables",
+			variables: map[string]any{},
+			defaults:  map[string]any{"extended": false},
+			expected:  nil,
+		},
+		{
+			name:      "all variables match defaults",
+			variables: map[string]any{"extended": false, "strict": true},
+			defaults:  map[string]any{"extended": false, "strict": true},
+			expected:  nil,
+		},
+		{
+			name:      "variable differs from default",
+			variables: map[string]any{"extended": true, "strict": false},
+			defaults:  map[string]any{"extended": false, "strict": false},
+			expected:  map[string]any{"extended": true},
+		},
+		{
+			name:      "variable not in defaults",
+			variables: map[string]any{"custom": "value", "extended": false},
+			defaults:  map[string]any{"extended": false},
+			expected:  map[string]any{"custom": "value"},
+		},
+		{
+			name:      "no defaults provided",
+			variables: map[string]any{"extended": false, "strict": true},
+			defaults:  nil,
+			expected:  map[string]any{"extended": false, "strict": true},
+		},
+		{
+			name:      "mixed scenarios",
+			variables: map[string]any{"extended": true, "strict": false, "debug": true},
+			defaults:  map[string]any{"extended": false, "strict": false},
+			expected:  map[string]any{"extended": true, "debug": true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FilterNonDefaultVariables(tt.variables, tt.defaults)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

@@ -104,6 +104,19 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		if err != nil {
 			log.Warn("Failed to clean some outputs", "error", err)
 		}
+
+		// Clean up empty directories after removing rules, similar to build command
+		targetFormats := configResult.Config.GetEnabledFormats()
+		for _, formatConfig := range targetFormats {
+			format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+			if err != nil {
+				log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
+				continue
+			}
+			if err := format.CleanupEmptyDirectories(&formatConfig); err != nil {
+				log.Warn("Failed to cleanup empty directories", "format", formatConfig.Type, "error", err)
+			}
+		}
 	}
 
 	// Save updated configuration
@@ -133,18 +146,25 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
 		displayRuleID := ruleID
 		var variables map[string]any
+		var defaultVars map[string]any
+
 		if strings.HasPrefix(ruleID, "[contexture:") {
 			// Parse to extract just the path component
 			parsed, err := c.ruleFetcher.ParseRuleID(ruleID)
 			if err == nil && parsed.RulePath != "" {
 				displayRuleID = parsed.RulePath
 				variables = parsed.Variables
+
+				// Fetch the full rule to get default variables
+				if fetchedRule, fetchErr := c.ruleFetcher.FetchRule(context.Background(), ruleID); fetchErr == nil {
+					defaultVars = fetchedRule.DefaultVariables
+				}
 			}
 		}
 		fmt.Printf("  %s\n", displayRuleID)
 
-		// Show variables on separate line if they exist
-		if len(variables) > 0 {
+		// Show variables only if they differ from defaults
+		if rule.ShouldDisplayVariables(variables, defaultVars) {
 			if variablesJSON, err := json.Marshal(variables); err == nil {
 				fmt.Printf("    Variables: %s\n", string(variablesJSON))
 			}

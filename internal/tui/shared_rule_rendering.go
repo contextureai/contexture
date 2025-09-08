@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/contextureai/contexture/internal/domain"
+	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
 )
 
@@ -156,43 +157,43 @@ func extractRulePathWithLocalIndicator(rule *domain.Rule) string {
 }
 
 // buildRuleMetadata builds the metadata lines for a rule (tags, languages, frameworks, trigger, variables)
-func buildRuleMetadata(rule *domain.Rule) (string, string, string) {
+func buildRuleMetadata(ruleItem *domain.Rule) (string, string, string) {
 	var basicMetadataParts []string
 	var basicMetadataLine, triggerLine, variablesLine string
 
 	// Add Languages and Frameworks
-	if len(rule.Languages) > 0 {
+	if len(ruleItem.Languages) > 0 {
 		basicMetadataParts = append(
 			basicMetadataParts,
-			"Languages: "+strings.Join(rule.Languages, ", "),
+			"Languages: "+strings.Join(ruleItem.Languages, ", "),
 		)
 	}
-	if len(rule.Frameworks) > 0 {
+	if len(ruleItem.Frameworks) > 0 {
 		basicMetadataParts = append(
 			basicMetadataParts,
-			"Frameworks: "+strings.Join(rule.Frameworks, ", "),
+			"Frameworks: "+strings.Join(ruleItem.Frameworks, ", "),
 		)
 	}
 
 	// Add Tags
-	if len(rule.Tags) > 0 {
-		basicMetadataParts = append(basicMetadataParts, "Tags: "+strings.Join(rule.Tags, ", "))
+	if len(ruleItem.Tags) > 0 {
+		basicMetadataParts = append(basicMetadataParts, "Tags: "+strings.Join(ruleItem.Tags, ", "))
 	}
 
 	// Combine basic metadata into single line
 	basicMetadataLine = strings.Join(basicMetadataParts, " • ")
 
 	// Build trigger line separately
-	if rule.Trigger != nil {
-		triggerLine = "Trigger: " + string(rule.Trigger.Type)
-		if rule.Trigger.Type == triggerTypeGlob && len(rule.Trigger.Globs) > 0 {
-			triggerLine += " (" + strings.Join(rule.Trigger.Globs, ", ") + ")"
+	if ruleItem.Trigger != nil {
+		triggerLine = "Trigger: " + string(ruleItem.Trigger.Type)
+		if ruleItem.Trigger.Type == triggerTypeGlob && len(ruleItem.Trigger.Globs) > 0 {
+			triggerLine += " (" + strings.Join(ruleItem.Trigger.Globs, ", ") + ")"
 		}
 	}
 
-	// Build variables line if variables exist
-	if len(rule.Variables) > 0 {
-		if variablesJSON, err := json.Marshal(rule.Variables); err == nil {
+	// Build variables line only if they differ from defaults
+	if rule.ShouldDisplayVariables(ruleItem.Variables, ruleItem.DefaultVariables) {
+		if variablesJSON, err := json.Marshal(ruleItem.Variables); err == nil {
 			variablesLine = "Variables: " + string(variablesJSON)
 		}
 	}

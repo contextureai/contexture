@@ -105,8 +105,8 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 		// Write rule content
 		ruleContent := rule.Content
 
-		// Append tracking comment using the new system
-		ruleContent = f.AppendTrackingComment(ruleContent, rule.Rule.ID, rule.Rule.Variables)
+		// Append tracking comment using the new system, only including non-default variables
+		ruleContent = f.AppendTrackingCommentWithDefaults(ruleContent, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		content.WriteString(ruleContent)
 	}

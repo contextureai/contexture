@@ -167,6 +167,12 @@ func (p *YAMLParser) mapFrontmatterToRule(fm *ruleFrontmatter, rule *domain.Rule
 	rule.Languages = fm.Languages
 	rule.Frameworks = fm.Frameworks
 
+	// Store default variables from frontmatter
+	if fm.Variables != nil {
+		rule.DefaultVariables = make(map[string]any)
+		maps.Copy(rule.DefaultVariables, fm.Variables)
+	}
+
 	// Merge variables - frontmatter takes precedence
 	if fm.Variables != nil {
 		if rule.Variables == nil {

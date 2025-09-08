@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/template"
 	"github.com/spf13/afero"
 )
@@ -445,6 +446,24 @@ func (bf *Base) CreateTrackingComment(ruleID string, variables map[string]any) s
 	return fmt.Sprintf("%s%s%s", domain.RuleIDCommentPrefix, comment, domain.RuleIDCommentSuffix)
 }
 
+// CreateTrackingCommentWithDefaults creates a tracking comment that only includes variables differing from defaults
+// Format: <!-- id: [contexture:path/to/rule]{variables} -->
+func (bf *Base) CreateTrackingCommentWithDefaults(ruleID string, variables, defaultVariables map[string]any) string {
+	comment := ruleID
+
+	// Import rule package for the utility function
+	filteredVars := rule.FilterNonDefaultVariables(variables, defaultVariables)
+
+	// Add variables only if they differ from defaults
+	if len(filteredVars) > 0 {
+		if variablesJSON, err := json.Marshal(filteredVars); err == nil {
+			comment += string(variablesJSON)
+		}
+	}
+
+	return fmt.Sprintf("%s%s%s", domain.RuleIDCommentPrefix, comment, domain.RuleIDCommentSuffix)
+}
+
 // CreateTrackingCommentFromParsed creates a tracking comment from a ParsedRuleID
 func (bf *Base) CreateTrackingCommentFromParsed(parsed *domain.ParsedRuleID) string {
 	// Reconstruct the rule ID string (already includes variables)
@@ -537,6 +556,27 @@ func (bf *Base) AppendTrackingComment(
 		passVariables = variables
 	}
 	trackingComment := bf.CreateTrackingComment(ruleID, passVariables)
+
+	// Ensure there's a newline before the comment if content doesn't end with one
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+
+	// Add an extra newline for separation, then the tracking comment
+	return content + "\n" + trackingComment
+}
+
+// AppendTrackingCommentWithDefaults adds a tracking comment to the end of content, only including non-default variables
+func (bf *Base) AppendTrackingCommentWithDefaults(
+	content string, ruleID string, variables, defaultVariables map[string]any,
+) string {
+	// If the ruleID already contains variables (has }), don't add them again
+	var passVariables, passDefaults map[string]any
+	if !strings.Contains(ruleID, "]{") {
+		passVariables = variables
+		passDefaults = defaultVariables
+	}
+	trackingComment := bf.CreateTrackingCommentWithDefaults(ruleID, passVariables, passDefaults)
 
 	// Ensure there's a newline before the comment if content doesn't end with one
 	if !strings.HasSuffix(content, "\n") {

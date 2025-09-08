@@ -76,13 +76,14 @@ type Rule struct {
 	Frameworks []string `yaml:"frameworks,omitempty" json:"frameworks,omitempty"`
 
 	// Content and metadata
-	Content   string         `yaml:"-"                   json:"content"             validate:"required"`
-	Variables map[string]any `yaml:"variables,omitempty" json:"variables,omitempty"`
-	FilePath  string         `yaml:"-"                   json:"filePath"`
-	Source    string         `yaml:"-"                   json:"source"`
-	Ref       string         `yaml:"-"                   json:"ref,omitempty"`
-	CreatedAt time.Time      `yaml:"-"                   json:"createdAt,omitempty"`
-	UpdatedAt time.Time      `yaml:"-"                   json:"updatedAt,omitempty"`
+	Content          string         `yaml:"-"                   json:"content"             validate:"required"`
+	Variables        map[string]any `yaml:"variables,omitempty" json:"variables,omitempty"`
+	DefaultVariables map[string]any `yaml:"-"                   json:"defaultVariables,omitempty"`
+	FilePath         string         `yaml:"-"                   json:"filePath"`
+	Source           string         `yaml:"-"                   json:"source"`
+	Ref              string         `yaml:"-"                   json:"ref,omitempty"`
+	CreatedAt        time.Time      `yaml:"-"                   json:"createdAt,omitempty"`
+	UpdatedAt        time.Time      `yaml:"-"                   json:"updatedAt,omitempty"`
 }
 
 // GetDefaultTrigger returns a default trigger for the rule if none is set
