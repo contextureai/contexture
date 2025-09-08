@@ -277,14 +277,6 @@ func (f *Format) ExtractRuleIDFromFilename(filename string) string {
 	return fmt.Sprintf("[contexture:%s]", path)
 }
 
-// getOutputDir returns the output directory for Cursor format
-func (f *Format) getOutputDir(config *domain.FormatConfig) string {
-	if config == nil || config.BaseDir == "" {
-		return domain.CursorOutputDir
-	}
-	return filepath.Join(config.BaseDir, domain.CursorOutputDir)
-}
-
 // GetOutputPath returns the output directory path for Cursor format
 func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
 	return f.getOutputDir(config)
@@ -293,18 +285,18 @@ func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
 // CleanupEmptyDirectories handles cleanup of empty directories for Cursor format
 func (f *Format) CleanupEmptyDirectories(config *domain.FormatConfig) error {
 	outputDir := f.getOutputDir(config)
-	
+
 	baseDir := config.BaseDir
 	if baseDir == "" {
 		baseDir = "."
 	}
 	parentDir := filepath.Join(baseDir, ".cursor")
-	
+
 	// First clean up the rules directory
 	f.CleanupEmptyDirectory(outputDir)
 	// Then clean up the parent .cursor directory if it's also empty
 	f.CleanupEmptyDirectory(parentDir)
-	
+
 	return nil
 }
 
@@ -322,4 +314,12 @@ func (f *Format) GetMetadata() *domain.FormatMetadata {
 		Description: "Multi-file format for Cursor IDE (.cursor/rules/)",
 		IsDirectory: true,
 	}
+}
+
+// getOutputDir returns the output directory for Cursor format
+func (f *Format) getOutputDir(config *domain.FormatConfig) string {
+	if config == nil || config.BaseDir == "" {
+		return domain.CursorOutputDir
+	}
+	return filepath.Join(config.BaseDir, domain.CursorOutputDir)
 }

@@ -29,7 +29,7 @@ func (dm *DirectoryManager) CreateFormatDirectories(formatType domain.FormatType
 	if err != nil {
 		return fmt.Errorf("failed to create format instance: %w", err)
 	}
-	
+
 	// Use the format's own directory creation method
 	config := &domain.FormatConfig{Type: formatType}
 	return format.CreateDirectories(config)

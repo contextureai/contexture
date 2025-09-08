@@ -885,17 +885,17 @@ func (fm *FormatManager) getFormatOutputPath(formatType domain.FormatType) strin
 		log.Debug("Failed to create format for output path", "formatType", formatType, "error", err)
 		return "unknown"
 	}
-	
+
 	// Use empty config to get the default path
 	config := &domain.FormatConfig{Type: formatType}
 	outputPath := format.GetOutputPath(config)
-	
+
 	// Add trailing slash for directory-based formats
 	metadata := format.GetMetadata()
 	if metadata.IsDirectory && !strings.HasSuffix(outputPath, "/") {
 		return outputPath + "/"
 	}
-	
+
 	return outputPath
 }
 

@@ -578,21 +578,21 @@ func (bf *Base) CleanupEmptyDirectory(dir string) {
 }
 
 // GetOutputPath returns the default output path for the format (to be overridden by specific formats)
-func (bf *Base) GetOutputPath(config *domain.FormatConfig) string {
+func (bf *Base) GetOutputPath(_ *domain.FormatConfig) string {
 	// Default implementation returns empty string, should be overridden by specific formats
 	bf.LogDebug("Using default GetOutputPath implementation, should be overridden", "formatType", bf.formatType)
 	return ""
 }
 
 // CleanupEmptyDirectories handles cleanup of empty directories (default implementation does nothing)
-func (bf *Base) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+func (bf *Base) CleanupEmptyDirectories(_ *domain.FormatConfig) error {
 	// Default implementation does nothing, can be overridden by specific formats
 	bf.LogDebug("Using default CleanupEmptyDirectories implementation", "formatType", bf.formatType)
 	return nil
 }
 
 // CreateDirectories creates necessary directories for this format (default implementation does nothing)
-func (bf *Base) CreateDirectories(config *domain.FormatConfig) error {
+func (bf *Base) CreateDirectories(_ *domain.FormatConfig) error {
 	// Default implementation does nothing, can be overridden by specific formats
 	bf.LogDebug("Using default CreateDirectories implementation", "formatType", bf.formatType)
 	return nil

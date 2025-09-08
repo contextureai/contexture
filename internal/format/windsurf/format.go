@@ -244,6 +244,45 @@ func (f *Format) Remove(ruleID string, config *domain.FormatConfig) error {
 	return f.removeMultiFile(ruleID, outputDir)
 }
 
+// GetOutputPath returns the output directory path for Windsurf format
+func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
+	return f.getOutputDir(config)
+}
+
+// CleanupEmptyDirectories handles cleanup of empty directories for Windsurf format
+func (f *Format) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+	outputDir := f.getOutputDir(config)
+
+	baseDir := config.BaseDir
+	if baseDir == "" {
+		baseDir = "."
+	}
+	parentDir := filepath.Join(baseDir, ".windsurf")
+
+	// First clean up the rules directory
+	f.CleanupEmptyDirectory(outputDir)
+	// Then clean up the parent .windsurf directory if it's also empty
+	f.CleanupEmptyDirectory(parentDir)
+
+	return nil
+}
+
+// CreateDirectories creates necessary directories for Windsurf format
+func (f *Format) CreateDirectories(config *domain.FormatConfig) error {
+	outputDir := f.getOutputDir(config)
+	return f.EnsureDirectory(outputDir)
+}
+
+// GetMetadata returns metadata about Windsurf format
+func (f *Format) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        domain.FormatWindsurf,
+		DisplayName: "Windsurf IDE",
+		Description: "Multi-file format for Windsurf IDE (.windsurf/rules/)",
+		IsDirectory: true,
+	}
+}
+
 // writeSingleFile writes all rules to a single file
 func (f *Format) writeSingleFile(rules []*domain.TransformedRule, outputDir string) error {
 	filename := f.GetSingleFileFilename()
@@ -610,43 +649,4 @@ func (f *Format) extractRuleFromSection(section string) (string, string) {
 	}
 
 	return ruleID, title
-}
-
-// GetOutputPath returns the output directory path for Windsurf format
-func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
-	return f.getOutputDir(config)
-}
-
-// CleanupEmptyDirectories handles cleanup of empty directories for Windsurf format
-func (f *Format) CleanupEmptyDirectories(config *domain.FormatConfig) error {
-	outputDir := f.getOutputDir(config)
-	
-	baseDir := config.BaseDir
-	if baseDir == "" {
-		baseDir = "."
-	}
-	parentDir := filepath.Join(baseDir, ".windsurf")
-	
-	// First clean up the rules directory
-	f.CleanupEmptyDirectory(outputDir)
-	// Then clean up the parent .windsurf directory if it's also empty
-	f.CleanupEmptyDirectory(parentDir)
-	
-	return nil
-}
-
-// CreateDirectories creates necessary directories for Windsurf format
-func (f *Format) CreateDirectories(config *domain.FormatConfig) error {
-	outputDir := f.getOutputDir(config)
-	return f.EnsureDirectory(outputDir)
-}
-
-// GetMetadata returns metadata about Windsurf format
-func (f *Format) GetMetadata() *domain.FormatMetadata {
-	return &domain.FormatMetadata{
-		Type:        domain.FormatWindsurf,
-		DisplayName: "Windsurf IDE",
-		Description: "Multi-file format for Windsurf IDE (.windsurf/rules/)",
-		IsDirectory: true,
-	}
 }
