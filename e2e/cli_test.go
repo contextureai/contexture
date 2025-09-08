@@ -288,10 +288,11 @@ func TestBuildCommand(t *testing.T) {
 	t.Run("build with no rules", func(t *testing.T) {
 		result := project.Run(t, "build")
 		result.ExpectSuccess(t).
-			ExpectStdout(t, "Build Rule Files") // Always shows the build header
+			ExpectStderr(t, "No rules configured") // Shows info message instead of header
 
 		// With no rules, no output files are created (expected behavior)
 		// The build succeeds but doesn't generate any format files
+		// Header is intentionally not shown when no rules exist
 	})
 
 	t.Run("build help", func(t *testing.T) {
