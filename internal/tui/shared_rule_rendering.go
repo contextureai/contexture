@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/contextureai/contexture/internal/domain"
+	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
 )
 
@@ -85,7 +87,7 @@ func createRuleItemStyles() ruleItemStyles {
 }
 
 // extractRulePath extracts the rule path from a contexture rule ID
-// Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch]
+// Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch]{variables}
 func extractRulePath(ruleID string) string {
 	if ruleID == "" {
 		return ""
@@ -101,11 +103,42 @@ func extractRulePath(ruleID string) string {
 		}
 	}
 	pathPart = strings.TrimSuffix(pathPart, "]")
+
+	// Remove variables part if present (path/rule,branch]{variables} or path/rule]{variables})
+	if bracketIdx := strings.Index(pathPart, "]{"); bracketIdx != -1 {
+		pathPart = pathPart[:bracketIdx]
+	}
+
 	// Remove branch suffix if present (path/rule,branch)
 	if commaIdx := strings.Index(pathPart, ","); commaIdx != -1 {
 		pathPart = pathPart[:commaIdx]
 	}
 	return pathPart
+}
+
+// extractRuleVariables extracts variables from a contexture rule ID
+// Returns the variables as a JSON string, or empty string if no variables
+func extractRuleVariables(ruleID string) string {
+	if ruleID == "" {
+		return ""
+	}
+
+	// Look for variables part: {variables}
+	if startIdx := strings.Index(ruleID, "]{"); startIdx != -1 {
+		// Found variables after the bracket
+		variablesPart := ruleID[startIdx+2:] // Skip "]{"
+		if endIdx := strings.LastIndex(variablesPart, "}"); endIdx != -1 {
+			return "{" + variablesPart[:endIdx+1]
+		}
+	} else if startIdx := strings.Index(ruleID, "}{"); startIdx != -1 {
+		// Handle case where there's no closing bracket before variables
+		variablesPart := ruleID[startIdx+2:] // Skip "}{"
+		if endIdx := strings.LastIndex(variablesPart, "}"); endIdx != -1 {
+			return "{" + variablesPart[:endIdx+1]
+		}
+	}
+
+	return ""
 }
 
 // extractRulePathWithLocalIndicator extracts the rule path and adds a local indicator for local rules
@@ -123,42 +156,49 @@ func extractRulePathWithLocalIndicator(rule *domain.Rule) string {
 	return rulePath
 }
 
-// buildRuleMetadata builds the metadata lines for a rule (tags, languages, frameworks, trigger)
-func buildRuleMetadata(rule *domain.Rule) (string, string) {
+// buildRuleMetadata builds the metadata lines for a rule (tags, languages, frameworks, trigger, variables)
+func buildRuleMetadata(ruleItem *domain.Rule) (string, string, string) {
 	var basicMetadataParts []string
-	var basicMetadataLine, triggerLine string
+	var basicMetadataLine, triggerLine, variablesLine string
 
 	// Add Languages and Frameworks
-	if len(rule.Languages) > 0 {
+	if len(ruleItem.Languages) > 0 {
 		basicMetadataParts = append(
 			basicMetadataParts,
-			"Languages: "+strings.Join(rule.Languages, ", "),
+			"Languages: "+strings.Join(ruleItem.Languages, ", "),
 		)
 	}
-	if len(rule.Frameworks) > 0 {
+	if len(ruleItem.Frameworks) > 0 {
 		basicMetadataParts = append(
 			basicMetadataParts,
-			"Frameworks: "+strings.Join(rule.Frameworks, ", "),
+			"Frameworks: "+strings.Join(ruleItem.Frameworks, ", "),
 		)
 	}
 
 	// Add Tags
-	if len(rule.Tags) > 0 {
-		basicMetadataParts = append(basicMetadataParts, "Tags: "+strings.Join(rule.Tags, ", "))
+	if len(ruleItem.Tags) > 0 {
+		basicMetadataParts = append(basicMetadataParts, "Tags: "+strings.Join(ruleItem.Tags, ", "))
 	}
 
 	// Combine basic metadata into single line
 	basicMetadataLine = strings.Join(basicMetadataParts, " • ")
 
 	// Build trigger line separately
-	if rule.Trigger != nil {
-		triggerLine = "Trigger: " + string(rule.Trigger.Type)
-		if rule.Trigger.Type == triggerTypeGlob && len(rule.Trigger.Globs) > 0 {
-			triggerLine += " (" + strings.Join(rule.Trigger.Globs, ", ") + ")"
+	if ruleItem.Trigger != nil {
+		triggerLine = "Trigger: " + string(ruleItem.Trigger.Type)
+		if ruleItem.Trigger.Type == triggerTypeGlob && len(ruleItem.Trigger.Globs) > 0 {
+			triggerLine += " (" + strings.Join(ruleItem.Trigger.Globs, ", ") + ")"
 		}
 	}
 
-	return basicMetadataLine, triggerLine
+	// Build variables line only if they differ from defaults
+	if rule.ShouldDisplayVariables(ruleItem.Variables, ruleItem.DefaultVariables) {
+		if variablesJSON, err := json.Marshal(ruleItem.Variables); err == nil {
+			variablesLine = "Variables: " + string(variablesJSON)
+		}
+	}
+
+	return basicMetadataLine, triggerLine, variablesLine
 }
 
 // applyHighlightsGeneric applies highlighting by finding matches within text

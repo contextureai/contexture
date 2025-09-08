@@ -190,7 +190,7 @@ func TestFormat_Validate(t *testing.T) {
 				Title:       "Long Rule",
 				Description: "A rule with content exceeding Windsurf character limit",
 				Tags:        []string{"test"},
-				Content:     strings.Repeat("This is very long content. ", 250), // ~6750 chars, exceeds 6000 limit
+				Content:     strings.Repeat("This is very long content. ", 450), // ~12150 chars, exceeds 12000 limit
 			},
 			wantValid:    false,
 			wantErrors:   1, // character limit exceeded
@@ -617,9 +617,9 @@ func TestFormat_Headers(t *testing.T) {
 
 func TestFormat_Write_CharacterLimitValidation(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	f := NewFormatWithMode(fs, ModeSingleFile) // Use single-file mode to test total limit
+	f := NewFormatWithMode(fs, ModeSingleFile) // Use single-file mode
 
-	// Create rules that exceed the total character limit (12000 chars)
+	// Create rules that should succeed since no total limit exists (only per-file limit of 12000 chars)
 	rules := []*domain.TransformedRule{
 		{
 			Rule: &domain.Rule{
@@ -648,25 +648,28 @@ func TestFormat_Write_CharacterLimitValidation(t *testing.T) {
 			Content:  strings.Repeat("Very long content. ", 250), // ~4750 chars
 			Filename: "rule3.md",
 		},
-		// Total: ~12350 chars, exceeds 12000 limit
+		// Total: ~12350 chars, but no total limit so should succeed
 	}
 
 	config := &domain.FormatConfig{
 		BaseDir: "/output",
 	}
 
-	// Should fail due to total character limit
+	// Should succeed since no total character limit exists (only per-file limit)
 	err := f.Write(rules, config)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "total content exceeds Windsurf single-file limit")
-	assert.Contains(t, err.Error(), "12000")
+	require.NoError(t, err)
+
+	// Check that file was created
+	exists, err := afero.Exists(fs, "/output/.windsurf/rules/rules.md")
+	require.NoError(t, err)
+	assert.True(t, exists)
 }
 
 func TestFormat_Write_CharacterLimitValidation_MultiFile(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeMultiFile) // Use multi-file mode to test per-file limit
 
-	// Create rules where one exceeds the per-file character limit (6000 chars)
+	// Create rules where one exceeds the per-file character limit (12000 chars)
 	rules := []*domain.TransformedRule{
 		{
 			Rule: &domain.Rule{
@@ -681,9 +684,9 @@ func TestFormat_Write_CharacterLimitValidation_MultiFile(t *testing.T) {
 			Rule: &domain.Rule{
 				ID:      "[contexture:test/rule2]",
 				Title:   "Rule 2",
-				Content: strings.Repeat("Very long content. ", 350), // ~6650 chars, exceeds 6000 limit
+				Content: strings.Repeat("Very long content. ", 650), // ~12350 chars, exceeds 12000 limit
 			},
-			Content:  strings.Repeat("Very long content. ", 350), // ~6650 chars
+			Content:  strings.Repeat("Very long content. ", 650), // ~12350 chars
 			Filename: "rule2.md",
 		},
 	}
@@ -696,7 +699,7 @@ func TestFormat_Write_CharacterLimitValidation_MultiFile(t *testing.T) {
 	err := f.Write(rules, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds Windsurf per-file limit")
-	assert.Contains(t, err.Error(), "6000")
+	assert.Contains(t, err.Error(), "12000")
 	assert.Contains(t, err.Error(), "[contexture:test/rule2]")
 }
 

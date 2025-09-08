@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/template"
 	"github.com/spf13/afero"
 )
@@ -445,11 +446,30 @@ func (bf *Base) CreateTrackingComment(ruleID string, variables map[string]any) s
 	return fmt.Sprintf("%s%s%s", domain.RuleIDCommentPrefix, comment, domain.RuleIDCommentSuffix)
 }
 
+// CreateTrackingCommentWithDefaults creates a tracking comment that only includes variables differing from defaults
+// Format: <!-- id: [contexture:path/to/rule]{variables} -->
+func (bf *Base) CreateTrackingCommentWithDefaults(ruleID string, variables, defaultVariables map[string]any) string {
+	comment := ruleID
+
+	// Import rule package for the utility function
+	filteredVars := rule.FilterNonDefaultVariables(variables, defaultVariables)
+
+	// Add variables only if they differ from defaults
+	if len(filteredVars) > 0 {
+		if variablesJSON, err := json.Marshal(filteredVars); err == nil {
+			comment += string(variablesJSON)
+		}
+	}
+
+	return fmt.Sprintf("%s%s%s", domain.RuleIDCommentPrefix, comment, domain.RuleIDCommentSuffix)
+}
+
 // CreateTrackingCommentFromParsed creates a tracking comment from a ParsedRuleID
 func (bf *Base) CreateTrackingCommentFromParsed(parsed *domain.ParsedRuleID) string {
-	// Reconstruct the rule ID string
+	// Reconstruct the rule ID string (already includes variables)
 	ruleID := bf.FormatRuleID(parsed)
-	return bf.CreateTrackingComment(ruleID, parsed.Variables)
+	// Don't pass variables again since they're already included in the formatted rule ID
+	return bf.CreateTrackingComment(ruleID, nil)
 }
 
 // FormatRuleID converts a ParsedRuleID back to its string representation
@@ -530,7 +550,12 @@ func (bf *Base) RemoveTrackingComment(content, ruleID string) string {
 func (bf *Base) AppendTrackingComment(
 	content string, ruleID string, variables map[string]any,
 ) string {
-	trackingComment := bf.CreateTrackingComment(ruleID, variables)
+	// If the ruleID already contains variables (has }), don't add them again
+	var passVariables map[string]any
+	if !strings.Contains(ruleID, "]{") {
+		passVariables = variables
+	}
+	trackingComment := bf.CreateTrackingComment(ruleID, passVariables)
 
 	// Ensure there's a newline before the comment if content doesn't end with one
 	if !strings.HasSuffix(content, "\n") {
@@ -539,4 +564,86 @@ func (bf *Base) AppendTrackingComment(
 
 	// Add an extra newline for separation, then the tracking comment
 	return content + "\n" + trackingComment
+}
+
+// AppendTrackingCommentWithDefaults adds a tracking comment to the end of content, only including non-default variables
+func (bf *Base) AppendTrackingCommentWithDefaults(
+	content string, ruleID string, variables, defaultVariables map[string]any,
+) string {
+	// If the ruleID already contains variables (has }), don't add them again
+	var passVariables, passDefaults map[string]any
+	if !strings.Contains(ruleID, "]{") {
+		passVariables = variables
+		passDefaults = defaultVariables
+	}
+	trackingComment := bf.CreateTrackingCommentWithDefaults(ruleID, passVariables, passDefaults)
+
+	// Ensure there's a newline before the comment if content doesn't end with one
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+
+	// Add an extra newline for separation, then the tracking comment
+	return content + "\n" + trackingComment
+}
+
+// RemoveDirectory removes a directory using the filesystem
+func (bf *Base) RemoveDirectory(dir string) error {
+	return bf.fs.RemoveAll(dir)
+}
+
+// CleanupEmptyDirectory removes the directory if it's empty
+func (bf *Base) CleanupEmptyDirectory(dir string) {
+	// Check if directory exists
+	exists, err := bf.DirExists(dir)
+	if err != nil || !exists {
+		return
+	}
+
+	// List directory contents
+	files, err := bf.ListDirectory(dir)
+	if err != nil {
+		bf.LogDebug("Could not list directory for cleanup", "dir", dir, "error", err)
+		return
+	}
+
+	// Remove directory if empty
+	if len(files) == 0 {
+		if err := bf.RemoveDirectory(dir); err != nil {
+			bf.LogDebug("Could not remove empty directory", "dir", dir, "error", err)
+		} else {
+			bf.LogDebug("Removed empty directory", "dir", dir)
+		}
+	}
+}
+
+// GetOutputPath returns the default output path for the format (to be overridden by specific formats)
+func (bf *Base) GetOutputPath(_ *domain.FormatConfig) string {
+	// Default implementation returns empty string, should be overridden by specific formats
+	bf.LogDebug("Using default GetOutputPath implementation, should be overridden", "formatType", bf.formatType)
+	return ""
+}
+
+// CleanupEmptyDirectories handles cleanup of empty directories (default implementation does nothing)
+func (bf *Base) CleanupEmptyDirectories(_ *domain.FormatConfig) error {
+	// Default implementation does nothing, can be overridden by specific formats
+	bf.LogDebug("Using default CleanupEmptyDirectories implementation", "formatType", bf.formatType)
+	return nil
+}
+
+// CreateDirectories creates necessary directories for this format (default implementation does nothing)
+func (bf *Base) CreateDirectories(_ *domain.FormatConfig) error {
+	// Default implementation does nothing, can be overridden by specific formats
+	bf.LogDebug("Using default CreateDirectories implementation", "formatType", bf.formatType)
+	return nil
+}
+
+// GetMetadata returns metadata about this format (default implementation with basic info)
+func (bf *Base) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        bf.formatType,
+		DisplayName: string(bf.formatType),
+		Description: "Base format implementation",
+		IsDirectory: false, // Default to file-based, override in directory-based formats
+	}
 }

@@ -167,6 +167,26 @@ func (g *RuleGenerator) generateFormat(
 		return fmt.Errorf("failed to write format output: %w", err)
 	}
 
+	// Clean up empty directories if no rules were written
+	if len(transformedRules) == 0 {
+		g.cleanupEmptyFormatDirectory(format, &formatConfig)
+	}
+
 	log.Debug("Format generated", "type", formatConfig.Type, "rules", len(transformedRules))
 	return nil
+}
+
+// cleanupEmptyFormatDirectory removes empty output directories for formats that support it
+func (g *RuleGenerator) cleanupEmptyFormatDirectory(format domain.Format, config *domain.FormatConfig) {
+	// Check if the format has a method to get the output directory and access to BaseFormat
+	if f, ok := format.(interface {
+		getOutputDir(*domain.FormatConfig) string
+		CleanupEmptyDirectory(string)
+	}); ok {
+		outputDir := f.getOutputDir(config)
+		if outputDir != "" {
+			// Use the centralized cleanup method from BaseFormat
+			f.CleanupEmptyDirectory(outputDir)
+		}
+	}
 }

@@ -972,7 +972,7 @@ func (d *ruleItemDelegate) Render(w io.Writer, m list.Model, index int, item lis
 	rulePath := extractRulePathWithLocalIndicator(rule)
 
 	// Build metadata lines
-	basicMetadataLine, triggerLine := buildRuleMetadata(rule)
+	basicMetadataLine, triggerLine, variablesLine := buildRuleMetadata(rule)
 
 	if m.Width() <= 0 {
 		return
@@ -1043,6 +1043,11 @@ func (d *ruleItemDelegate) Render(w io.Writer, m list.Model, index int, item lis
 	// Add trigger line if it has content
 	if triggerLine != "" {
 		lines = append(lines, triggerLine)
+	}
+
+	// Add variables line if it has content
+	if variablesLine != "" {
+		lines = append(lines, variablesLine)
 	}
 
 	// Apply styles and highlighting with separate checkbox handling
@@ -1263,7 +1268,7 @@ func (d *ruleDisplayDelegate) Render(w io.Writer, m list.Model, index int, item 
 	rulePath := extractRulePathWithLocalIndicator(rule)
 
 	// Build metadata lines
-	basicMetadataLine, triggerLine := buildRuleMetadata(rule)
+	basicMetadataLine, triggerLine, variablesLine := buildRuleMetadata(rule)
 
 	if m.Width() <= 0 {
 		return
@@ -1300,6 +1305,11 @@ func (d *ruleDisplayDelegate) Render(w io.Writer, m list.Model, index int, item 
 	// Add trigger line if it has content
 	if triggerLine != "" {
 		lines = append(lines, triggerLine)
+	}
+
+	// Add variables line if it has content
+	if variablesLine != "" {
+		lines = append(lines, variablesLine)
 	}
 
 	// Apply styles and highlighting (similar to ruleItemDelegate but without checkboxes)

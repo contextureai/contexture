@@ -105,8 +105,8 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 		// Write rule content
 		ruleContent := rule.Content
 
-		// Append tracking comment using the new system
-		ruleContent = f.AppendTrackingComment(ruleContent, rule.Rule.ID, rule.Rule.Variables)
+		// Append tracking comment using the new system, only including non-default variables
+		ruleContent = f.AppendTrackingCommentWithDefaults(ruleContent, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		content.WriteString(ruleContent)
 	}
@@ -124,7 +124,7 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 	return nil
 }
 
-// Remove deletes a specific rule from the Claude format file
+// Remove deletes a specific rule from the Claude format file by rebuilding it from scratch
 func (f *Format) Remove(ruleID string, config *domain.FormatConfig) error {
 	f.LogDebug("Removing rule from Claude format", "ruleID", ruleID)
 
@@ -140,22 +140,39 @@ func (f *Format) Remove(ruleID string, config *domain.FormatConfig) error {
 		return nil
 	}
 
-	// Read current content
-	content, err := f.ReadFile(outputPath)
+	// Get current rules from the file
+	currentRules, err := f.List(config)
 	if err != nil {
-		return fmt.Errorf("failed to read Claude format file: %w", err)
+		return fmt.Errorf("failed to list current rules: %w", err)
 	}
 
-	// Remove the rule from content by parsing sections
-	contentStr := string(content)
-	updatedContent := f.removeRuleFromContent(contentStr, ruleID)
+	// Filter out the rule we want to remove
+	var remainingRules []*domain.TransformedRule
+	targetRulePath := f.extractBasePath(ruleID)
 
-	// Write back the updated content
-	if err := f.WriteFile(outputPath, []byte(updatedContent)); err != nil {
-		return fmt.Errorf("failed to write updated Claude format file: %w", err)
+	for _, installedRule := range currentRules {
+		currentRulePath := f.extractBasePath(installedRule.Rule.ID)
+		if currentRulePath != targetRulePath {
+			// Keep this rule - reuse the existing TransformedRule
+			remainingRules = append(remainingRules, installedRule.TransformedRule)
+		}
 	}
 
-	f.LogInfo("Successfully removed rule from Claude format", "ruleID", ruleID)
+	// Rebuild the file with remaining rules
+	if len(remainingRules) == 0 {
+		// No rules left, remove the file
+		if err := f.RemoveFile(outputPath); err != nil {
+			return fmt.Errorf("failed to remove empty Claude format file: %w", err)
+		}
+		f.LogInfo("Removed Claude format file (no rules remaining)", "path", outputPath)
+	} else {
+		// Regenerate the file with remaining rules
+		if err := f.Write(remainingRules, config); err != nil {
+			return fmt.Errorf("failed to regenerate Claude format file: %w", err)
+		}
+		f.LogInfo("Successfully regenerated Claude format file", "ruleID", ruleID, "remainingRules", len(remainingRules))
+	}
+
 	return nil
 }
 
@@ -194,6 +211,35 @@ func (f *Format) List(config *domain.FormatConfig) ([]*domain.InstalledRule, err
 	return rules, nil
 }
 
+// GetOutputPath returns the full output path for the Claude format file
+func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
+	return f.getOutputPath(config)
+}
+
+// CleanupEmptyDirectories handles cleanup for Claude format (no-op since it's file-based)
+func (f *Format) CleanupEmptyDirectories(_ *domain.FormatConfig) error {
+	// Claude format creates a single file, not directories, so no cleanup needed
+	f.LogDebug("Claude format doesn't need directory cleanup (file-based)")
+	return nil
+}
+
+// CreateDirectories creates necessary directories for Claude format (no-op since it's file-based)
+func (f *Format) CreateDirectories(_ *domain.FormatConfig) error {
+	// Claude format creates a single file, not directories, so no directory creation needed
+	f.LogDebug("Claude format doesn't need directory creation (file-based)")
+	return nil
+}
+
+// GetMetadata returns metadata about Claude format
+func (f *Format) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        domain.FormatClaude,
+		DisplayName: "Claude AI Assistant",
+		Description: "Single-file format for Claude AI assistant (CLAUDE.md)",
+		IsDirectory: false,
+	}
+}
+
 // getDefaultTemplate returns the default Claude template
 func (f *Format) getDefaultTemplate() string {
 	return `# {{.title}}
@@ -208,8 +254,7 @@ func (f *Format) getDefaultTemplate() string {
 
 {{end}}{{if .tags}}**Tags:** {{join_and .tags}}
 {{end}}{{if .frameworks}}**Frameworks:** {{join_and .frameworks}}
-{{end}}
-{{.content}}`
+{{end}}{{.content}}`
 }
 
 // getFileHeader returns the header for the Claude format file
@@ -244,24 +289,22 @@ func (f *Format) getOutputPath(config *domain.FormatConfig) string {
 	return filepath.Join(baseDir, filename)
 }
 
-// removeRuleFromContent removes a specific rule from Claude format content
-func (f *Format) removeRuleFromContent(content, ruleID string) string {
-	// Split content by rule separators
-	sections := strings.Split(content, "\n---\n")
-	var filteredSections []string
+// extractBasePath extracts the base rule path (without variables or brackets) for matching
+func (f *Format) extractBasePath(ruleID string) string {
+	rulePath := ruleID
 
-	for _, section := range sections {
-		// Check if this section contains the tracking comment for the rule we want to remove
-		// The ruleID comes in as just the path (e.g., "core/typescript/strict-config")
-		// but we need to format it as the full rule ID for the tracking comment
-		fullRuleID := fmt.Sprintf("[contexture:%s]", ruleID)
-		trackingComment := f.CreateTrackingComment(fullRuleID, nil)
-		if !strings.Contains(section, trackingComment) {
-			filteredSections = append(filteredSections, section)
-		}
+	// Remove [contexture: prefix and ] suffix if present
+	if strings.HasPrefix(rulePath, "[contexture:") {
+		rulePath = strings.TrimPrefix(rulePath, "[contexture:")
+		rulePath = strings.TrimSuffix(rulePath, "]")
 	}
 
-	return strings.Join(filteredSections, "\n---\n")
+	// Remove variables part if present (path]{variables})
+	if bracketIdx := strings.Index(rulePath, "]{"); bracketIdx != -1 {
+		rulePath = rulePath[:bracketIdx]
+	}
+
+	return rulePath
 }
 
 // parseRulesFromContent parses individual rules from Claude format content

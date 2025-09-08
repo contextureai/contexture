@@ -369,3 +369,24 @@ func (m *MockFormat) Remove(_ string, _ *domain.FormatConfig) error {
 func (m *MockFormat) List(_ *domain.FormatConfig) ([]*domain.InstalledRule, error) {
 	return []*domain.InstalledRule{}, nil
 }
+
+func (m *MockFormat) GetOutputPath(_ *domain.FormatConfig) string {
+	return "mock/path"
+}
+
+func (m *MockFormat) CleanupEmptyDirectories(_ *domain.FormatConfig) error {
+	return nil
+}
+
+func (m *MockFormat) CreateDirectories(_ *domain.FormatConfig) error {
+	return nil
+}
+
+func (m *MockFormat) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        "mock",
+		DisplayName: "Mock Format",
+		Description: "Mock format for testing",
+		IsDirectory: false,
+	}
+}

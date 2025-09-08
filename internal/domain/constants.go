@@ -70,8 +70,7 @@ const (
 // Format-specific limits
 const (
 	// Windsurf character limits per specification
-	WindsurfMaxSingleRuleChars = 6000  // Maximum characters per individual rule file
-	WindsurfMaxTotalChars      = 12000 // Maximum characters for all rules combined
+	WindsurfMaxSingleRuleChars = 12000 // Maximum characters per individual rule file
 )
 
 // Rule fetching configuration

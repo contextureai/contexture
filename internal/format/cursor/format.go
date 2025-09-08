@@ -101,8 +101,8 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 	for _, rule := range rules {
 		filePath := filepath.Join(outputDir, rule.Filename)
 
-		// Append tracking comment at the end instead of header at beginning
-		content := f.AppendTrackingComment(rule.Content, rule.Rule.ID, rule.Rule.Variables)
+		// Append tracking comment at the end instead of header at beginning, only including non-default variables
+		content := f.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		if err := f.WriteFile(filePath, []byte(content)); err != nil {
 			errors = append(errors, fmt.Errorf("failed to write rule %s: %w", rule.Rule.ID, err))
@@ -142,6 +142,9 @@ func (f *Format) Remove(ruleID string, config *domain.FormatConfig) error {
 	if err := f.RemoveFile(filePath); err != nil {
 		return fmt.Errorf("failed to remove rule file: %w", err)
 	}
+
+	// Check if directory is now empty and remove it if so
+	f.CleanupEmptyDirectory(outputDir)
 
 	f.LogInfo("Successfully removed Cursor rule file", "ruleID", ruleID, "path", filePath)
 	return nil
@@ -272,6 +275,45 @@ func (f *Format) ExtractRuleIDFromFilename(filename string) string {
 	base := strings.TrimSuffix(filename, ".mdc")
 	path := strings.ReplaceAll(base, "-", "/")
 	return fmt.Sprintf("[contexture:%s]", path)
+}
+
+// GetOutputPath returns the output directory path for Cursor format
+func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
+	return f.getOutputDir(config)
+}
+
+// CleanupEmptyDirectories handles cleanup of empty directories for Cursor format
+func (f *Format) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+	outputDir := f.getOutputDir(config)
+
+	baseDir := config.BaseDir
+	if baseDir == "" {
+		baseDir = "."
+	}
+	parentDir := filepath.Join(baseDir, ".cursor")
+
+	// First clean up the rules directory
+	f.CleanupEmptyDirectory(outputDir)
+	// Then clean up the parent .cursor directory if it's also empty
+	f.CleanupEmptyDirectory(parentDir)
+
+	return nil
+}
+
+// CreateDirectories creates necessary directories for Cursor format
+func (f *Format) CreateDirectories(config *domain.FormatConfig) error {
+	outputDir := f.getOutputDir(config)
+	return f.EnsureDirectory(outputDir)
+}
+
+// GetMetadata returns metadata about Cursor format
+func (f *Format) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        domain.FormatCursor,
+		DisplayName: "Cursor IDE",
+		Description: "Multi-file format for Cursor IDE (.cursor/rules/)",
+		IsDirectory: true,
+	}
 }
 
 // getOutputDir returns the output directory for Cursor format

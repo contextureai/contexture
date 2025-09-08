@@ -708,7 +708,7 @@ func (d *fileBrowserItemDelegate) Render(w io.Writer, m list.Model, index int, i
 	rulePath := domain.ExtractRulePath(rule.ID)
 
 	// Build metadata lines (same as rule selector)
-	basicMetadataLine, triggerLine := buildRuleMetadata(rule)
+	basicMetadataLine, triggerLine, variablesLine := buildRuleMetadata(rule)
 
 	if m.Width() <= 0 {
 		return
@@ -762,6 +762,11 @@ func (d *fileBrowserItemDelegate) Render(w io.Writer, m list.Model, index int, i
 	// Add trigger line if it has content
 	if triggerLine != "" {
 		lines = append(lines, triggerLine)
+	}
+
+	// Add variables line if it has content
+	if variablesLine != "" {
+		lines = append(lines, variablesLine)
 	}
 
 	// Apply styles and highlighting with separate checkbox handling (same as rule selector)

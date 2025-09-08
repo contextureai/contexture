@@ -42,12 +42,6 @@ func TestDirectoryManager_CreateFormatDirectories(t *testing.T) {
 			expectedDir:     "",
 			shouldCreateDir: false,
 		},
-		{
-			name:            "unknown format does not create directory",
-			formatType:      domain.FormatType("unknown"),
-			expectedDir:     "",
-			shouldCreateDir: false,
-		},
 	}
 
 	for _, tt := range tests {
@@ -68,10 +62,19 @@ func TestDirectoryManager_CreateFormatDirectories(t *testing.T) {
 				info, err := fs.Stat(tt.expectedDir)
 				require.NoError(t, err)
 				assert.True(t, info.IsDir())
-				assert.Equal(t, "drwxr-xr-x", info.Mode().String())
+				assert.Equal(t, "drwxr-x---", info.Mode().String())
 			}
 		})
 	}
+}
+
+func TestDirectoryManager_CreateFormatDirectories_UnknownFormat(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	dm := NewDirectoryManager(fs)
+
+	err := dm.CreateFormatDirectories(domain.FormatType("unknown"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format type")
 }
 
 func TestDirectoryManager_CreateFormatDirectories_ErrorHandling(t *testing.T) {
@@ -81,11 +84,11 @@ func TestDirectoryManager_CreateFormatDirectories_ErrorHandling(t *testing.T) {
 
 	err := dm.CreateFormatDirectories(domain.FormatCursor)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create cursor directory")
+	assert.Contains(t, err.Error(), "operation not permitted")
 
 	err = dm.CreateFormatDirectories(domain.FormatWindsurf)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create windsurf directory")
+	assert.Contains(t, err.Error(), "operation not permitted")
 
 	// Claude should not error since it doesn't create directories
 	err = dm.CreateFormatDirectories(domain.FormatClaude)

@@ -100,6 +100,12 @@ func (c *ListCommand) fetchRulesFromReferences(
 			continue
 		}
 
+		// Merge configured variables with the fetched rule
+		// The fetched rule has DefaultVariables, but we need to set Variables to the configured ones
+		if ruleRef.Variables != nil {
+			rule.Variables = ruleRef.Variables
+		}
+
 		rules = append(rules, rule)
 	}
 

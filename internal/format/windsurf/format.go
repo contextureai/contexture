@@ -158,31 +158,15 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 
 	f.LogDebug("Writing Windsurf format files", "rules", len(rules), "mode", f.mode)
 
-	// Check character limits based on mode
-	if f.mode == ModeSingleFile {
-		// Single-file mode: check total characters across all rules
-		totalChars := 0
-		for _, rule := range rules {
-			totalChars += len(rule.Content)
-		}
-		if totalChars > domain.WindsurfMaxTotalChars {
+	// Check character limits for each rule individually
+	for _, rule := range rules {
+		if len(rule.Content) > domain.WindsurfMaxSingleRuleChars {
 			return fmt.Errorf(
-				"total content exceeds Windsurf single-file limit of %d characters (current: %d)",
-				domain.WindsurfMaxTotalChars,
-				totalChars,
+				"rule '%s' exceeds Windsurf per-file limit of %d characters (current: %d)",
+				rule.Rule.ID,
+				domain.WindsurfMaxSingleRuleChars,
+				len(rule.Content),
 			)
-		}
-	} else {
-		// Multi-file mode: check each rule individually
-		for _, rule := range rules {
-			if len(rule.Content) > domain.WindsurfMaxSingleRuleChars {
-				return fmt.Errorf(
-					"rule '%s' exceeds Windsurf per-file limit of %d characters (current: %d)",
-					rule.Rule.ID,
-					domain.WindsurfMaxSingleRuleChars,
-					len(rule.Content),
-				)
-			}
 		}
 	}
 
@@ -260,6 +244,45 @@ func (f *Format) Remove(ruleID string, config *domain.FormatConfig) error {
 	return f.removeMultiFile(ruleID, outputDir)
 }
 
+// GetOutputPath returns the output directory path for Windsurf format
+func (f *Format) GetOutputPath(config *domain.FormatConfig) string {
+	return f.getOutputDir(config)
+}
+
+// CleanupEmptyDirectories handles cleanup of empty directories for Windsurf format
+func (f *Format) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+	outputDir := f.getOutputDir(config)
+
+	baseDir := config.BaseDir
+	if baseDir == "" {
+		baseDir = "."
+	}
+	parentDir := filepath.Join(baseDir, ".windsurf")
+
+	// First clean up the rules directory
+	f.CleanupEmptyDirectory(outputDir)
+	// Then clean up the parent .windsurf directory if it's also empty
+	f.CleanupEmptyDirectory(parentDir)
+
+	return nil
+}
+
+// CreateDirectories creates necessary directories for Windsurf format
+func (f *Format) CreateDirectories(config *domain.FormatConfig) error {
+	outputDir := f.getOutputDir(config)
+	return f.EnsureDirectory(outputDir)
+}
+
+// GetMetadata returns metadata about Windsurf format
+func (f *Format) GetMetadata() *domain.FormatMetadata {
+	return &domain.FormatMetadata{
+		Type:        domain.FormatWindsurf,
+		DisplayName: "Windsurf IDE",
+		Description: "Multi-file format for Windsurf IDE (.windsurf/rules/)",
+		IsDirectory: true,
+	}
+}
+
 // writeSingleFile writes all rules to a single file
 func (f *Format) writeSingleFile(rules []*domain.TransformedRule, outputDir string) error {
 	filename := f.GetSingleFileFilename()
@@ -277,8 +300,8 @@ func (f *Format) writeSingleFile(rules []*domain.TransformedRule, outputDir stri
 			content.WriteString("\n\n---\n\n")
 		}
 
-		// Write rule content with tracking comment appended
-		ruleContent := f.AppendTrackingComment(rule.Content, rule.Rule.ID, rule.Rule.Variables)
+		// Write rule content with tracking comment appended, only including non-default variables
+		ruleContent := f.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 		content.WriteString(ruleContent)
 	}
 
@@ -303,8 +326,8 @@ func (f *Format) writeMultiFile(rules []*domain.TransformedRule, outputDir strin
 	for _, rule := range rules {
 		filePath := filepath.Join(outputDir, rule.Filename)
 
-		// Append tracking comment at the end instead of header at beginning
-		content := f.AppendTrackingComment(rule.Content, rule.Rule.ID, rule.Rule.Variables)
+		// Append tracking comment at the end instead of header at beginning, only including non-default variables
+		content := f.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		if err := f.WriteFile(filePath, []byte(content)); err != nil {
 			errors = append(errors, fmt.Errorf("failed to write rule %s: %w", rule.Rule.ID, err))
@@ -381,6 +404,9 @@ func (f *Format) removeMultiFile(ruleID string, outputDir string) error {
 	if err := f.RemoveFile(filePath); err != nil {
 		return fmt.Errorf("failed to remove rule file: %w", err)
 	}
+
+	// Check if directory is now empty and remove it if so
+	f.CleanupEmptyDirectory(outputDir)
 
 	f.LogInfo("Successfully removed Windsurf rule file", "ruleID", ruleID, "path", filePath)
 	return nil

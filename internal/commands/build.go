@@ -14,6 +14,7 @@ import (
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
+	"github.com/spf13/afero"
 	"github.com/urfave/cli/v3"
 )
 
@@ -41,10 +42,6 @@ func NewBuildCommand(deps *dependencies.Dependencies) *BuildCommand {
 
 // Execute runs the build command
 func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
-	// Show command header
-	fmt.Println(ui.CommandHeader("build"))
-	fmt.Println()
-
 	// Load project configuration
 	configLoad, err := LoadProjectConfig(c.projectManager)
 	if err != nil {
@@ -54,9 +51,25 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	config := configLoad.Config
 
 	if len(config.Rules) == 0 {
-		log.Debug("No rules configured")
+		log.Info("No rules configured")
+
+		// Clean up empty directories for all enabled formats even when no rules exist
+		targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
+		for _, formatConfig := range targetFormats {
+			format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+			if err != nil {
+				log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
+				continue
+			}
+			c.cleanupEmptyFormatDirectory(format, &formatConfig)
+		}
+
 		return nil
 	}
+
+	// Show command header only when we have rules to build
+	fmt.Println(ui.CommandHeader("build"))
+	fmt.Println()
 
 	// Get target formats (either user-specified or all enabled)
 	targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
@@ -132,6 +145,14 @@ func (c *BuildCommand) getTargetFormats(
 	}
 
 	return targetFormats
+}
+
+// cleanupEmptyFormatDirectory removes empty output directories for formats that support it
+func (c *BuildCommand) cleanupEmptyFormatDirectory(format domain.Format, config *domain.FormatConfig) {
+	// Use the format's own cleanup method - no need for format-specific logic here
+	if err := format.CleanupEmptyDirectories(config); err != nil {
+		log.Warn("Failed to cleanup empty directories", "format", config.Type, "error", err)
+	}
 }
 
 // BuildAction is the CLI action handler for the build command
