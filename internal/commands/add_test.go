@@ -233,7 +233,7 @@ func TestAddCommand_SourceAndRefFlags(t *testing.T) {
 			// Apply the same logic as in the add command
 			processedRuleID := originalRuleID
 			if sourceFlag != "" {
-				// If this is a simple rule ID (not already in [contexture:...] format), 
+				// If this is a simple rule ID (not already in [contexture:...] format),
 				// construct the proper format using the --source and optional --ref flags
 				if !strings.HasPrefix(originalRuleID, "[contexture") {
 					if refFlag != "" {

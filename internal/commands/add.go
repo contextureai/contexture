@@ -113,7 +113,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 			// Construct proper rule ID format if --source flag is provided
 			processedRuleID := ruleID
 			if sourceFlag != "" {
-				// If this is a simple rule ID (not already in [contexture:...] format), 
+				// If this is a simple rule ID (not already in [contexture:...] format),
 				// construct the proper format using the --source and optional --ref flags
 				if !strings.HasPrefix(ruleID, "[contexture") {
 					if refFlag != "" {
