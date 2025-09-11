@@ -371,6 +371,69 @@ func TestExtractRulePath(t *testing.T) {
 	})
 }
 
+func TestExtractRuleDisplayPath(t *testing.T) {
+	t.Parallel()
+	t.Run("standard contexture rule returns just path", func(t *testing.T) {
+		ruleID := "[contexture:languages/go/basics]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "languages/go/basics", result)
+	})
+
+	t.Run("custom SSH source includes source in path", func(t *testing.T) {
+		ruleID := "[contexture(git@github.com:ryanskidmore/secretrules.git):test/lemon]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@github.com:ryanskidmore/secretrules/test/lemon", result)
+	})
+
+	t.Run("custom HTTPS source converts to friendly format", func(t *testing.T) {
+		ruleID := "[contexture(https://github.com/user/repo.git):path/to/rule]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "github.com/user/repo/path/to/rule", result)
+	})
+
+	t.Run("custom source with branch strips branch", func(t *testing.T) {
+		ruleID := "[contexture(git@github.com:user/repo.git):test/rule,develop]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@github.com:user/repo/test/rule", result)
+	})
+
+	t.Run("custom source with variables strips variables", func(t *testing.T) {
+		ruleID := "[contexture(git@example.com:org/rules.git):security/auth]{\"level\": \"strict\"}"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@example.com:org/rules/security/auth", result)
+	})
+
+	t.Run("HTTPS without .git suffix", func(t *testing.T) {
+		ruleID := "[contexture(https://gitlab.com/company/rules):policies/security]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "gitlab.com/company/rules/policies/security", result)
+	})
+
+	t.Run("default repo reference shows only path", func(t *testing.T) {
+		ruleID := "[contexture(github):typescript/strict-config]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "typescript/strict-config", result)
+	})
+
+	t.Run("local repo reference shows only path", func(t *testing.T) {
+		ruleID := "[contexture(local):user/custom-rule]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "user/custom-rule", result)
+	})
+
+	t.Run("empty rule ID returns empty", func(t *testing.T) {
+		result := ExtractRuleDisplayPath("")
+		assert.Empty(t, result)
+	})
+
+	t.Run("fallback for malformed custom source", func(t *testing.T) {
+		ruleID := "[contexture(malformed:test/rule]"
+		result := ExtractRuleDisplayPath(ruleID)
+		// Should fallback to standard extraction which returns the malformed input
+		assert.Equal(t, "[contexture(malformed:test/rule", result)
+	})
+}
+
 func TestRuleTreeEdgeCases(t *testing.T) {
 	t.Parallel()
 	t.Run("handles duplicate rule paths", func(t *testing.T) {

@@ -221,10 +221,9 @@ func (c *RemoveCommand) ShowInstalledRules(ctx context.Context, cmd *cli.Command
 			continue
 		}
 
-		// Convert full format to simple format for display
-		ruleID := strings.TrimPrefix(ruleRef.ID, "[contexture:")
-		ruleID = strings.TrimSuffix(ruleID, "]")
-		installedRuleIDs = append(installedRuleIDs, ruleID)
+		// Use the full rule ID as stored in configuration
+		// Don't attempt to convert to "simple format" as it breaks custom source rules
+		installedRuleIDs = append(installedRuleIDs, ruleRef.ID)
 	}
 
 	// Inform user about local rules if any exist
@@ -318,7 +317,7 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 			log.Warn("Failed to fetch rule details", "rule", ruleID, "error", fetchErr)
 			// Create a minimal rule object for display if fetch fails
 			minimalRule := &domain.Rule{
-				ID:          fmt.Sprintf("[contexture:%s]", ruleID),
+				ID:          ruleID, // Use the actual rule ID as stored in config
 				Title:       ruleID,
 				Description: "Failed to load rule details",
 				Tags:        []string{"unknown"},
@@ -330,10 +329,8 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 		// Find the configured variables for this rule from the project configuration
 		var configuredVariables map[string]any
 		for _, configRule := range configResult.Config.Rules {
-			// Use the same matching logic as HasRule to find the corresponding config rule
-			if configRule.ID == ruleID ||
-				configRule.ID == fmt.Sprintf("[contexture:%s]", ruleID) ||
-				strings.TrimPrefix(strings.TrimSuffix(configRule.ID, "]"), "[contexture:") == ruleID {
+			// Use the centralized matching logic from project manager
+			if configRule.ID == ruleID {
 				configuredVariables = configRule.Variables
 				break
 			}

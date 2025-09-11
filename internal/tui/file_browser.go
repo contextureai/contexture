@@ -77,8 +77,8 @@ func (fb *FileBrowser) BrowseRules(ruleTree *domain.RuleNode, allRules []*domain
 	// Create a map of rule IDs to rules for quick lookup
 	ruleMap := make(map[string]*domain.Rule)
 	for _, rule := range allRules {
-		// Extract rule path from the rule's file path or ID
-		rulePath := domain.ExtractRulePath(rule.ID)
+		// Extract rule display path from the rule's file path or ID (includes source for custom rules)
+		rulePath := domain.ExtractRuleDisplayPath(rule.ID)
 		if rulePath == "" {
 			rulePath = rule.FilePath
 		}
@@ -704,8 +704,8 @@ func (d *fileBrowserItemDelegate) Render(w io.Writer, m list.Model, index int, i
 	title := rule.Title
 	desc := rule.Description
 
-	// Extract rule path from ID (same as rule selector)
-	rulePath := domain.ExtractRulePath(rule.ID)
+	// Extract rule display path from ID (includes source for custom rules)
+	rulePath := domain.ExtractRuleDisplayPath(rule.ID)
 
 	// Build metadata lines (same as rule selector)
 	basicMetadataLine, triggerLine, variablesLine := buildRuleMetadata(rule)

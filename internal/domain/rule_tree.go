@@ -227,3 +227,76 @@ func ExtractRulePath(ruleID string) string {
 	}
 	return pathPart
 }
+
+// ExtractRuleDisplayPath extracts a display-friendly rule path that includes source for custom rules
+// For standard rules: returns just the path (e.g., "languages/go/basics")
+// For custom source rules: returns "source/path" (e.g., "git@github.com:user/repo/test/rule")
+func ExtractRuleDisplayPath(ruleID string) string {
+	if ruleID == "" {
+		return ""
+	}
+
+	// Handle standard format [contexture:path]
+	if strings.HasPrefix(ruleID, "[contexture:") {
+		// Standard rule - just extract path
+		return ExtractRulePath(ruleID)
+	}
+
+	// Handle custom source format [contexture(source):path]
+	if strings.HasPrefix(ruleID, "[contexture(") {
+		// Find the source part
+		sourceStart := len("[contexture(")
+		sourceEnd := strings.Index(ruleID[sourceStart:], "):")
+		if sourceEnd == -1 {
+			// Fallback to standard extraction if malformed
+			return ExtractRulePath(ruleID)
+		}
+
+		source := ruleID[sourceStart : sourceStart+sourceEnd]
+
+		// Extract the path part (reuse existing logic)
+		pathPart := ExtractRulePath(ruleID)
+
+		// Only show source prefix for actual custom Git URLs, not default repo references
+		if isCustomGitSource(source) {
+			// Format source for display: convert Git URLs to user-friendly format
+			displaySource := formatSourceForDisplay(source)
+
+			// Combine source and path
+			if pathPart != "" {
+				return displaySource + "/" + pathPart
+			}
+			return displaySource
+		}
+
+		// For default repository references (like "github", "local"), just return the path
+		return pathPart
+	}
+
+	// Fallback for any other format
+	return ExtractRulePath(ruleID)
+}
+
+// isCustomGitSource checks if a source string is a custom Git URL vs a default repo reference
+func isCustomGitSource(source string) bool {
+	// Custom Git sources are full URLs or SSH addresses
+	return strings.HasPrefix(source, "git@") ||
+		strings.HasPrefix(source, "https://") ||
+		strings.HasPrefix(source, "http://")
+}
+
+// formatSourceForDisplay converts a source URL to a display-friendly format
+func formatSourceForDisplay(source string) string {
+	// Convert SSH URLs like "git@github.com:user/repo.git" to "git@github.com:user/repo"
+	if strings.HasPrefix(source, "git@") && strings.HasSuffix(source, ".git") {
+		return strings.TrimSuffix(source, ".git")
+	}
+
+	// Convert HTTPS URLs like "https://github.com/user/repo.git" to "github.com/user/repo"
+	if source, found := strings.CutPrefix(source, "https://"); found {
+		return strings.TrimSuffix(source, ".git")
+	}
+
+	// Return as-is for other formats
+	return source
+}
