@@ -82,6 +82,11 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 		log.Debug("Parsed var flag", "key", key, "value", value)
 	}
 
+	// Parse --source and --ref flags for constructing rule IDs
+	sourceFlag := cmd.String("source")
+	refFlag := cmd.String("ref")
+	log.Debug("Parsed source and ref flags", "source", sourceFlag, "ref", refFlag)
+
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -105,26 +110,41 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 
 	err = ui.WithProgressTiming("Fetched rules", func() error {
 		for _, ruleID := range ruleIDs {
+			// Construct proper rule ID format if --source flag is provided
+			processedRuleID := ruleID
+			if sourceFlag != "" {
+				// If this is a simple rule ID (not already in [contexture:...] format), 
+				// construct the proper format using the --source and optional --ref flags
+				if !strings.HasPrefix(ruleID, "[contexture") {
+					if refFlag != "" {
+						processedRuleID = fmt.Sprintf("[contexture(%s):%s,%s]", sourceFlag, ruleID, refFlag)
+					} else {
+						processedRuleID = fmt.Sprintf("[contexture(%s):%s]", sourceFlag, ruleID)
+					}
+					log.Debug("Constructed rule ID from flags", "original", ruleID, "constructed", processedRuleID)
+				}
+			}
+
 			// Parse rule ID
-			parsedID, err := c.ruleFetcher.ParseRuleID(ruleID)
+			parsedID, err := c.ruleFetcher.ParseRuleID(processedRuleID)
 			if err != nil {
-				return fmt.Errorf("invalid rule ID '%s'.\n\nRule IDs should be in one of these formats:\n  - [contexture:path/to/rule]           (from default repository)\n  - [contexture(source):path/to/rule]   (from custom source)\n  - path/to/rule                        (shorthand for default registry)\n\nExamples:\n  - [contexture:languages/go/testing]\n  - languages/go/testing\n\nOriginal error: %w", ruleID, err)
+				return fmt.Errorf("invalid rule ID '%s'.\n\nRule IDs should be in one of these formats:\n  - [contexture:path/to/rule]           (from default repository)\n  - [contexture(source):path/to/rule]   (from custom source)\n  - path/to/rule                        (shorthand for default registry)\n  - path/to/rule --source URL           (with custom source flag)\n\nExamples:\n  - [contexture:languages/go/testing]\n  - languages/go/testing\n  - test/lemon --source https://github.com/user/repo.git\n\nOriginal error: %w", ruleID, err)
 			}
 
 			// Convert simple format to full format for storage (without variables)
 			var fullRuleID string
-			if !strings.HasPrefix(ruleID, "[contexture") {
+			if !strings.HasPrefix(processedRuleID, "[contexture") {
 				// This is a simple format, convert to full format
-				fullRuleID = fmt.Sprintf("[contexture:%s]", ruleID)
+				fullRuleID = fmt.Sprintf("[contexture:%s]", processedRuleID)
 			} else {
 				// Extract the rule ID without variables for storage
-				if strings.Contains(ruleID, "]{") {
+				if strings.Contains(processedRuleID, "]{") {
 					// Remove variables part from the rule ID for storage
-					if bracketIdx := strings.Index(ruleID, "]{"); bracketIdx != -1 {
-						fullRuleID = ruleID[:bracketIdx] + "]"
+					if bracketIdx := strings.Index(processedRuleID, "]{"); bracketIdx != -1 {
+						fullRuleID = processedRuleID[:bracketIdx] + "]"
 					}
 				} else {
-					fullRuleID = ruleID
+					fullRuleID = processedRuleID
 				}
 			}
 
@@ -148,13 +168,13 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 
 			if compositeFetcher, ok := c.ruleFetcher.(sourceAwareFetcher); ok {
 				// Use the source-aware method to force remote fetching (empty source = default/remote)
-				fetchedRule, err = compositeFetcher.FetchRuleWithSource(ctx, ruleID, "")
+				fetchedRule, err = compositeFetcher.FetchRuleWithSource(ctx, processedRuleID, "")
 			} else {
 				// Fallback to regular fetch
-				fetchedRule, err = c.ruleFetcher.FetchRule(ctx, ruleID)
+				fetchedRule, err = c.ruleFetcher.FetchRule(ctx, processedRuleID)
 			}
 			if err != nil {
-				return fmt.Errorf("failed to fetch rule '%s'.\n\nOriginal error: %w", ruleID, err)
+				return fmt.Errorf("failed to fetch rule '%s'.\n\nOriginal error: %w", processedRuleID, err)
 			}
 
 			// Validate rule
