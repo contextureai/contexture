@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -226,4 +227,120 @@ func ExtractRulePath(ruleID string) string {
 		pathPart = pathPart[:commaIdx]
 	}
 	return pathPart
+}
+
+// ExtractRuleDisplayPath extracts a display-friendly rule path that includes source for custom rules
+// For standard rules: returns just the path (e.g., "languages/go/basics")
+// For custom source rules: returns "source/path" (e.g., "git@github.com:user/repo/test/rule")
+func ExtractRuleDisplayPath(ruleID string) string {
+	if ruleID == "" {
+		return ""
+	}
+
+	// Handle standard format [contexture:path]
+	if strings.HasPrefix(ruleID, "[contexture:") {
+		// Standard rule - just extract path
+		return ExtractRulePath(ruleID)
+	}
+
+	// Handle custom source format [contexture(source):path]
+	if strings.HasPrefix(ruleID, "[contexture(") {
+		// Find the source part
+		sourceStart := len("[contexture(")
+		sourceEnd := strings.Index(ruleID[sourceStart:], "):")
+		if sourceEnd == -1 {
+			// Fallback to standard extraction if malformed
+			return ExtractRulePath(ruleID)
+		}
+
+		source := ruleID[sourceStart : sourceStart+sourceEnd]
+
+		// Extract the path part (reuse existing logic)
+		pathPart := ExtractRulePath(ruleID)
+
+		// Extract ref part if present (format: [contexture(source):path,ref])
+		refPart := ""
+		afterSource := ruleID[sourceStart+sourceEnd+2:] // Skip "):"
+		if commaIdx := strings.Index(afterSource, ","); commaIdx != -1 {
+			// Find end of ref (before ] or { if variables present)
+			refEnd := strings.IndexAny(afterSource[commaIdx+1:], "]}")
+			if refEnd == -1 {
+				refEnd = len(afterSource) - (commaIdx + 1)
+			}
+			refPart = strings.TrimSpace(afterSource[commaIdx+1 : commaIdx+1+refEnd])
+		}
+
+		// Only show source prefix for actual custom Git URLs, not default repo references
+		if isCustomGitSource(source) {
+			// Format source for display: convert Git URLs to user-friendly format
+			displaySource := formatSourceForDisplay(source)
+
+			// Combine source and path
+			result := displaySource
+			if pathPart != "" {
+				result = displaySource + "/" + pathPart
+			}
+
+			// Add ref if present and not default
+			if refPart != "" && refPart != "main" && refPart != "master" {
+				result = result + " (" + refPart + ")"
+			}
+
+			return result
+		}
+
+		// For default repository references (like "github", "local"), just return the path
+		return pathPart
+	}
+
+	// Fallback for any other format
+	return ExtractRulePath(ruleID)
+}
+
+// isCustomGitSource checks if a source string is a custom Git URL vs a default repo reference
+func isCustomGitSource(source string) bool {
+	// Exclude the default repository
+	if source == DefaultRepository ||
+		source == strings.TrimSuffix(DefaultRepository, ".git") {
+		return false
+	}
+
+	// Custom Git sources are full URLs or SSH addresses (but not the default repo)
+	return strings.HasPrefix(source, "git@") ||
+		strings.HasPrefix(source, "https://") ||
+		strings.HasPrefix(source, "http://")
+}
+
+// formatSourceForDisplay converts a source URL to a display-friendly format
+func formatSourceForDisplay(source string) string {
+	// Convert SSH URLs like "git@github.com:user/repo.git" to "git@github.com:user/repo"
+	if strings.HasPrefix(source, "git@") && strings.HasSuffix(source, ".git") {
+		return strings.TrimSuffix(source, ".git")
+	}
+
+	// Convert HTTPS URLs like "https://github.com/user/repo.git" to "github.com/user/repo"
+	if source, found := strings.CutPrefix(source, "https://"); found {
+		return strings.TrimSuffix(source, ".git")
+	}
+
+	// Return as-is for other formats
+	return source
+}
+
+// FormatSourceForDisplay formats the source information for display with ref
+func FormatSourceForDisplay(source, ref string) string {
+	// Format source for display: convert Git URLs to user-friendly format
+	displaySource := formatSourceForDisplay(source)
+
+	// Add ref if it's specified and not the default
+	if ref != "" && ref != "main" && ref != "master" {
+		return fmt.Sprintf("%s (%s)", displaySource, ref)
+	}
+
+	return displaySource
+}
+
+// IsCustomGitSource checks if a source string is a custom Git URL vs a default repo reference
+func IsCustomGitSource(source string) bool {
+	return isCustomGitSource(source)
 }

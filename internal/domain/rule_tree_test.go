@@ -371,6 +371,128 @@ func TestExtractRulePath(t *testing.T) {
 	})
 }
 
+func TestExtractRuleDisplayPath(t *testing.T) {
+	t.Parallel()
+	t.Run("standard contexture rule returns just path", func(t *testing.T) {
+		ruleID := "[contexture:languages/go/basics]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "languages/go/basics", result)
+	})
+
+	t.Run("custom SSH source includes source in path", func(t *testing.T) {
+		ruleID := "[contexture(git@github.com:ryanskidmore/secretrules.git):test/lemon]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@github.com:ryanskidmore/secretrules/test/lemon", result)
+	})
+
+	t.Run("custom HTTPS source converts to friendly format", func(t *testing.T) {
+		ruleID := "[contexture(https://github.com/user/repo.git):path/to/rule]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "github.com/user/repo/path/to/rule", result)
+	})
+
+	t.Run("custom source with branch shows branch in parentheses", func(t *testing.T) {
+		ruleID := "[contexture(git@github.com:user/repo.git):test/rule,develop]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@github.com:user/repo/test/rule (develop)", result)
+	})
+
+	t.Run("custom source with variables strips variables", func(t *testing.T) {
+		ruleID := "[contexture(git@example.com:org/rules.git):security/auth]{\"level\": \"strict\"}"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@example.com:org/rules/security/auth", result)
+	})
+
+	t.Run("HTTPS without .git suffix", func(t *testing.T) {
+		ruleID := "[contexture(https://gitlab.com/company/rules):policies/security]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "gitlab.com/company/rules/policies/security", result)
+	})
+
+	t.Run("default repo reference shows only path", func(t *testing.T) {
+		ruleID := "[contexture(github):typescript/strict-config]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "typescript/strict-config", result)
+	})
+
+	t.Run("local repo reference shows only path", func(t *testing.T) {
+		ruleID := "[contexture(local):user/custom-rule]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "user/custom-rule", result)
+	})
+
+	t.Run("empty rule ID returns empty", func(t *testing.T) {
+		result := ExtractRuleDisplayPath("")
+		assert.Empty(t, result)
+	})
+
+	t.Run("fallback for malformed custom source", func(t *testing.T) {
+		ruleID := "[contexture(malformed:test/rule]"
+		result := ExtractRuleDisplayPath(ruleID)
+		// Should fallback to standard extraction which returns the malformed input
+		assert.Equal(t, "[contexture(malformed:test/rule", result)
+	})
+
+	t.Run("custom source with non-default ref shows ref in parentheses", func(t *testing.T) {
+		ruleID := "[contexture(git@github.com:user/repo.git):test/rule,develop]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@github.com:user/repo/test/rule (develop)", result)
+	})
+
+	t.Run("custom source with main ref does not show ref", func(t *testing.T) {
+		ruleID := "[contexture(git@github.com:user/repo.git):test/rule,main]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "git@github.com:user/repo/test/rule", result)
+	})
+
+	t.Run("default repository does not show source even with custom ref", func(t *testing.T) {
+		ruleID := "[contexture(https://github.com/contextureai/rules.git):some/rule,feature]"
+		result := ExtractRuleDisplayPath(ruleID)
+		assert.Equal(t, "some/rule", result) // Should not show source for default repo
+	})
+}
+
+func TestFormatSourceForDisplay(t *testing.T) {
+	t.Parallel()
+	t.Run("SSH URL with develop ref shows ref in parentheses", func(t *testing.T) {
+		result := FormatSourceForDisplay("git@github.com:user/repo.git", "develop")
+		assert.Equal(t, "git@github.com:user/repo (develop)", result)
+	})
+
+	t.Run("SSH URL with main ref does not show ref", func(t *testing.T) {
+		result := FormatSourceForDisplay("git@github.com:user/repo.git", "main")
+		assert.Equal(t, "git@github.com:user/repo", result)
+	})
+
+	t.Run("HTTPS URL with feature ref shows ref in parentheses", func(t *testing.T) {
+		result := FormatSourceForDisplay("https://github.com/user/repo.git", "feature")
+		assert.Equal(t, "github.com/user/repo (feature)", result)
+	})
+}
+
+func TestIsCustomGitSource(t *testing.T) {
+	t.Parallel()
+	t.Run("default repository returns false", func(t *testing.T) {
+		result := IsCustomGitSource(DefaultRepository)
+		assert.False(t, result)
+	})
+
+	t.Run("default repository without .git returns false", func(t *testing.T) {
+		result := IsCustomGitSource("https://github.com/contextureai/rules")
+		assert.False(t, result)
+	})
+
+	t.Run("custom SSH URL returns true", func(t *testing.T) {
+		result := IsCustomGitSource("git@github.com:user/repo.git")
+		assert.True(t, result)
+	})
+
+	t.Run("custom HTTPS URL returns true", func(t *testing.T) {
+		result := IsCustomGitSource("https://github.com/user/repo.git")
+		assert.True(t, result)
+	})
+}
+
 func TestRuleTreeEdgeCases(t *testing.T) {
 	t.Parallel()
 	t.Run("handles duplicate rule paths", func(t *testing.T) {

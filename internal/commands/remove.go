@@ -156,27 +156,37 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 
 	// List the removed rules like in add command
 	for _, ruleID := range removedRules {
-		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
-		displayRuleID := ruleID
+		// Extract display-friendly rule ID using domain package logic
+		displayRuleID := domain.ExtractRulePath(ruleID)
+		if displayRuleID == "" {
+			displayRuleID = ruleID
+		}
+
 		var variables map[string]any
 		var defaultVars map[string]any
 
-		if strings.HasPrefix(ruleID, "[contexture:") {
-			// Parse to extract just the path component
-			parsed, err := c.ruleFetcher.ParseRuleID(ruleID)
-			if err == nil && parsed.RulePath != "" {
-				displayRuleID = parsed.RulePath
+		// Parse rule to extract source information and get variables
+		if parsed, err := c.ruleFetcher.ParseRuleID(ruleID); err == nil {
+			// Get the configured variables we captured before removal
+			variables = ruleVariablesMap[ruleID]
 
-				// Get the configured variables we captured before removal
-				variables = ruleVariablesMap[ruleID]
-
-				// Fetch the full rule to get default variables
-				if fetchedRule, fetchErr := c.ruleFetcher.FetchRule(context.Background(), ruleID); fetchErr == nil {
-					defaultVars = fetchedRule.DefaultVariables
-				}
+			// Fetch the full rule to get default variables
+			if fetchedRule, fetchErr := c.ruleFetcher.FetchRule(context.Background(), ruleID); fetchErr == nil {
+				defaultVars = fetchedRule.DefaultVariables
 			}
+
+			// Display the short rule ID
+			fmt.Printf("  %s\n", displayRuleID)
+
+			// Show source information for custom source rules (like in ls command)
+			if parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
+				darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+				sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
+				fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
+			}
+		} else {
+			fmt.Printf("  %s\n", displayRuleID)
 		}
-		fmt.Printf("  %s\n", displayRuleID)
 
 		// Show variables only if they differ from defaults
 		if rule.ShouldDisplayVariables(variables, defaultVars) {
@@ -221,10 +231,9 @@ func (c *RemoveCommand) ShowInstalledRules(ctx context.Context, cmd *cli.Command
 			continue
 		}
 
-		// Convert full format to simple format for display
-		ruleID := strings.TrimPrefix(ruleRef.ID, "[contexture:")
-		ruleID = strings.TrimSuffix(ruleID, "]")
-		installedRuleIDs = append(installedRuleIDs, ruleID)
+		// Use the full rule ID as stored in configuration
+		// Don't attempt to convert to "simple format" as it breaks custom source rules
+		installedRuleIDs = append(installedRuleIDs, ruleRef.ID)
 	}
 
 	// Inform user about local rules if any exist
@@ -318,7 +327,7 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 			log.Warn("Failed to fetch rule details", "rule", ruleID, "error", fetchErr)
 			// Create a minimal rule object for display if fetch fails
 			minimalRule := &domain.Rule{
-				ID:          fmt.Sprintf("[contexture:%s]", ruleID),
+				ID:          ruleID, // Use the actual rule ID as stored in config
 				Title:       ruleID,
 				Description: "Failed to load rule details",
 				Tags:        []string{"unknown"},
@@ -330,10 +339,8 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 		// Find the configured variables for this rule from the project configuration
 		var configuredVariables map[string]any
 		for _, configRule := range configResult.Config.Rules {
-			// Use the same matching logic as HasRule to find the corresponding config rule
-			if configRule.ID == ruleID ||
-				configRule.ID == fmt.Sprintf("[contexture:%s]", ruleID) ||
-				strings.TrimPrefix(strings.TrimSuffix(configRule.ID, "]"), "[contexture:") == ruleID {
+			// Use the centralized matching logic from project manager
+			if configRule.ID == ruleID {
 				configuredVariables = configRule.Variables
 				break
 			}

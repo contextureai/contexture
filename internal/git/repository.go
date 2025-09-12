@@ -33,6 +33,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/kevinburke/ssh_config"
 	"github.com/spf13/afero"
 )
 
@@ -223,12 +224,54 @@ type DefaultAuthProvider struct{}
 func (p *DefaultAuthProvider) GetAuth(repoURL string) (transport.AuthMethod, error) {
 	// SSH authentication
 	if strings.HasPrefix(repoURL, "git@") {
-		// Use SSH agent only - no key file fallback for security
+		// Try SSH agent first
 		auth, err := ssh.NewSSHAgentAuth("git")
-		if err != nil {
-			return nil, fmt.Errorf("%w: SSH agent authentication failed: %w", ErrAuthFailed, err)
+		if err == nil {
+			return auth, nil
 		}
-		return auth, nil
+
+		// SSH agent failed, try SSH key files as fallback
+		log.Debug("SSH agent authentication failed, trying SSH key files", "error", err)
+
+		// Extract hostname from SSH URL for SSH config lookup
+		hostname := p.extractHostnameFromSSHURL(repoURL)
+
+		// Try SSH config-specified identity file first
+		if hostname != "" {
+			if keyPath := p.getSSHConfigIdentityFile(hostname); keyPath != "" {
+				if auth, err := p.trySSHKeyFile(keyPath); err == nil {
+					log.Debug("Successfully authenticated with SSH config identity file", "hostname", hostname, "path", keyPath)
+					return auth, nil
+				}
+				log.Debug("Failed to use SSH config identity file", "hostname", hostname, "path", keyPath, "error", err)
+			}
+		}
+
+		// Try custom SSH key path from environment
+		if keyPath := os.Getenv("SSH_KEY_PATH"); keyPath != "" {
+			if auth, err := p.trySSHKeyFile(keyPath); err == nil {
+				log.Debug("Successfully authenticated with custom SSH key", "path", keyPath)
+				return auth, nil
+			}
+			log.Debug("Failed to use custom SSH key", "path", keyPath, "error", err)
+		}
+
+		// Try standard SSH key locations
+		standardKeyPaths := []string{
+			filepath.Join(os.Getenv("HOME"), ".ssh", "id_ed25519"),
+			filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa"),
+			filepath.Join(os.Getenv("HOME"), ".ssh", "id_ecdsa"),
+			filepath.Join(os.Getenv("HOME"), ".ssh", "id_dsa"),
+		}
+
+		for _, keyPath := range standardKeyPaths {
+			if auth, err := p.trySSHKeyFile(keyPath); err == nil {
+				log.Debug("Successfully authenticated with SSH key", "path", keyPath)
+				return auth, nil
+			}
+		}
+
+		return nil, fmt.Errorf("%w: SSH agent authentication failed and no usable SSH keys found", ErrAuthFailed)
 	}
 
 	// HTTPS authentication with domain restrictions
@@ -263,6 +306,59 @@ func (p *DefaultAuthProvider) GetAuth(repoURL string) (transport.AuthMethod, err
 	}
 
 	return nil, ErrNoAuthMethod
+}
+
+// trySSHKeyFile attempts to create SSH authentication using a specific key file
+func (p *DefaultAuthProvider) trySSHKeyFile(keyPath string) (transport.AuthMethod, error) {
+	// Check if key file exists
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("SSH key file not found: %s", keyPath)
+	}
+
+	// Try to load the key without a passphrase first
+	auth, err := ssh.NewPublicKeysFromFile("git", keyPath, "")
+	if err == nil {
+		return auth, nil
+	}
+
+	// If loading without passphrase failed, check if it's due to encryption
+	// For now, we don't support encrypted keys in the fallback mechanism
+	// to avoid prompting for passphrases in non-interactive contexts
+	log.Debug("Failed to load SSH key (may be encrypted)", "path", keyPath, "error", err)
+	return nil, fmt.Errorf("failed to load SSH key from %s: %w", keyPath, err)
+}
+
+// extractHostnameFromSSHURL extracts the hostname from an SSH URL like "git@github.com:user/repo.git"
+func (p *DefaultAuthProvider) extractHostnameFromSSHURL(sshURL string) string {
+	// SSH URLs are in format: git@hostname:path/to/repo.git
+	if strings.HasPrefix(sshURL, "git@") {
+		// Remove "git@" prefix
+		withoutPrefix := strings.TrimPrefix(sshURL, "git@")
+		// Split on ":" to separate hostname from path
+		if colonIndex := strings.Index(withoutPrefix, ":"); colonIndex != -1 {
+			return withoutPrefix[:colonIndex]
+		}
+	}
+	return ""
+}
+
+// getSSHConfigIdentityFile looks up the IdentityFile for a hostname in SSH config
+func (p *DefaultAuthProvider) getSSHConfigIdentityFile(hostname string) string {
+	// Use ssh_config to look up the IdentityFile for this hostname
+	identityFile := ssh_config.Get(hostname, "IdentityFile")
+	if identityFile == "" {
+		return ""
+	}
+
+	// Expand tilde to home directory if needed
+	if strings.HasPrefix(identityFile, "~/") {
+		homeDir := os.Getenv("HOME")
+		if homeDir != "" {
+			return filepath.Join(homeDir, identityFile[2:])
+		}
+	}
+
+	return identityFile
 }
 
 // NewRepository creates a new Repository instance with default configuration
@@ -313,7 +409,7 @@ func (c *Client) Clone(
 
 	// Perform the clone with context
 	if err := c.performClone(ctx, localPath, cloneOptions); err != nil {
-		return c.handleCloneError(localPath, err)
+		return c.handleCloneError(localPath, err, repoURL)
 	}
 
 	// Handle post-clone branch checkout if needed
@@ -725,7 +821,7 @@ func (c *Client) performClone(
 }
 
 // handleCloneError processes clone errors and cleans up on failure
-func (c *Client) handleCloneError(localPath string, err error) error {
+func (c *Client) handleCloneError(localPath string, err error, repoURL string) error {
 	// Clean up on failure
 	if cleanupErr := c.fs.RemoveAll(localPath); cleanupErr != nil {
 		log.Warn("Failed to cleanup failed clone directory", "path", localPath, "error", cleanupErr)
@@ -736,6 +832,10 @@ func (c *Client) handleCloneError(localPath string, err error) error {
 		return fmt.Errorf("repository is empty")
 	}
 	if errors.Is(err, transport.ErrRepositoryNotFound) {
+		// For SSH URLs, repository not found might be an authentication issue
+		if strings.HasPrefix(repoURL, "git@") {
+			return fmt.Errorf("repository not found (may be due to authentication issues)")
+		}
 		return fmt.Errorf("repository not found")
 	}
 	if errors.Is(err, transport.ErrAuthenticationRequired) {

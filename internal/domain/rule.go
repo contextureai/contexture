@@ -196,7 +196,7 @@ func (rr *RuleRef) GetSource() string {
 // GetRef returns the ref or default to "main"
 func (rr *RuleRef) GetRef() string {
 	if rr.Ref == "" {
-		return "main"
+		return DefaultBranch
 	}
 	return rr.Ref
 }

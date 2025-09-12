@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20250821175832-f235fab04313
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/go-playground/validator/v10 v10.27.0
+	github.com/kevinburke/ssh_config v1.2.0
 	github.com/spf13/afero v1.14.0
 	github.com/stretchr/testify v1.10.0
 	github.com/titanous/json5 v1.0.0
@@ -54,7 +55,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

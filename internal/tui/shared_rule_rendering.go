@@ -89,31 +89,8 @@ func createRuleItemStyles() ruleItemStyles {
 // extractRulePath extracts the rule path from a contexture rule ID
 // Handles formats: [contexture:path/rule], [contexture(source):path/rule], [contexture:path/rule,branch]{variables}
 func extractRulePath(ruleID string) string {
-	if ruleID == "" {
-		return ""
-	}
-
-	// Remove contexture wrapper: [contexture:...] or [contexture(source):...]
-	pathPart := strings.TrimPrefix(ruleID, "[contexture:")
-	if strings.HasPrefix(ruleID, "[contexture(") {
-		// Handle format: [contexture(source):path/rule]
-		parts := strings.SplitN(pathPart, "):", 2)
-		if len(parts) == 2 {
-			pathPart = parts[1]
-		}
-	}
-	pathPart = strings.TrimSuffix(pathPart, "]")
-
-	// Remove variables part if present (path/rule,branch]{variables} or path/rule]{variables})
-	if bracketIdx := strings.Index(pathPart, "]{"); bracketIdx != -1 {
-		pathPart = pathPart[:bracketIdx]
-	}
-
-	// Remove branch suffix if present (path/rule,branch)
-	if commaIdx := strings.Index(pathPart, ","); commaIdx != -1 {
-		pathPart = pathPart[:commaIdx]
-	}
-	return pathPart
+	// Use the domain package's enhanced display path function that includes source for custom rules
+	return domain.ExtractRuleDisplayPath(ruleID)
 }
 
 // extractRuleVariables extracts variables from a contexture rule ID
