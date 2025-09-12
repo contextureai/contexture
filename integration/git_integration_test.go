@@ -717,7 +717,7 @@ func TestGitIntegrationWithCustomConfig(t *testing.T) {
 
 	t.Run("custom timeout configuration", func(t *testing.T) {
 		// Create client with short timeout
-		config := git.DefaultConfig()
+		config := git.DefaultConfig(fs)
 		config.CloneTimeout = testShortTimeout
 		client := git.NewClient(fs, config)
 
@@ -743,7 +743,7 @@ func TestGitIntegrationWithCustomConfig(t *testing.T) {
 
 	t.Run("restricted host configuration", func(t *testing.T) {
 		// Create client with restricted hosts
-		config := git.DefaultConfig()
+		config := git.DefaultConfig(fs)
 		config.AllowedHosts = []string{"github.com"} // Only allow github.com
 		client := git.NewClient(fs, config)
 
@@ -759,7 +759,7 @@ func TestGitIntegrationWithCustomConfig(t *testing.T) {
 
 	t.Run("restricted scheme configuration", func(t *testing.T) {
 		// Create client with only HTTPS allowed
-		config := git.DefaultConfig()
+		config := git.DefaultConfig(fs)
 		config.AllowedSchemes = []string{"https"} // Only HTTPS
 		client := git.NewClient(fs, config)
 
