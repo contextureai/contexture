@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -257,16 +258,35 @@ func ExtractRuleDisplayPath(ruleID string) string {
 		// Extract the path part (reuse existing logic)
 		pathPart := ExtractRulePath(ruleID)
 
+		// Extract ref part if present (format: [contexture(source):path,ref])
+		refPart := ""
+		afterSource := ruleID[sourceStart+sourceEnd+2:] // Skip "):"
+		if commaIdx := strings.Index(afterSource, ","); commaIdx != -1 {
+			// Find end of ref (before ] or { if variables present)
+			refEnd := strings.IndexAny(afterSource[commaIdx+1:], "]}")
+			if refEnd == -1 {
+				refEnd = len(afterSource) - (commaIdx + 1)
+			}
+			refPart = strings.TrimSpace(afterSource[commaIdx+1 : commaIdx+1+refEnd])
+		}
+
 		// Only show source prefix for actual custom Git URLs, not default repo references
 		if isCustomGitSource(source) {
 			// Format source for display: convert Git URLs to user-friendly format
 			displaySource := formatSourceForDisplay(source)
 
 			// Combine source and path
+			result := displaySource
 			if pathPart != "" {
-				return displaySource + "/" + pathPart
+				result = displaySource + "/" + pathPart
 			}
-			return displaySource
+
+			// Add ref if present and not default
+			if refPart != "" && refPart != "main" && refPart != "master" {
+				result = result + " (" + refPart + ")"
+			}
+
+			return result
 		}
 
 		// For default repository references (like "github", "local"), just return the path
@@ -279,7 +299,13 @@ func ExtractRuleDisplayPath(ruleID string) string {
 
 // isCustomGitSource checks if a source string is a custom Git URL vs a default repo reference
 func isCustomGitSource(source string) bool {
-	// Custom Git sources are full URLs or SSH addresses
+	// Exclude the default repository
+	if source == DefaultRepository ||
+		source == strings.TrimSuffix(DefaultRepository, ".git") {
+		return false
+	}
+
+	// Custom Git sources are full URLs or SSH addresses (but not the default repo)
 	return strings.HasPrefix(source, "git@") ||
 		strings.HasPrefix(source, "https://") ||
 		strings.HasPrefix(source, "http://")
@@ -299,4 +325,22 @@ func formatSourceForDisplay(source string) string {
 
 	// Return as-is for other formats
 	return source
+}
+
+// FormatSourceForDisplay formats the source information for display with ref
+func FormatSourceForDisplay(source, ref string) string {
+	// Format source for display: convert Git URLs to user-friendly format
+	displaySource := formatSourceForDisplay(source)
+
+	// Add ref if it's specified and not the default
+	if ref != "" && ref != "main" && ref != "master" {
+		return fmt.Sprintf("%s (%s)", displaySource, ref)
+	}
+
+	return displaySource
+}
+
+// IsCustomGitSource checks if a source string is a custom Git URL vs a default repo reference
+func IsCustomGitSource(source string) bool {
+	return isCustomGitSource(source)
 }

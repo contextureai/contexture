@@ -42,8 +42,8 @@ lint: $(GOLANGCI_LINT)
 
 fmt: $(GOIMPORTS) $(GOFUMPT)
 	@echo "Formatting code..."
-	$(GOIMPORTS) -w $(GO_FILES)
-	$(GOFUMPT) -e -l -w $(GO_FILES)
+	@$(GOIMPORTS) -w $(GO_FILES)
+	@$(GOFUMPT) -e -l -w $(GO_FILES)
 
 generate: $(MOCKERY)
 	@echo "Generating mocks..."

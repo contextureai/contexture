@@ -48,6 +48,8 @@ type UpdateResult struct {
 	Status         UpdateStatus
 	CurrentCommit  GitCommitInfo
 	LatestCommit   GitCommitInfo
+	Source         string // Source repository for custom rules
+	Ref            string // Branch/tag reference for custom rules
 }
 
 // UpdateStatus represents the status of a rule update check
@@ -238,20 +240,22 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 	spinnerIndex := 0
 
 	for i, ruleRef := range rules {
-		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
-		displayRuleID := ruleRef.ID
-		if strings.HasPrefix(ruleRef.ID, "[contexture:") {
-			// Parse to extract just the path component
-			parsed, err := c.ruleFetcher.ParseRuleID(ruleRef.ID)
-			if err == nil && parsed.RulePath != "" {
-				displayRuleID = parsed.RulePath
-			}
+		// Extract simple rule ID for display using the domain package's ExtractRulePath
+		displayRuleID := domain.ExtractRulePath(ruleRef.ID)
+		if displayRuleID == "" {
+			displayRuleID = ruleRef.ID
 		}
 
 		result := UpdateResult{
 			RuleID:      ruleRef.ID,
 			DisplayName: displayRuleID,
 			Status:      StatusChecking,
+		}
+
+		// Extract source and ref information for custom rules
+		if parsed, err := c.ruleFetcher.ParseRuleID(ruleRef.ID); err == nil {
+			result.Source = parsed.Source
+			result.Ref = parsed.Ref
 		}
 
 		// Skip pinned rules
@@ -288,7 +292,7 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			}
 
 			// Clear line and show pinned status
-			fmt.Printf("\r%s\n", strings.Repeat(" ", 80)) // Clear the line first
+			fmt.Printf("\r") // Clear the line first
 			pinnedLine := c.formatRuleDisplay(result,
 				lipgloss.NewStyle().Foreground(theme.Info).Render("~"),
 				lipgloss.NewStyle().Foreground(theme.Muted).Render("pinned"))
@@ -312,8 +316,8 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			displayRuleID,
 			mutedStyle.Render("checking..."),
 		)
-		padding := strings.Repeat(" ", 80) // Ensure we clear the whole line
-		fmt.Printf("\r%s%s", checkingLine, padding[:maxLen(80-len(checkingLine))])
+		// Show checking status with simple carriage return
+		fmt.Printf("\r%s", checkingLine+strings.Repeat(" ", 20)) // Add padding to clear any leftover text
 
 		// Fetch latest rule content and get latest commit info
 		currentCommit, latestCommit, hasUpdate, err := c.checkRuleForUpdate(
@@ -325,7 +329,7 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			result.Error = fmt.Errorf("failed to check rule for updates: %w", err)
 			result.Status = StatusError
 			// Clear line and show error with proper formatting
-			fmt.Printf("\r%s\n", strings.Repeat(" ", 80)) // Clear the line first
+			fmt.Printf("\r") // Clear the line first
 			errorLine := c.formatRuleDisplay(result,
 				lipgloss.NewStyle().Foreground(theme.Error).Render("✗"),
 				lipgloss.NewStyle().Foreground(theme.Error).Render("error"))
@@ -349,10 +353,11 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 				result.LatestVersion = latestCommit.Hash
 
 				// Clear line and show update available with commit info
+				fmt.Printf("\r") // Clear the line first
 				updateLine := c.formatRuleDisplay(result,
 					lipgloss.NewStyle().Foreground(theme.Update).Render("↑"),
 					lipgloss.NewStyle().Foreground(theme.Update).Render("update available"))
-				fmt.Printf("\r%s%s\n", updateLine, padding[:maxLen(80-len(updateLine))])
+				fmt.Printf("%s\n", updateLine)
 			} else {
 				result.HasUpdate = false
 				result.Status = StatusUpToDate
@@ -360,10 +365,11 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 				result.LatestVersion = latestCommit.Hash
 
 				// Clear line and show up to date with commit info
+				fmt.Printf("\r") // Clear the line first
 				upToDateLine := c.formatRuleDisplay(result,
 					lipgloss.NewStyle().Foreground(theme.Success).Render("✓"),
 					lipgloss.NewStyle().Foreground(theme.Muted).Render("up to date"))
-				fmt.Printf("\r%s%s\n", upToDateLine, padding[:maxLen(80-len(upToDateLine))])
+				fmt.Printf("%s\n", upToDateLine)
 			}
 		}
 
@@ -488,8 +494,7 @@ func (c *UpdateCommand) applyUpdates(
 			lipgloss.NewStyle().Foreground(theme.Update).Render("↑"),
 			result.DisplayName,
 			mutedStyle.Render("applying..."))
-		padding := strings.Repeat(" ", 80)
-		fmt.Printf("\r%s%s", applyingLine, padding[:maxLen(80-len(applyingLine))])
+		fmt.Printf("\r\033[K%s", applyingLine)
 
 		// Simulate some processing time
 		time.Sleep(200 * time.Millisecond)
@@ -498,11 +503,12 @@ func (c *UpdateCommand) applyUpdates(
 		fetchedRule, err := c.ruleFetcher.FetchRule(ctx, result.RuleID)
 		if err != nil {
 			// Clear line and show error
+			fmt.Printf("\r") // Clear the line first
 			errorLine := fmt.Sprintf("  %s %s %s",
 				errorStyle.Render("✗"),
 				result.DisplayName,
 				errorStyle.Render("failed"))
-			fmt.Printf("\r%s%s\n", errorLine, padding[:maxLen(80-len(errorLine))])
+			fmt.Printf("%s\n", errorLine)
 			errors = append(errors, fmt.Sprintf("%s: %v", result.DisplayName, err))
 			continue
 		}
@@ -516,15 +522,12 @@ func (c *UpdateCommand) applyUpdates(
 			}
 			errorMsg := fmt.Sprintf("validation failed: %s", strings.Join(errorMessages, ", "))
 			// Clear line and show validation error
+			fmt.Printf("\r") // Clear the line first
 			validationErrorLine := fmt.Sprintf("  %s %s %s",
 				errorStyle.Render("✗"),
 				result.DisplayName,
 				errorStyle.Render("validation failed"))
-			fmt.Printf(
-				"\r%s%s\n",
-				validationErrorLine,
-				padding[:maxLen(80-len(validationErrorLine))],
-			)
+			fmt.Printf("%s\n", validationErrorLine)
 			errors = append(errors, fmt.Sprintf("%s: %s", result.DisplayName, errorMsg))
 			continue
 		}
@@ -533,11 +536,12 @@ func (c *UpdateCommand) applyUpdates(
 		c.updateRuleCommitHash(config, result.RuleID, result.LatestCommit.Hash)
 
 		// Clear line and show success
+		fmt.Printf("\r\033[K") // Clear the line first
 		successLine := fmt.Sprintf("  %s %s %s",
 			successStyle.Render("✓"),
 			result.DisplayName,
 			successStyle.Render("updated"))
-		fmt.Printf("\r%s%s\n", successLine, padding[:maxLen(80-len(successLine))])
+		fmt.Printf("%s\n", successLine)
 		updatedCount++
 	}
 
@@ -588,14 +592,6 @@ func (c *UpdateCommand) applyUpdates(
 	return nil
 }
 
-// max returns the larger of two integers
-func maxLen(b int) int {
-	if 0 > b {
-		return 0
-	}
-	return b
-}
-
 // shortHash returns the first 7 characters of a commit hash for display
 func shortHash(hash string) string {
 	if len(hash) >= 7 {
@@ -631,9 +627,10 @@ func (c *UpdateCommand) formatRuleDisplay(result UpdateResult, status, statusTex
 		displayName = displayName[:nameWidth-4] + "..."
 	}
 
+	var mainLine string
 	if result.HasUpdate && result.Status == StatusUpdateAvailable {
 		// Show current → latest for updates
-		return fmt.Sprintf(
+		mainLine = fmt.Sprintf(
 			"%s %-*s %-*s %s → %s",
 			status,
 			nameWidth, displayName,
@@ -655,22 +652,33 @@ func (c *UpdateCommand) formatRuleDisplay(result UpdateResult, status, statusTex
 				),
 			),
 		)
-	}
-	// Show just current for up-to-date or error
-	return fmt.Sprintf(
-		"%s %-*s %-*s %s",
-		status,
-		nameWidth, displayName,
-		textWidth, statusText,
-		darkGrayStyle.Render(
-			fmt.Sprintf(
-				"%-*s %s",
-				dateWidth,
-				formatDateForAlignment(result.CurrentCommit.Date),
-				shortHash(result.CurrentCommit.Hash),
+	} else {
+		// Show just current for up-to-date or error
+		mainLine = fmt.Sprintf(
+			"%s %-*s %-*s %s",
+			status,
+			nameWidth, displayName,
+			textWidth, statusText,
+			darkGrayStyle.Render(
+				fmt.Sprintf(
+					"%-*s %s",
+					dateWidth,
+					formatDateForAlignment(result.CurrentCommit.Date),
+					shortHash(result.CurrentCommit.Hash),
+				),
 			),
-		),
-	)
+		)
+	}
+
+	// Check if this is a custom source rule (not empty and not default)
+	if result.Source != "" && domain.IsCustomGitSource(result.Source) {
+		// Add source line in dark gray underneath
+		sourceLine := domain.FormatSourceForDisplay(result.Source, result.Ref)
+		sourceDisplay := darkGrayStyle.Render(fmt.Sprintf("    %s", sourceLine))
+		return fmt.Sprintf("%s\n%s", mainLine, sourceDisplay)
+	}
+
+	return mainLine
 }
 
 // UpdateAction is the CLI action handler for the update command
