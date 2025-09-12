@@ -670,6 +670,32 @@ func TestDefaultAuthProvider_GetAuth_SSH(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Skip the "working SSH keys" test if we're in CI or don't have SSH keys
+			if tt.name == "SSH URL with working SSH keys" {
+				// Check if SSH keys exist in the real HOME directory
+				homeDir := os.Getenv("HOME")
+				sshDir := filepath.Join(homeDir, ".ssh")
+				hasSSHKeys := false
+
+				// Check common SSH key locations
+				keyPaths := []string{
+					filepath.Join(sshDir, "id_rsa"),
+					filepath.Join(sshDir, "id_ed25519"),
+					filepath.Join(sshDir, "id_ecdsa"),
+				}
+
+				for _, keyPath := range keyPaths {
+					if _, err := os.Stat(keyPath); err == nil {
+						hasSSHKeys = true
+						break
+					}
+				}
+
+				if !hasSSHKeys {
+					t.Skip("Skipping SSH key test: no SSH keys found in HOME directory")
+				}
+			}
+
 			// Ensure SSH_AUTH_SOCK is not set for these tests
 			t.Setenv("SSH_AUTH_SOCK", "")
 
