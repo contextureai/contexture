@@ -19,6 +19,7 @@ import (
 
 // TestRuleSelectorTUI tests the rule selector TUI component
 func TestRuleSelectorTUI(t *testing.T) {
+	t.Parallel()
 	// Sample rules are available but not used in these basic tests
 	_ = []*domain.Rule{
 		{
@@ -58,6 +59,7 @@ func TestRuleSelectorTUI(t *testing.T) {
 
 // TestRulePreviewHelper tests the rule preview functionality
 func TestRulePreviewHelper(t *testing.T) {
+	t.Parallel()
 	helper := tui.NewRulePreviewHelper()
 	require.NotNil(t, helper)
 
@@ -102,17 +104,16 @@ func TestRulePreviewHelper(t *testing.T) {
 
 // TestFileBrowserTUI tests the file browser component
 func TestFileBrowserTUI(t *testing.T) {
+	t.Parallel()
 	t.Run("file browser creation", func(t *testing.T) {
 		browser := tui.NewFileBrowser()
 		require.NotNil(t, browser)
 	})
-
-	// Note: Full TUI testing would require more complex setup
-	// These are basic smoke tests to ensure components can be created
 }
 
 // TestInteractiveTUIBehavior tests TUI behavior with simulated input using teatest
 func TestInteractiveTUIBehavior(t *testing.T) {
+	t.Parallel()
 	// Create comprehensive test rules
 	rules := []*domain.Rule{
 		{
@@ -372,6 +373,7 @@ func (m *mockRuleSelectionModel) View() string {
 
 // TestTUIComponentIntegration tests integration between TUI components
 func TestTUIComponentIntegration(t *testing.T) {
+	t.Parallel()
 	t.Run("preview helper with real rule data", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -432,6 +434,7 @@ function example() {
 
 // TestTUIErrorHandling tests error scenarios in TUI components
 func TestTUIErrorHandling(t *testing.T) {
+	t.Parallel()
 	t.Run("preview with nil rule", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -470,6 +473,7 @@ func TestTUIErrorHandling(t *testing.T) {
 
 // TestTUIPerformance tests TUI performance with large datasets
 func TestTUIPerformance(t *testing.T) {
+	t.Parallel()
 	t.Run("preview with large rule content", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -513,6 +517,7 @@ func TestTUIPerformance(t *testing.T) {
 
 // TestTUIAccessibility tests accessibility features in TUI components
 func TestTUIAccessibility(t *testing.T) {
+	t.Parallel()
 	t.Run("preview content structure", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -538,6 +543,7 @@ func TestTUIAccessibility(t *testing.T) {
 
 // TestTUIKeyboardNavigation tests keyboard navigation in TUI components
 func TestTUIKeyboardNavigation(t *testing.T) {
+	t.Parallel()
 	t.Run("rule selector keyboard simulation", func(t *testing.T) {
 		// Create a rule selector for testing
 		selector := tui.NewRuleSelector()
@@ -555,6 +561,7 @@ func TestTUIKeyboardNavigation(t *testing.T) {
 
 // TestTUISearchFunctionality tests search and filtering in TUI
 func TestTUISearchFunctionality(t *testing.T) {
+	t.Parallel()
 	t.Run("rule filtering", func(t *testing.T) {
 		// Test rule filtering logic
 		// This would test the search/filter functionality if exposed
@@ -577,6 +584,7 @@ func TestTUISearchFunctionality(t *testing.T) {
 
 // TestTUIRenderingEdgeCases tests rendering with edge cases
 func TestTUIRenderingEdgeCases(t *testing.T) {
+	t.Parallel()
 	helper := tui.NewRulePreviewHelper()
 
 	t.Run("unicode content", func(t *testing.T) {
