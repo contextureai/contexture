@@ -20,7 +20,6 @@ import (
 
 // TestRealGitRepositoryOperations tests actual git operations with real repositories
 func TestRealGitRepositoryOperations(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git integration tests in short mode")
 	}
@@ -217,7 +216,6 @@ func TestGitAuthentication(t *testing.T) {
 
 // TestGitBranchHandling tests git branch operations
 func TestGitBranchHandling(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git branch tests in short mode")
 	}
@@ -315,7 +313,6 @@ func TestGitBranchHandling(t *testing.T) {
 
 // TestGitErrorHandling tests git error scenarios
 func TestGitErrorHandling(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git error tests in short mode")
 	}
@@ -448,7 +445,6 @@ func TestGitErrorHandling(t *testing.T) {
 
 // TestGitPerformance tests git operation performance
 func TestGitPerformance(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git performance tests in short mode")
 	}
@@ -534,7 +530,6 @@ func TestGitPerformance(t *testing.T) {
 
 // TestGitCommitOperations tests git commit-related operations
 func TestGitCommitOperations(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git commit operations tests in short mode")
 	}
@@ -635,7 +630,6 @@ func TestGitCommitOperations(t *testing.T) {
 
 // TestGitPullOperations tests git pull operations
 func TestGitPullOperations(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git pull operations tests in short mode")
 	}
@@ -691,7 +685,6 @@ func TestGitPullOperations(t *testing.T) {
 
 // TestGitValidation tests git URL and repository validation
 func TestGitValidation(t *testing.T) {
-	t.Parallel()
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 
@@ -747,7 +740,6 @@ func TestGitValidation(t *testing.T) {
 
 // TestGitIntegrationWithCustomConfig tests git operations with custom configuration
 func TestGitIntegrationWithCustomConfig(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git custom config tests in short mode")
 	}
@@ -815,7 +807,6 @@ func TestGitIntegrationWithCustomConfig(t *testing.T) {
 
 // TestGitMemoryUsage tests memory usage during git operations
 func TestGitMemoryUsage(t *testing.T) {
-	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping git memory usage tests in short mode")
 	}
