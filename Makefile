@@ -33,7 +33,7 @@ build:
 	@mkdir -p $(BINARY_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE)
 
-test:
+test: build
 	@go test -race -cover -coverprofile=coverage.out -timeout=5m ./...
 
 lint: $(GOLANGCI_LINT)
