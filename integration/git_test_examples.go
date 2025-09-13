@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/spf13/afero"
 )
 
 // ExampleGitTestSuite shows how to use the GitTestSuite for comprehensive testing
@@ -40,7 +41,8 @@ func ExampleGitTestSuiteWithCustomConfig() {
 	t := &testing.T{} // In real tests, this comes from the test function parameter
 
 	// Create custom configuration
-	config := git.DefaultConfig()
+	fs := afero.NewOsFs()
+	config := git.DefaultConfig(fs)
 	config.CloneTimeout = 10 * time.Second
 	config.AllowedHosts = []string{"github.com"}
 

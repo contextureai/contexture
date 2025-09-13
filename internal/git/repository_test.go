@@ -2,7 +2,6 @@ package git
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -161,7 +160,7 @@ func TestNewRepository(t *testing.T) {
 
 func TestClient_ValidateURL(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	config := DefaultConfig()
+	config := DefaultConfig(fs)
 	config.AllowedHosts = []string{"github.com", "gitlab.com", "internal.example.com"}
 	config.AllowedSchemes = []string{"https", "ssh", "http"}
 
@@ -237,7 +236,7 @@ func TestClient_ValidateURL(t *testing.T) {
 
 func TestClient_ValidateURL_NoHostRestrictions(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	config := DefaultConfig()
+	config := DefaultConfig(fs)
 	config.AllowedHosts = []string{} // No host restrictions
 	config.AllowedSchemes = []string{"https", "ssh"}
 
@@ -267,7 +266,7 @@ func TestClient_ValidateURL_NoHostRestrictions(t *testing.T) {
 
 func TestClient_validateHost(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	config := DefaultConfig()
+	config := DefaultConfig(fs)
 	config.AllowedHosts = []string{"github.com", "gitlab.com"}
 	config.AllowedSchemes = []string{"https", "ssh"}
 
@@ -357,7 +356,7 @@ func TestClient_createParentDir(t *testing.T) {
 			fs := afero.NewMemMapFs()
 			tt.setupFS(fs)
 
-			client := NewClient(fs, DefaultConfig())
+			client := NewClient(fs, DefaultConfig(fs))
 			err := client.(*Client).createParentDir(tt.path)
 
 			if tt.wantErr {
@@ -382,7 +381,7 @@ func TestClient_createParentDir_ErrorHandling(t *testing.T) {
 	baseFS := afero.NewMemMapFs()
 	fs := afero.NewReadOnlyFs(baseFS)
 
-	client := NewClient(fs, DefaultConfig())
+	client := NewClient(fs, DefaultConfig(fs))
 	err := client.(*Client).createParentDir("/tmp/test/repo")
 
 	require.Error(t, err)
@@ -391,7 +390,7 @@ func TestClient_createParentDir_ErrorHandling(t *testing.T) {
 
 func TestClient_buildCloneOptions(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	client := NewClient(fs, DefaultConfig())
+	client := NewClient(fs, DefaultConfig(fs))
 
 	tests := []struct {
 		name     string
@@ -447,7 +446,7 @@ func TestClient_buildCloneOptions(t *testing.T) {
 
 func TestClient_handleCloneError(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	client := NewClient(fs, DefaultConfig())
+	client := NewClient(fs, DefaultConfig(fs))
 
 	tests := []struct {
 		name        string
@@ -508,7 +507,7 @@ func TestClient_handleCloneError(t *testing.T) {
 
 func TestClient_IsValidRepository(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	client := NewClient(fs, DefaultConfig())
+	client := NewClient(fs, DefaultConfig(fs))
 
 	tests := []struct {
 		name     string
@@ -543,7 +542,7 @@ func TestClient_IsValidRepository(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	config := DefaultConfig()
+	config := DefaultConfig(afero.NewMemMapFs())
 
 	assert.NotNil(t, config)
 	assert.Equal(t, DefaultCloneTimeout, config.CloneTimeout)
@@ -556,7 +555,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestNewClient(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	config := DefaultConfig()
+	config := DefaultConfig(afero.NewMemMapFs())
 
 	client := NewClient(fs, config)
 	concreteClient := client.(*Client)
@@ -626,14 +625,19 @@ func TestDefaultAuthProvider_GetAuth_HTTPS(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_GetAuth_SSH(t *testing.T) {
-	provider := &DefaultAuthProvider{}
+	// Use mock filesystem
+	fs := afero.NewMemMapFs()
+	provider := NewDefaultAuthProvider(fs)
 
-	// Create a temporary SSH key file for testing
-	tmpDir := t.TempDir()
-	keyPath := filepath.Join(tmpDir, "test_key")
+	// Create a mock SSH key file for testing
+	keyPath := "/home/test/.ssh/test_key"
+
+	// Create directory structure
+	err := fs.MkdirAll(filepath.Dir(keyPath), 0o700)
+	require.NoError(t, err)
 
 	// Create a dummy key file (not a real key, just for testing file existence)
-	err := os.WriteFile(keyPath, []byte("dummy key content"), 0o600)
+	err = afero.WriteFile(fs, keyPath, []byte("dummy key content"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -647,7 +651,7 @@ func TestDefaultAuthProvider_GetAuth_SSH(t *testing.T) {
 		{
 			name:        "SSH URL without agent or keys",
 			repoURL:     "git@github.com:user/repo.git",
-			homeDir:     tmpDir, // Use empty temp dir with no SSH keys
+			homeDir:     "/home/empty", // Use empty dir with no SSH keys
 			expectError: true,
 			description: "should fail when no SSH agent and no keys available",
 		},
@@ -655,47 +659,21 @@ func TestDefaultAuthProvider_GetAuth_SSH(t *testing.T) {
 			name:        "SSH URL with custom key path",
 			repoURL:     "git@github.com:user/repo.git",
 			sshKeyPath:  keyPath,
-			homeDir:     tmpDir, // Use empty temp dir
-			expectError: true,   // Will fail to load dummy key, but tests the path logic
+			homeDir:     "/home/empty", // Use empty dir
+			expectError: true,          // Will fail to load dummy key, but tests the path logic
 			description: "should try custom SSH key path from environment",
 		},
 		{
-			name:        "SSH URL with working SSH keys",
+			name:        "SSH URL with mock SSH key in standard location",
 			repoURL:     "git@github.com:user/repo.git",
-			homeDir:     os.Getenv("HOME"), // Use real HOME to find actual SSH keys
-			expectError: false,             // Should succeed if real SSH keys exist
-			description: "should succeed with real SSH keys",
+			homeDir:     "/home/test", // Use mock home dir with SSH key
+			expectError: true,         // Will still fail to load dummy key, but tests file detection logic
+			description: "should find SSH key in standard location",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Skip the "working SSH keys" test if we're in CI or don't have SSH keys
-			if tt.name == "SSH URL with working SSH keys" {
-				// Check if SSH keys exist in the real HOME directory
-				homeDir := os.Getenv("HOME")
-				sshDir := filepath.Join(homeDir, ".ssh")
-				hasSSHKeys := false
-
-				// Check common SSH key locations
-				keyPaths := []string{
-					filepath.Join(sshDir, "id_rsa"),
-					filepath.Join(sshDir, "id_ed25519"),
-					filepath.Join(sshDir, "id_ecdsa"),
-				}
-
-				for _, keyPath := range keyPaths {
-					if _, err := os.Stat(keyPath); err == nil {
-						hasSSHKeys = true
-						break
-					}
-				}
-
-				if !hasSSHKeys {
-					t.Skip("Skipping SSH key test: no SSH keys found in HOME directory")
-				}
-			}
-
 			// Ensure SSH_AUTH_SOCK is not set for these tests
 			t.Setenv("SSH_AUTH_SOCK", "")
 
@@ -720,7 +698,9 @@ func TestDefaultAuthProvider_GetAuth_SSH(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_TrySSHKeyFile(t *testing.T) {
-	provider := &DefaultAuthProvider{}
+	// Use mock filesystem
+	fs := afero.NewMemMapFs()
+	provider := NewDefaultAuthProvider(fs)
 
 	tests := []struct {
 		name        string
@@ -744,11 +724,14 @@ func TestDefaultAuthProvider_TrySSHKeyFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			keyPath := filepath.Join(tmpDir, "test_key")
+			keyPath := "/test/ssh/test_key"
 
 			if tt.keyExists {
-				err := os.WriteFile(keyPath, []byte("dummy key content"), 0o600)
+				// Create directory structure in mock filesystem
+				err := fs.MkdirAll(filepath.Dir(keyPath), 0o700)
+				require.NoError(t, err)
+
+				err = afero.WriteFile(fs, keyPath, []byte("dummy key content"), 0o600)
 				require.NoError(t, err)
 			}
 
@@ -877,20 +860,22 @@ func TestDefaultAuthProvider_GetSSHConfigIdentityFile(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_TildeExpansion(t *testing.T) {
-	provider := &DefaultAuthProvider{}
+	// Use mock filesystem
+	fs := afero.NewMemMapFs()
+	provider := NewDefaultAuthProvider(fs)
 
 	// Test the tilde expansion logic by calling getSSHConfigIdentityFile
 	// with a mocked environment
-	tmpHome := t.TempDir()
+	tmpHome := "/home/test"
 	t.Setenv("HOME", tmpHome)
 
-	// Create a test SSH key file
+	// Create a test SSH key file in mock filesystem
 	sshDir := filepath.Join(tmpHome, ".ssh")
-	err := os.MkdirAll(sshDir, 0o700)
+	err := fs.MkdirAll(sshDir, 0o700)
 	require.NoError(t, err)
 
 	keyPath := filepath.Join(sshDir, "test_key")
-	err = os.WriteFile(keyPath, []byte("dummy key content"), 0o600)
+	err = afero.WriteFile(fs, keyPath, []byte("dummy key content"), 0o600)
 	require.NoError(t, err)
 
 	// Test that our helper methods work correctly

@@ -4,7 +4,7 @@
 // Example usage:
 //
 //	fs := afero.NewOsFs()
-//	config := DefaultConfig()
+//	config := DefaultConfig(fs)
 //	client := NewClient(fs, config)
 //
 //	ctx := context.Background()
@@ -111,7 +111,7 @@ type Client struct {
 }
 
 // DefaultConfig returns a configuration with secure defaults
-func DefaultConfig() Config {
+func DefaultConfig(fs afero.Fs) Config {
 	return Config{
 		CloneTimeout:   DefaultCloneTimeout,
 		PullTimeout:    DefaultPullTimeout,
@@ -122,7 +122,7 @@ func DefaultConfig() Config {
 			"gitlab.com",
 			"bitbucket.org",
 		},
-		AuthProvider: &DefaultAuthProvider{},
+		AuthProvider: NewDefaultAuthProvider(fs),
 	}
 }
 
@@ -218,7 +218,14 @@ func PullWithTimeout(timeout time.Duration) PullOption {
 }
 
 // DefaultAuthProvider provides secure authentication for Git operations
-type DefaultAuthProvider struct{}
+type DefaultAuthProvider struct {
+	fs afero.Fs
+}
+
+// NewDefaultAuthProvider creates a new DefaultAuthProvider with the given filesystem
+func NewDefaultAuthProvider(fs afero.Fs) *DefaultAuthProvider {
+	return &DefaultAuthProvider{fs: fs}
+}
 
 // GetAuth returns appropriate authentication for the given repository URL
 func (p *DefaultAuthProvider) GetAuth(repoURL string) (transport.AuthMethod, error) {
@@ -310,9 +317,12 @@ func (p *DefaultAuthProvider) GetAuth(repoURL string) (transport.AuthMethod, err
 
 // trySSHKeyFile attempts to create SSH authentication using a specific key file
 func (p *DefaultAuthProvider) trySSHKeyFile(keyPath string) (transport.AuthMethod, error) {
-	// Check if key file exists
-	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("SSH key file not found: %s", keyPath)
+	// Check if key file exists using afero filesystem
+	if _, err := p.fs.Stat(keyPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("SSH key file not found: %s", keyPath)
+		}
+		return nil, fmt.Errorf("error checking SSH key file %s: %w", keyPath, err)
 	}
 
 	// Try to load the key without a passphrase first
@@ -364,7 +374,7 @@ func (p *DefaultAuthProvider) getSSHConfigIdentityFile(hostname string) string {
 // NewRepository creates a new Repository instance with default configuration
 // Maintained for backward compatibility
 func NewRepository(fs afero.Fs) Repository {
-	return NewClient(fs, DefaultConfig())
+	return NewClient(fs, DefaultConfig(fs))
 }
 
 // Clone clones a git repository with comprehensive security and error handling
