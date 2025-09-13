@@ -12,6 +12,7 @@ import (
 
 // TestNetworkFailures tests behavior when network operations fail
 func TestNetworkFailures(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -41,6 +42,7 @@ func TestNetworkFailures(t *testing.T) {
 
 // TestGitAuthentication tests various git authentication scenarios
 func TestGitAuthentication(t *testing.T) {
+	// Cannot use t.Parallel() because subtests use t.Setenv()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -82,6 +84,7 @@ func TestGitAuthentication(t *testing.T) {
 
 // TestGitBranchHandling tests branch and tag specification
 func TestGitBranchHandling(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 

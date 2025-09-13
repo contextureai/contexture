@@ -12,6 +12,7 @@ import (
 
 // TestFullApplicationIntegration tests complete application workflows
 func TestFullApplicationIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -116,6 +117,7 @@ function example` + category + `() {
 
 // TestCrossComponentIntegration tests interaction between different components
 func TestCrossComponentIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -199,6 +201,7 @@ Content for test rule 2.`)
 
 // TestMultiFormatIntegration tests behavior with multiple output formats
 func TestMultiFormatIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -328,6 +331,7 @@ This rule is triggered by files matching:
 
 // TestErrorStateIntegration tests error handling across components
 func TestErrorStateIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 
 	t.Run("cascading error handling", func(t *testing.T) {
@@ -368,6 +372,7 @@ func TestErrorStateIntegration(t *testing.T) {
 
 // TestPerformanceIntegration tests performance with realistic loads
 func TestPerformanceIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -470,6 +475,7 @@ This rule is part of the performance testing suite for large projects.`
 
 // TestConfigurationIntegration tests various configuration scenarios
 func TestConfigurationIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 
 	t.Run("format configuration persistence", func(t *testing.T) {
