@@ -69,6 +69,18 @@ contexture rules add code/clean-code code/error-handling
 contexture rules add docs/readme-best-practices
 ```
 
+#### Using Custom Sources
+
+You can also browse and add rules from your own repositories:
+
+```bash
+# Browse rules from a custom repository interactively
+contexture rules add --src https://github.com/mycompany/contexture-rules.git
+
+# Add specific rules from a custom source
+contexture rules add "security/auth" --src "git@github.com:mycompany/rules.git"
+```
+
 Your `.contexture.yaml` will be updated to include these rules:
 
 ```yaml
@@ -138,10 +150,11 @@ ls -la CLAUDE.md .cursor/rules/ .windsurf/rules/
 
 ```bash
 # Common commands
-contexture init                    # Initialize a new project
-contexture rules add              # Browse and add rules
-contexture rules list             # Show configured rules
-contexture build                  # Generate output files
-contexture config           # View the project configuration
-contexture --help                # Show help
+contexture init                                      # Initialize a new project
+contexture rules add                                # Browse and add rules
+contexture rules add --src https://github.com/...  # Browse rules from custom source
+contexture rules list                               # Show configured rules
+contexture build                                    # Generate output files
+contexture config                                   # View the project configuration
+contexture --help                                  # Show help
 ```

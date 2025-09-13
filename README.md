@@ -96,8 +96,14 @@ Run `rules add` to open an interactive browser for selecting rules, or add them 
 # Interactive rule browser
 contexture rules add
 
+# Browse rules from a custom repository interactively
+contexture rules add --src https://github.com/mycompany/contexture-rules.git
+
 # Add specific rules by ID
 contexture rules add "[contexture:code/clean-code]" "[contexture:docs/readme-best-practices]"
+
+# Add rules from custom source
+contexture rules add "security/auth" --src "git@github.com:company/rules.git" --ref "v2.0"
 ```
 
 ### 3. Generate Output Files
@@ -168,12 +174,13 @@ rules:
 
 ### Rules
 
-| Command         | Description                                     |
-| :-------------- | :---------------------------------------------- |
-| `rules add`     | Add rules to the project.                       |
-| `rules remove`  | Remove rules from the project.                  |
-| `rules list`    | List all configured rules.                      |
-| `rules update`  | Update remote rules to their latest versions.   |
+| Command                | Description                                                      |
+| :--------------------- | :--------------------------------------------------------------- |
+| `rules add`            | Add rules to the project.                                        |
+| `rules add --src URL`  | Browse and add rules from a custom Git repository interactively. |
+| `rules remove`         | Remove rules from the project.                                   |
+| `rules list`           | List all configured rules.                                       |
+| `rules update`         | Update remote rules to their latest versions.                    |
 
 ### Build
 
