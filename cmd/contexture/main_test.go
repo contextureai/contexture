@@ -286,10 +286,6 @@ func TestMainDocumentation(t *testing.T) {
 }
 
 func TestMainIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration tests in short mode")
-	}
-
 	binPath := buildTestBinary(t)
 	defer func() {
 		if err := os.Remove(binPath); err != nil {
@@ -312,10 +308,6 @@ func TestMainIntegration(t *testing.T) {
 
 // TestMainSignalHandling tests that the application handles signals gracefully
 func TestMainSignalHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping signal handling tests in short mode")
-	}
-
 	binPath := buildTestBinary(t)
 	defer func() {
 		if err := os.Remove(binPath); err != nil {

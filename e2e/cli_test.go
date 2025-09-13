@@ -20,10 +20,6 @@ const (
 
 // TestCLIBasics tests basic CLI functionality
 func TestCLIBasics(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	// Resolve binary path like NewTestProject does
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -70,10 +66,6 @@ func TestCLIBasics(t *testing.T) {
 
 // TestInitCommand tests the init command functionality
 func TestInitCommand(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs() // Use real filesystem for e2e tests
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -126,10 +118,6 @@ func TestInitCommand(t *testing.T) {
 
 // TestConfigCommand tests config command functionality
 func TestConfigCommand(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -159,10 +147,6 @@ func TestConfigCommand(t *testing.T) {
 
 // TestConfigFormatsCommand tests config formats subcommand functionality
 func TestConfigFormatsCommand(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -202,10 +186,6 @@ func TestConfigFormatsCommand(t *testing.T) {
 
 // TestRulesCommand tests rules command functionality
 func TestRulesCommand(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -275,10 +255,6 @@ rules:
 
 // TestBuildCommand tests build command functionality
 func TestBuildCommand(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -311,10 +287,6 @@ func TestBuildCommand(t *testing.T) {
 
 // TestLocalRules tests local rules functionality
 func TestLocalRules(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -353,10 +325,6 @@ This is a test rule content for local rules testing.`
 
 // TestErrorHandling tests error scenarios
 func TestErrorHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping e2e tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 
 	// Resolve binary path like NewTestProject does

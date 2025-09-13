@@ -81,10 +81,6 @@ func TestCommandActions_Dependencies(t *testing.T) {
 }
 
 func TestCommandActions_IntegrationWithCLI(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration tests in short mode")
-	}
-
 	deps := dependencies.NewForTesting(context.Background())
 	actions := NewCommandActions(deps)
 

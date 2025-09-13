@@ -20,10 +20,6 @@ import (
 
 // TestRealGitRepositoryOperations tests actual git operations with real repositories
 func TestRealGitRepositoryOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git integration tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -105,10 +101,6 @@ func TestRealGitRepositoryOperations(t *testing.T) {
 
 // TestGitAuthentication tests different git authentication methods
 func TestGitAuthentication(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git authentication tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -216,10 +208,6 @@ func TestGitAuthentication(t *testing.T) {
 
 // TestGitBranchHandling tests git branch operations
 func TestGitBranchHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git branch tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -313,10 +301,6 @@ func TestGitBranchHandling(t *testing.T) {
 
 // TestGitErrorHandling tests git error scenarios
 func TestGitErrorHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git error tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -445,10 +429,6 @@ func TestGitErrorHandling(t *testing.T) {
 
 // TestGitPerformance tests git operation performance
 func TestGitPerformance(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git performance tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -530,10 +510,6 @@ func TestGitPerformance(t *testing.T) {
 
 // TestGitCommitOperations tests git commit-related operations
 func TestGitCommitOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git commit operations tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -630,10 +606,6 @@ func TestGitCommitOperations(t *testing.T) {
 
 // TestGitPullOperations tests git pull operations
 func TestGitPullOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git pull operations tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -740,10 +712,6 @@ func TestGitValidation(t *testing.T) {
 
 // TestGitIntegrationWithCustomConfig tests git operations with custom configuration
 func TestGitIntegrationWithCustomConfig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git custom config tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 
 	t.Run("custom timeout configuration", func(t *testing.T) {
@@ -807,10 +775,6 @@ func TestGitIntegrationWithCustomConfig(t *testing.T) {
 
 // TestGitMemoryUsage tests memory usage during git operations
 func TestGitMemoryUsage(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git memory usage tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
