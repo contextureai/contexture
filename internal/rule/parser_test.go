@@ -9,12 +9,14 @@ import (
 )
 
 func TestNewParser(t *testing.T) {
+	t.Parallel()
 	parser := NewParser()
 	assert.NotNil(t, parser)
 	assert.IsType(t, &YAMLParser{}, parser)
 }
 
 func TestYAMLParser_ParseContent(t *testing.T) {
+	t.Parallel()
 	parser := NewParser()
 
 	tests := []struct {
@@ -77,6 +79,7 @@ No frontmatter here.`,
 }
 
 func TestYAMLParser_ParseRule(t *testing.T) {
+	t.Parallel()
 	parser := NewParser()
 
 	validContent := `---
@@ -173,6 +176,7 @@ Content here.`
 }
 
 func TestYAMLParser_parseTrigger(t *testing.T) {
+	t.Parallel()
 	parser := &YAMLParser{}
 
 	tests := []struct {
@@ -241,6 +245,7 @@ func TestYAMLParser_parseTrigger(t *testing.T) {
 }
 
 func TestYAMLParser_parseStringSlice(t *testing.T) {
+	t.Parallel()
 	parser := &YAMLParser{}
 
 	tests := []struct {
@@ -301,6 +306,7 @@ func TestYAMLParser_parseStringSlice(t *testing.T) {
 }
 
 func TestYAMLParser_ValidateRule(t *testing.T) {
+	t.Parallel()
 	parser := NewParser()
 
 	t.Run("valid rule", func(t *testing.T) {
@@ -375,6 +381,7 @@ func TestYAMLParser_ValidateRule(t *testing.T) {
 }
 
 func TestParseRules(t *testing.T) {
+	t.Parallel()
 	parser := NewParser()
 
 	validContent := `---

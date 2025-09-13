@@ -11,6 +11,7 @@ import (
 var _ TemplateEngine = NewTemplateEngine()
 
 func TestDefaultTemplateEngine_ExtractVariables(t *testing.T) {
+	t.Parallel()
 	engine := NewTemplateEngine()
 
 	tests := []struct {
@@ -109,6 +110,7 @@ func TestDefaultTemplateEngine_ExtractVariables(t *testing.T) {
 }
 
 func TestDefaultTemplateEngine_ProcessTemplate(t *testing.T) {
+	t.Parallel()
 	engine := NewTemplateEngine()
 
 	t.Run("successful template processing", func(t *testing.T) {
@@ -170,6 +172,7 @@ func TestDefaultTemplateEngine_ProcessTemplate(t *testing.T) {
 }
 
 func TestNewTemplateEngine(t *testing.T) {
+	t.Parallel()
 	engine := NewTemplateEngine()
 	assert.NotNil(t, engine)
 

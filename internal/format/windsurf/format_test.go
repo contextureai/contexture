@@ -14,6 +14,7 @@ import (
 const testWindsurfOutputDir = "/output/.windsurf/rules"
 
 func TestNewFormat(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -21,6 +22,7 @@ func TestNewFormat(t *testing.T) {
 }
 
 func TestNewFormatWithMode(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 
 	t.Run("single file mode", func(t *testing.T) {
@@ -35,6 +37,7 @@ func TestNewFormatWithMode(t *testing.T) {
 }
 
 func TestFormat_SetMode(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -49,6 +52,7 @@ func TestFormat_SetMode(t *testing.T) {
 }
 
 func TestFormat_Transform_SingleFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeSingleFile)
 
@@ -92,6 +96,7 @@ func TestFormat_Transform_SingleFile(t *testing.T) {
 }
 
 func TestFormat_Transform_MultiFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeMultiFile)
 
@@ -124,6 +129,7 @@ func TestFormat_Transform_MultiFile(t *testing.T) {
 }
 
 func TestFormat_Validate(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 
 	tests := []struct {
@@ -215,6 +221,7 @@ func TestFormat_Validate(t *testing.T) {
 }
 
 func TestFormat_Write_SingleFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeSingleFile)
 
@@ -269,6 +276,7 @@ func TestFormat_Write_SingleFile(t *testing.T) {
 }
 
 func TestFormat_Write_MultiFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeMultiFile)
 
@@ -316,6 +324,7 @@ func TestFormat_Write_MultiFile(t *testing.T) {
 }
 
 func TestFormat_Remove_SingleFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeSingleFile)
 
@@ -338,6 +347,7 @@ func TestFormat_Remove_SingleFile(t *testing.T) {
 }
 
 func TestFormat_Remove_MultiFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeMultiFile)
 
@@ -365,6 +375,7 @@ func TestFormat_Remove_MultiFile(t *testing.T) {
 }
 
 func TestFormat_List_SingleFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeSingleFile)
 
@@ -415,6 +426,7 @@ Some content here
 }
 
 func TestFormat_List_MultiFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeMultiFile)
 
@@ -467,6 +479,7 @@ Another test rule.`
 }
 
 func TestFormat_generateMultiFileFilename(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -507,6 +520,7 @@ func TestFormat_generateMultiFileFilename(t *testing.T) {
 }
 
 func TestFormat_getSingleFileFilename(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -515,6 +529,7 @@ func TestFormat_getSingleFileFilename(t *testing.T) {
 }
 
 func TestFormat_getOutputDir(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -551,6 +566,7 @@ func TestFormat_getOutputDir(t *testing.T) {
 }
 
 func TestFormat_extractTitleFromContent(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -585,6 +601,7 @@ func TestFormat_extractTitleFromContent(t *testing.T) {
 }
 
 func TestFormat_getDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -598,6 +615,7 @@ func TestFormat_getDefaultTemplate(t *testing.T) {
 }
 
 func TestFormat_Headers(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -616,6 +634,7 @@ func TestFormat_Headers(t *testing.T) {
 }
 
 func TestFormat_Write_CharacterLimitValidation(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeSingleFile) // Use single-file mode
 
@@ -666,6 +685,7 @@ func TestFormat_Write_CharacterLimitValidation(t *testing.T) {
 }
 
 func TestFormat_Write_CharacterLimitValidation_MultiFile(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormatWithMode(fs, ModeMultiFile) // Use multi-file mode to test per-file limit
 

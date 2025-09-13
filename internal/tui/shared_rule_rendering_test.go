@@ -9,6 +9,7 @@ import (
 )
 
 func TestExtractRulePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		ruleID   string
@@ -65,6 +66,7 @@ func TestExtractRulePath(t *testing.T) {
 }
 
 func TestExtractRuleVariables(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		ruleID   string
@@ -121,6 +123,7 @@ func TestExtractRuleVariables(t *testing.T) {
 }
 
 func TestBuildRuleMetadata(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name                  string
 		rule                  *domain.Rule
@@ -229,6 +232,7 @@ func TestBuildRuleMetadata(t *testing.T) {
 }
 
 func TestSharedCountMatches(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		haystack string
@@ -288,6 +292,7 @@ func TestSharedCountMatches(t *testing.T) {
 }
 
 func TestSharedCreateRuleItemStyles(t *testing.T) {
+	t.Parallel()
 	styles := createRuleItemStyles()
 
 	// Test that styles are created and have expected properties
@@ -327,6 +332,7 @@ func TestSharedCreateRuleItemStyles(t *testing.T) {
 }
 
 func TestApplyHighlightsGeneric(t *testing.T) {
+	t.Parallel()
 	baseStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000"))
 	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF0000"))
 
@@ -391,6 +397,7 @@ func TestApplyHighlightsGeneric(t *testing.T) {
 }
 
 func TestApplyTitleHighlightingGeneric(t *testing.T) {
+	t.Parallel()
 	baseColor := lipgloss.Color("#FF00FF")
 
 	tests := []struct {
@@ -450,6 +457,7 @@ func TestApplyTitleHighlightingGeneric(t *testing.T) {
 }
 
 func TestGetDefaultFilterColors(t *testing.T) {
+	t.Parallel()
 	colors := GetDefaultFilterColors()
 
 	// Test that all colors are set
@@ -474,6 +482,7 @@ func TestGetDefaultFilterColors(t *testing.T) {
 
 // Test with realistic rule data
 func TestBuildRuleMetadataIntegration(t *testing.T) {
+	t.Parallel()
 	// Create a realistic rule similar to what would be used in the app
 	rule := &domain.Rule{
 		ID:          "[contexture:typescript/strict-config]",
@@ -498,6 +507,7 @@ func TestBuildRuleMetadataIntegration(t *testing.T) {
 }
 
 func TestExtractRulePathIntegration(t *testing.T) {
+	t.Parallel()
 	// Test with realistic rule IDs that would be used in the app
 	testCases := []struct {
 		ruleID   string
@@ -517,6 +527,7 @@ func TestExtractRulePathIntegration(t *testing.T) {
 }
 
 func TestExtractRulePathWithLocalIndicator(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		rule     *domain.Rule

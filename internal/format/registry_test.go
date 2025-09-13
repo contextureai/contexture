@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewRegistry(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := NewRegistry(fs)
 
@@ -22,6 +23,7 @@ func TestNewRegistry(t *testing.T) {
 }
 
 func TestNewRegistryWithBuilder(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	customBuilder := &Builder{}
 	registry := NewRegistryWithBuilder(customBuilder, fs)
@@ -30,6 +32,7 @@ func TestNewRegistryWithBuilder(t *testing.T) {
 }
 
 func TestGetDefaultRegistry(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := GetDefaultRegistry(fs)
 
@@ -52,6 +55,7 @@ func TestGetDefaultRegistry(t *testing.T) {
 }
 
 func TestRegistry_Register(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := NewRegistry(fs)
 	handler := &TestMockHandler{}
@@ -64,6 +68,7 @@ func TestRegistry_Register(t *testing.T) {
 }
 
 func TestRegistry_GetUIOptions(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := GetDefaultRegistry(fs)
 
@@ -77,6 +82,7 @@ func TestRegistry_GetUIOptions(t *testing.T) {
 }
 
 func TestRegistry_GetAvailableFormats(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := NewRegistry(fs)
 
@@ -92,6 +98,7 @@ func TestRegistry_GetAvailableFormats(t *testing.T) {
 }
 
 func TestRegistry_CreateFormat(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := GetDefaultRegistry(fs)
 
@@ -141,6 +148,7 @@ func TestRegistry_CreateFormat(t *testing.T) {
 }
 
 func TestRegistry_CreateFormat_NoBuilder(t *testing.T) {
+	t.Parallel()
 	registry := &Registry{
 		handlers: make(map[domain.FormatType]Handler),
 		builder:  nil,
@@ -153,6 +161,7 @@ func TestRegistry_CreateFormat_NoBuilder(t *testing.T) {
 }
 
 func TestRegistry_GetHandler(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := NewRegistry(fs)
 	handler := &TestMockHandler{}
@@ -169,6 +178,7 @@ func TestRegistry_GetHandler(t *testing.T) {
 }
 
 func TestRegistry_IsSupported(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	registry := NewRegistry(fs)
 
@@ -184,6 +194,7 @@ func TestRegistry_IsSupported(t *testing.T) {
 }
 
 func TestDefaultBuilder_Build(t *testing.T) {
+	t.Parallel()
 	builder := NewBuilder()
 	fs := afero.NewMemMapFs()
 
@@ -260,6 +271,7 @@ func TestDefaultBuilder_Build(t *testing.T) {
 }
 
 func TestDefaultBuilder_GetSupportedFormats(t *testing.T) {
+	t.Parallel()
 	builder := NewBuilder()
 
 	formats := builder.GetSupportedFormats()
@@ -277,6 +289,7 @@ func TestDefaultBuilder_GetSupportedFormats(t *testing.T) {
 }
 
 func TestHandlers(t *testing.T) {
+	t.Parallel()
 	t.Run("claude handler", func(t *testing.T) {
 		handler := &claude.Handler{}
 
@@ -309,6 +322,7 @@ func TestHandlers(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
+	t.Parallel()
 	slice := []string{"a", "b", "c"}
 
 	assert.True(t, slices.Contains(slice, "a"))

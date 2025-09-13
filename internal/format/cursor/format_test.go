@@ -13,6 +13,7 @@ import (
 const testCursorOutputDir = "/output/.cursor/rules"
 
 func TestNewFormat(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -20,6 +21,7 @@ func TestNewFormat(t *testing.T) {
 }
 
 func TestFormat_Transform(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -67,6 +69,7 @@ func TestFormat_Transform(t *testing.T) {
 }
 
 func TestFormat_generateFilename(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -111,6 +114,7 @@ func TestFormat_generateFilename(t *testing.T) {
 }
 
 func TestFormat_Validate(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -190,6 +194,7 @@ func TestFormat_Validate(t *testing.T) {
 }
 
 func TestFormat_Write(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -241,6 +246,7 @@ func TestFormat_Write(t *testing.T) {
 }
 
 func TestFormat_Write_EmptyRules(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -258,6 +264,7 @@ func TestFormat_Write_EmptyRules(t *testing.T) {
 }
 
 func TestFormat_Remove(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -289,6 +296,7 @@ func TestFormat_Remove(t *testing.T) {
 }
 
 func TestFormat_List(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -380,6 +388,7 @@ Another test rule.`
 }
 
 func TestFormat_extractTitleFromContent(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -424,6 +433,7 @@ func TestFormat_extractTitleFromContent(t *testing.T) {
 }
 
 func TestFormat_extractRuleIDFromFilename(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -458,6 +468,7 @@ func TestFormat_extractRuleIDFromFilename(t *testing.T) {
 }
 
 func TestFormat_getOutputDir(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -494,6 +505,7 @@ func TestFormat_getOutputDir(t *testing.T) {
 }
 
 func TestFormat_getDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 

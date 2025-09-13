@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewMainConfigCommand(t *testing.T) {
+	t.Parallel()
 	deps := &dependencies.Dependencies{
 		FS:      afero.NewMemMapFs(),
 		Context: context.Background(),
@@ -24,6 +25,7 @@ func TestNewMainConfigCommand(t *testing.T) {
 }
 
 func TestMainConfigCommand_IntegrationWithRegistry(t *testing.T) {
+	t.Parallel()
 	// Test that the config command properly integrates with the format registry
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{

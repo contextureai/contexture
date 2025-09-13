@@ -8,6 +8,7 @@ import (
 )
 
 func TestDivider(t *testing.T) {
+	t.Parallel()
 	t.Run("plain_divider", func(t *testing.T) {
 		divider := NewDivider()
 		result := divider.Render()
@@ -65,6 +66,7 @@ func TestDivider(t *testing.T) {
 }
 
 func TestDividerStyleValues(t *testing.T) {
+	t.Parallel()
 	// Test that divider style constants have expected values
 	assert.Equal(t, 0, int(DividerPlain))
 	assert.Equal(t, 1, int(DividerDashed))

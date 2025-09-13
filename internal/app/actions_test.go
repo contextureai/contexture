@@ -122,31 +122,6 @@ func TestCommandActions_IntegrationWithCLI(t *testing.T) {
 	})
 }
 
-// Benchmark action creation
-func BenchmarkNewCommandActions(b *testing.B) {
-	deps := dependencies.NewForTesting(context.Background())
-
-	b.ResetTimer()
-	for range b.N {
-		_ = NewCommandActions(deps)
-	}
-}
-
-func BenchmarkCommandActions_ActionAccess(b *testing.B) {
-	deps := dependencies.NewForTesting(context.Background())
-	actions := NewCommandActions(deps)
-
-	b.ResetTimer()
-	for range b.N {
-		// Measure the overhead of accessing action functions
-		_ = actions.InitAction
-		_ = actions.AddAction
-		_ = actions.BuildAction
-	}
-}
-
-// Example documentation removed due to output variability in CLI applications
-
 func TestCommandActions_ErrorHandling(t *testing.T) {
 	t.Parallel()
 	deps := dependencies.NewForTesting(context.Background())

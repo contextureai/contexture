@@ -9,6 +9,7 @@ import (
 )
 
 func TestLoadingIndicator(t *testing.T) {
+	t.Parallel()
 	t.Run("initial_loading", func(t *testing.T) {
 		loading := NewLoadingIndicator("Loading data...")
 		result := loading.Render()

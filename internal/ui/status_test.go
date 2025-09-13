@@ -9,6 +9,7 @@ import (
 )
 
 func TestStatusIndicator(t *testing.T) {
+	t.Parallel()
 	t.Run("success_status", func(t *testing.T) {
 		status := NewStatusIndicator(StatusSuccess, "Operation completed")
 		result := status.Render()
@@ -74,19 +75,11 @@ func TestStatusIndicator(t *testing.T) {
 }
 
 func TestStatusTypeValues(t *testing.T) {
+	t.Parallel()
 	// Test that status type constants have expected values
 	assert.Equal(t, 0, int(StatusSuccess))
 	assert.Equal(t, 1, int(StatusWarning))
 	assert.Equal(t, 2, int(StatusError))
 	assert.Equal(t, 3, int(StatusInfo))
 	assert.Equal(t, 4, int(StatusLoading))
-}
-
-// Benchmark tests
-func BenchmarkStatusIndicatorRender(b *testing.B) {
-	status := NewStatusIndicator(StatusSuccess, "Benchmark").WithDetails("Detail 1", "Detail 2")
-	b.ResetTimer()
-	for range b.N {
-		status.Render()
-	}
 }

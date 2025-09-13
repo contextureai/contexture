@@ -13,6 +13,7 @@ import (
 )
 
 func TestFetchRulesParallel(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	tests := []struct {
@@ -192,6 +193,7 @@ func TestFetchRulesParallel(t *testing.T) {
 }
 
 func TestFetchRulesParallel_WithCommitHash(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("with commit hash and regular fetcher", func(t *testing.T) {
@@ -219,6 +221,7 @@ func TestFetchRulesParallel_WithCommitHash(t *testing.T) {
 }
 
 func TestFetchRulesParallel_Concurrency(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	// Test that the function properly limits concurrency
@@ -248,6 +251,7 @@ func TestFetchRulesParallel_Concurrency(t *testing.T) {
 }
 
 func TestFetchRulesParallel_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	// Create a context that will be cancelled
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
@@ -276,6 +280,7 @@ func TestFetchRulesParallel_ContextCancellation(t *testing.T) {
 }
 
 func TestShouldDisplayVariables(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		variables map[string]any
@@ -341,6 +346,7 @@ func TestShouldDisplayVariables(t *testing.T) {
 }
 
 func TestFilterNonDefaultVariables(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		variables map[string]any

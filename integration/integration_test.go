@@ -15,6 +15,7 @@ import (
 
 // TestProjectManagerIntegration tests the project manager functionality end-to-end
 func TestProjectManagerIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	workingDir := "/integration-test"
 	require.NoError(t, fs.MkdirAll(workingDir, 0o755))
@@ -176,6 +177,7 @@ func TestProjectManagerIntegration(t *testing.T) {
 
 // TestFormatConfiguration tests format configuration functionality
 func TestFormatConfiguration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	workingDir := "/format-test"
 	require.NoError(t, fs.MkdirAll(workingDir, 0o755))
@@ -233,6 +235,7 @@ func TestFormatConfiguration(t *testing.T) {
 
 // TestErrorScenarios tests various error conditions
 func TestErrorScenarios(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	projectManager := project.NewManager(fs)
 
@@ -312,6 +315,7 @@ func TestErrorScenarios(t *testing.T) {
 
 // TestConfigurationPersistence tests that configurations persist correctly across operations
 func TestConfigurationPersistence(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	workingDir := "/persistence-test"
 	require.NoError(t, fs.MkdirAll(workingDir, 0o755))

@@ -17,6 +17,7 @@ import (
 //
 
 func TestNewRuleGenerator(t *testing.T) {
+	t.Parallel()
 	fetcher := rule.NewMockFetcher(t)
 	validator := rule.NewMockValidator(t)
 	processor := rule.NewMockProcessor(t)
@@ -33,6 +34,7 @@ func TestNewRuleGenerator(t *testing.T) {
 }
 
 func TestRuleGenerator_GenerateRules_NoRules(t *testing.T) {
+	t.Parallel()
 	fetcher := rule.NewMockFetcher(t)
 	validator := rule.NewMockValidator(t)
 	processor := rule.NewMockProcessor(t)
@@ -61,6 +63,7 @@ func TestRuleGenerator_GenerateRules_NoRules(t *testing.T) {
 }
 
 func TestRuleGenerator_GenerateRules_NoFormats(t *testing.T) {
+	t.Parallel()
 	fetcher := rule.NewMockFetcher(t)
 	validator := rule.NewMockValidator(t)
 	processor := rule.NewMockProcessor(t)

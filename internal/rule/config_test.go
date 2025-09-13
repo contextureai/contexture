@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	require.NotNil(t, config)
@@ -24,6 +25,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestConfig_Validate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		config    *Config
@@ -180,6 +182,7 @@ func TestConfig_Validate(t *testing.T) {
 }
 
 func TestConfig_FetcherConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig()
 
 	// Modify some values to test they're properly returned

@@ -23,6 +23,7 @@ const (
 )
 
 func TestNewUpdateCommand(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,
@@ -37,6 +38,7 @@ func TestNewUpdateCommand(t *testing.T) {
 }
 
 func TestUpdateCommandWithDependencies(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 
 	// Create mock dependencies
@@ -65,6 +67,7 @@ func TestUpdateCommandWithDependencies(t *testing.T) {
 }
 
 func TestUpdateResult_Structure(t *testing.T) {
+	t.Parallel()
 	// Test the UpdateResult structure that was mentioned in the original skipped test
 	result := UpdateResult{
 		RuleID:         "[contexture:test/rule]",
@@ -99,6 +102,7 @@ func TestUpdateResult_Structure(t *testing.T) {
 }
 
 func TestUpdateStatus_Values(t *testing.T) {
+	t.Parallel()
 	// Test the UpdateStatus enum values
 	assert.Equal(t, 0, int(StatusChecking))
 	assert.Equal(t, 1, int(StatusUpToDate))
@@ -109,6 +113,7 @@ func TestUpdateStatus_Values(t *testing.T) {
 }
 
 func TestUpdateCommand_UpdateRuleCommitHash(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 
 	// Create mock dependencies
@@ -153,6 +158,7 @@ func TestUpdateCommand_UpdateRuleCommitHash(t *testing.T) {
 }
 
 func TestUpdateAction(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,
@@ -190,6 +196,7 @@ rules:
 }
 
 func TestUpdateResult(t *testing.T) {
+	t.Parallel()
 	result := UpdateResult{
 		RuleID:         "[contexture:test/rule]",
 		CurrentVersion: "v1.0.0",

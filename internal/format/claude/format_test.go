@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewFormat(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -17,6 +18,7 @@ func TestNewFormat(t *testing.T) {
 }
 
 func TestFormat_Transform(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -62,6 +64,7 @@ func TestFormat_Transform(t *testing.T) {
 }
 
 func TestFormat_Transform_MinimalRule(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -86,6 +89,7 @@ func TestFormat_Transform_MinimalRule(t *testing.T) {
 }
 
 func TestFormat_Validate(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -174,6 +178,7 @@ func TestFormat_Validate(t *testing.T) {
 }
 
 func TestFormat_Write(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -226,6 +231,7 @@ func TestFormat_Write(t *testing.T) {
 }
 
 func TestFormat_Write_EmptyRules(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -243,6 +249,7 @@ func TestFormat_Write_EmptyRules(t *testing.T) {
 }
 
 func TestFormat_Write_DirectoryCreation(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -275,6 +282,7 @@ func TestFormat_Write_DirectoryCreation(t *testing.T) {
 }
 
 func TestFormat_List(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -333,6 +341,7 @@ Some rule content here.
 }
 
 func TestFormat_getOutputPath(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -369,6 +378,7 @@ func TestFormat_getOutputPath(t *testing.T) {
 }
 
 func TestFormat_getDefaultTemplate(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -384,6 +394,7 @@ func TestFormat_getDefaultTemplate(t *testing.T) {
 }
 
 func TestFormat_getFileHeader(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -392,6 +403,7 @@ func TestFormat_getFileHeader(t *testing.T) {
 }
 
 func TestFormat_getFileFooter(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -401,6 +413,7 @@ func TestFormat_getFileFooter(t *testing.T) {
 }
 
 func TestFormat_getOutputFilename(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 
@@ -409,6 +422,7 @@ func TestFormat_getOutputFilename(t *testing.T) {
 }
 
 func TestFormat_extractBasePath(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	f := NewFormat(fs)
 

@@ -10,12 +10,14 @@ import (
 )
 
 func TestNewProcessor(t *testing.T) {
+	t.Parallel()
 	processor := NewProcessor()
 	assert.NotNil(t, processor)
 	assert.IsType(t, &TemplateProcessor{}, processor)
 }
 
 func TestTemplateProcessor_ProcessRule(t *testing.T) {
+	t.Parallel()
 	processor := NewProcessor()
 
 	rule := &domain.Rule{
@@ -87,6 +89,7 @@ func TestTemplateProcessor_ProcessRule(t *testing.T) {
 }
 
 func TestTemplateProcessor_ProcessRules(t *testing.T) {
+	t.Parallel()
 	processor := NewProcessor()
 
 	rules := []*domain.Rule{
@@ -141,6 +144,7 @@ func TestTemplateProcessor_ProcessRules(t *testing.T) {
 }
 
 func TestTemplateProcessor_ProcessTemplate(t *testing.T) {
+	t.Parallel()
 	processor := NewProcessor()
 
 	tests := []struct {
@@ -201,6 +205,7 @@ func TestTemplateProcessor_ProcessTemplate(t *testing.T) {
 }
 
 func TestTemplateProcessor_GenerateAttribution(t *testing.T) {
+	t.Parallel()
 	processor := NewProcessor()
 
 	rule := &domain.Rule{
@@ -218,6 +223,7 @@ func TestTemplateProcessor_GenerateAttribution(t *testing.T) {
 }
 
 func TestTemplateProcessor_buildVariableMap(t *testing.T) {
+	t.Parallel()
 	variableManager := NewVariableManager()
 
 	rule := &domain.Rule{
@@ -261,6 +267,7 @@ func TestTemplateProcessor_buildVariableMap(t *testing.T) {
 }
 
 func TestTemplateProcessor_addBuiltinVariables(t *testing.T) {
+	t.Parallel()
 	variableManager := NewVariableManager()
 
 	variables := map[string]any{
@@ -285,6 +292,7 @@ func TestTemplateProcessor_addBuiltinVariables(t *testing.T) {
 }
 
 func TestTemplateProcessor_ValidateTemplate(t *testing.T) {
+	t.Parallel()
 	processor := &TemplateProcessor{}
 	mockEngine := NewMockTemplateEngine(t)
 	mockEngine.EXPECT().

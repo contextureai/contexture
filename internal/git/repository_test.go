@@ -34,6 +34,7 @@ func (m *MockProgressHandler) OnError(err error) {
 }
 
 func TestWithProgress(t *testing.T) {
+	t.Parallel()
 	mockHandler := &MockProgressHandler{}
 
 	option := WithProgress(mockHandler)
@@ -47,6 +48,7 @@ func TestWithProgress(t *testing.T) {
 }
 
 func TestPullWithProgress(t *testing.T) {
+	t.Parallel()
 	mockHandler := &MockProgressHandler{}
 
 	option := PullWithProgress(mockHandler)
@@ -60,6 +62,7 @@ func TestPullWithProgress(t *testing.T) {
 }
 
 func TestWithSingleBranch(t *testing.T) {
+	t.Parallel()
 	option := WithSingleBranch()
 	config := &CloneConfig{}
 
@@ -71,6 +74,7 @@ func TestWithSingleBranch(t *testing.T) {
 }
 
 func TestWithBranch(t *testing.T) {
+	t.Parallel()
 	branchName := "feature-branch"
 	option := WithBranch(branchName)
 	config := &CloneConfig{}
@@ -83,6 +87,7 @@ func TestWithBranch(t *testing.T) {
 }
 
 func TestCloneConfig_ApplyOptions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		options  []CloneOption
@@ -139,6 +144,7 @@ func TestCloneConfig_ApplyOptions(t *testing.T) {
 }
 
 func TestPullConfig_ApplyOptions(t *testing.T) {
+	t.Parallel()
 	mockHandler := &MockProgressHandler{}
 
 	config := &PullConfig{}
@@ -149,6 +155,7 @@ func TestPullConfig_ApplyOptions(t *testing.T) {
 }
 
 func TestNewRepository(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	repo := NewRepository(fs)
 
@@ -159,6 +166,7 @@ func TestNewRepository(t *testing.T) {
 }
 
 func TestClient_ValidateURL(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	config := DefaultConfig(fs)
 	config.AllowedHosts = []string{"github.com", "gitlab.com", "internal.example.com"}
@@ -235,6 +243,7 @@ func TestClient_ValidateURL(t *testing.T) {
 }
 
 func TestClient_ValidateURL_NoHostRestrictions(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	config := DefaultConfig(fs)
 	config.AllowedHosts = []string{} // No host restrictions
@@ -265,6 +274,7 @@ func TestClient_ValidateURL_NoHostRestrictions(t *testing.T) {
 }
 
 func TestClient_validateHost(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	config := DefaultConfig(fs)
 	config.AllowedHosts = []string{"github.com", "gitlab.com"}
@@ -323,6 +333,7 @@ func TestClient_validateHost(t *testing.T) {
 }
 
 func TestClient_createParentDir(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		path    string
@@ -377,6 +388,7 @@ func TestClient_createParentDir(t *testing.T) {
 }
 
 func TestClient_createParentDir_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	// Test with read-only filesystem
 	baseFS := afero.NewMemMapFs()
 	fs := afero.NewReadOnlyFs(baseFS)
@@ -389,6 +401,7 @@ func TestClient_createParentDir_ErrorHandling(t *testing.T) {
 }
 
 func TestClient_buildCloneOptions(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	client := NewClient(fs, DefaultConfig(fs))
 
@@ -445,6 +458,7 @@ func TestClient_buildCloneOptions(t *testing.T) {
 }
 
 func TestClient_handleCloneError(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	client := NewClient(fs, DefaultConfig(fs))
 
@@ -506,6 +520,7 @@ func TestClient_handleCloneError(t *testing.T) {
 }
 
 func TestClient_IsValidRepository(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	client := NewClient(fs, DefaultConfig(fs))
 
@@ -542,6 +557,7 @@ func TestClient_IsValidRepository(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	config := DefaultConfig(afero.NewMemMapFs())
 
 	assert.NotNil(t, config)
@@ -554,6 +570,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	config := DefaultConfig(afero.NewMemMapFs())
 
@@ -698,6 +715,7 @@ func TestDefaultAuthProvider_GetAuth_SSH(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_TrySSHKeyFile(t *testing.T) {
+	t.Parallel()
 	// Use mock filesystem
 	fs := afero.NewMemMapFs()
 	provider := NewDefaultAuthProvider(fs)
@@ -749,6 +767,7 @@ func TestDefaultAuthProvider_TrySSHKeyFile(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_GetAuth_UnsupportedURL(t *testing.T) {
+	t.Parallel()
 	provider := &DefaultAuthProvider{}
 
 	auth, err := provider.GetAuth("ftp://example.com/repo.git")
@@ -759,6 +778,7 @@ func TestDefaultAuthProvider_GetAuth_UnsupportedURL(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_ExtractHostnameFromSSHURL(t *testing.T) {
+	t.Parallel()
 	provider := &DefaultAuthProvider{}
 
 	tests := []struct {
@@ -807,6 +827,7 @@ func TestDefaultAuthProvider_ExtractHostnameFromSSHURL(t *testing.T) {
 }
 
 func TestDefaultAuthProvider_GetSSHConfigIdentityFile(t *testing.T) {
+	t.Parallel()
 	provider := &DefaultAuthProvider{}
 
 	tests := []struct {

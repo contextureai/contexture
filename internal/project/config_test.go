@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	manager := NewManager(fs)
 	assert.NotNil(t, manager)
@@ -20,6 +21,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestManager_InitConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		formats    []domain.FormatType
@@ -77,6 +79,7 @@ func TestManager_InitConfig(t *testing.T) {
 }
 
 func TestManager_LoadConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		setupConfig    func(afero.Fs, string)
@@ -160,6 +163,7 @@ func TestManager_LoadConfig(t *testing.T) {
 }
 
 func TestManager_AddRule(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	manager := NewManager(fs)
 
@@ -219,6 +223,7 @@ func TestManager_AddRule(t *testing.T) {
 }
 
 func TestManager_RemoveRule(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	manager := NewManager(fs)
 
@@ -255,6 +260,7 @@ func TestManager_RemoveRule(t *testing.T) {
 }
 
 func TestManager_HasRule(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	manager := NewManager(fs)
 
@@ -271,6 +277,7 @@ func TestManager_HasRule(t *testing.T) {
 }
 
 func TestManager_GetConfigLocation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name             string
 		preferContexture bool
@@ -316,6 +323,7 @@ func TestManager_GetConfigLocation(t *testing.T) {
 }
 
 func TestManager_SaveConfig(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	tempDir := "/tmp/test-save"
 	_ = fs.MkdirAll(tempDir, 0o755)
@@ -352,6 +360,7 @@ func TestManager_SaveConfig(t *testing.T) {
 }
 
 func TestManager_DiscoverLocalRules(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		configLocation domain.ConfigLocation
@@ -462,6 +471,7 @@ func TestManager_DiscoverLocalRules(t *testing.T) {
 }
 
 func TestManager_LoadConfigWithLocalRules(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	manager := NewManager(fs)
 

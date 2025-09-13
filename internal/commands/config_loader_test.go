@@ -9,6 +9,7 @@ import (
 )
 
 func TestConfigLoadResult(t *testing.T) {
+	t.Parallel()
 	t.Run("config_load_result_fields", func(t *testing.T) {
 		projectConfig := &domain.Project{
 			Rules:   []domain.RuleRef{{ID: "test"}},

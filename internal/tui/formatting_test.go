@@ -12,6 +12,7 @@ import (
 )
 
 func TestPreviewContentBuilder_BuildPreviewContent(t *testing.T) {
+	t.Parallel()
 	// Create test styles
 	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
@@ -136,6 +137,7 @@ func TestPreviewContentBuilder_BuildPreviewContent(t *testing.T) {
 }
 
 func TestPreviewContentBuilder_BuildPreviewContentWithMarkdown(t *testing.T) {
+	t.Parallel()
 	// Create test styles
 	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
@@ -244,6 +246,7 @@ func TestPreviewContentBuilder_BuildPreviewContentWithMarkdown(t *testing.T) {
 }
 
 func TestNewPreviewContentBuilder(t *testing.T) {
+	t.Parallel()
 	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
 	metadataStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
@@ -261,6 +264,7 @@ func TestNewPreviewContentBuilder(t *testing.T) {
 }
 
 func TestCalculatePreviewDimensions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		terminalWidth  int
@@ -315,6 +319,7 @@ func TestCalculatePreviewDimensions(t *testing.T) {
 }
 
 func TestBuildPreviewContent_EdgeCases(t *testing.T) {
+	t.Parallel()
 	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
 	metadataStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))

@@ -11,12 +11,14 @@ import (
 )
 
 func TestNewValidator(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 	assert.NotNil(t, validator)
 	assert.Implements(t, (*Validator)(nil), validator)
 }
 
 func TestValidateRule(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	tests := []struct {
@@ -135,6 +137,7 @@ func TestValidateRule(t *testing.T) {
 }
 
 func TestValidateRules(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	rules := []*domain.Rule{
@@ -174,6 +177,7 @@ func TestValidateRules(t *testing.T) {
 }
 
 func TestValidateRuleContent(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	tests := []struct {
@@ -215,6 +219,7 @@ func TestValidateRuleContent(t *testing.T) {
 }
 
 func TestValidateRuleID(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	tests := []struct {
@@ -278,6 +283,7 @@ func TestValidateRuleID(t *testing.T) {
 }
 
 func TestValidateGitURL(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	tests := []struct {
@@ -331,6 +337,7 @@ func TestValidateGitURL(t *testing.T) {
 }
 
 func TestValidationBatchResult(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	// Create a mix of valid and invalid rules
@@ -383,6 +390,7 @@ func TestValidationBatchResult(t *testing.T) {
 
 // Test edge cases and error scenarios
 func TestValidatorEdgeCases(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	t.Run("nil rule", func(t *testing.T) {
@@ -421,6 +429,7 @@ func TestValidatorEdgeCases(t *testing.T) {
 
 // Test that the minimal validator doesn't have the old complex validation
 func TestMinimalValidatorBehavior(t *testing.T) {
+	t.Parallel()
 	validator := NewValidator()
 
 	// These should all pass with the minimal validator

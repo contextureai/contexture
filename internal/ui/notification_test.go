@@ -8,6 +8,7 @@ import (
 )
 
 func TestNotification(t *testing.T) {
+	t.Parallel()
 	t.Run("success_notification", func(t *testing.T) {
 		notification := NewNotification(
 			NotificationSuccess,
@@ -69,6 +70,7 @@ func TestNotification(t *testing.T) {
 }
 
 func TestNotificationTypeValues(t *testing.T) {
+	t.Parallel()
 	// Test that notification type constants have expected values
 	assert.Equal(t, 0, int(NotificationSuccess))
 	assert.Equal(t, 1, int(NotificationWarning))

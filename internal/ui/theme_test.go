@@ -10,6 +10,7 @@ import (
 )
 
 func TestDefaultTheme(t *testing.T) {
+	t.Parallel()
 	theme := DefaultTheme()
 	assert.NotNil(t, theme)
 	// Test CharmTheme-based colors
@@ -26,6 +27,7 @@ func TestDefaultTheme(t *testing.T) {
 }
 
 func TestStyles(t *testing.T) {
+	t.Parallel()
 	theme := DefaultTheme()
 	styles := NewStyles(theme)
 	assert.NotNil(t, styles)
@@ -62,6 +64,7 @@ func TestStyles(t *testing.T) {
 }
 
 func TestStyleMethods(t *testing.T) {
+	t.Parallel()
 	theme := DefaultTheme()
 	styles := NewStyles(theme)
 
@@ -88,6 +91,7 @@ func TestStyleMethods(t *testing.T) {
 }
 
 func TestSpinnerChars(t *testing.T) {
+	t.Parallel()
 	// Test that spinner characters are defined
 	assert.NotEmpty(t, SpinnerChars)
 	assert.Len(t, SpinnerChars, 10)
@@ -101,6 +105,7 @@ func TestSpinnerChars(t *testing.T) {
 }
 
 func TestHuhIntegration(t *testing.T) {
+	t.Parallel()
 	// Test that we can create a keymap with ESC enabled inline
 	keymap := huh.NewDefaultKeyMap()
 	keymap.Quit.SetKeys("ctrl+c", "esc")
@@ -109,6 +114,7 @@ func TestHuhIntegration(t *testing.T) {
 }
 
 func TestAllComponentsWithTheme(t *testing.T) {
+	t.Parallel()
 	theme := DefaultTheme()
 
 	t.Run("all_components_render", func(t *testing.T) {

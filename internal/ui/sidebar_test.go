@@ -9,6 +9,7 @@ import (
 )
 
 func TestSidebar(t *testing.T) {
+	t.Parallel()
 	t.Run("simple_sidebar", func(t *testing.T) {
 		sidebar := NewSidebar("Navigation")
 		result := sidebar.Render()

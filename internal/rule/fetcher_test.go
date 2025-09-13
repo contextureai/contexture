@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewFetcher(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
@@ -28,6 +29,7 @@ func TestNewFetcher(t *testing.T) {
 }
 
 func TestNewFetcherWithDefaults(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
@@ -38,6 +40,7 @@ func TestNewFetcherWithDefaults(t *testing.T) {
 }
 
 func TestGitFetcher_ParseRuleID(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
@@ -199,6 +202,7 @@ func TestGitFetcher_ParseRuleID(t *testing.T) {
 }
 
 func TestGitFetcher_FetchRule(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
@@ -236,6 +240,7 @@ func TestGitFetcher_FetchRule(t *testing.T) {
 }
 
 func TestGitFetcher_FetchRule_NotFound(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
@@ -263,6 +268,7 @@ func TestGitFetcher_FetchRule_NotFound(t *testing.T) {
 }
 
 func TestGitFetcher_FetchRules(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
@@ -316,6 +322,7 @@ func TestGitFetcher_FetchRules(t *testing.T) {
 }
 
 func TestGitFetcher_ListAvailableRules(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
@@ -383,6 +390,7 @@ func TestGitFetcher_ListAvailableRules(t *testing.T) {
 }
 
 func TestLocalFetcher(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	baseDir := "/local/rules"
 
@@ -426,6 +434,7 @@ This is a test rule content.`
 }
 
 func TestExtractRuleIDsFromContent(t *testing.T) {
+	t.Parallel()
 	content := `
 # Template Content
 
@@ -461,6 +470,7 @@ And another rule:
 }
 
 func TestLocalFetcher_ParseRuleID(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	fetcher := NewLocalFetcher(fs, "/local/rules")
 

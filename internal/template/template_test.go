@@ -2,7 +2,6 @@ package template
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 	"text/template"
@@ -12,11 +11,13 @@ import (
 )
 
 func TestNewEngine(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 	assert.NotNil(t, engine)
 }
 
 func TestTemplateEngine_Render(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	tests := []struct {
@@ -148,6 +149,7 @@ func TestTemplateEngine_Render(t *testing.T) {
 }
 
 func TestTemplateEngine_ParseAndValidate(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	tests := []struct {
@@ -207,6 +209,7 @@ func TestTemplateEngine_ParseAndValidate(t *testing.T) {
 }
 
 func TestTemplateEngine_ExtractVariables(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	tests := []struct {
@@ -294,6 +297,7 @@ func TestTemplateEngine_ExtractVariables(t *testing.T) {
 // Test custom template functions
 
 func TestSlugify(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -317,6 +321,7 @@ func TestSlugify(t *testing.T) {
 }
 
 func TestCamelCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -341,6 +346,7 @@ func TestCamelCase(t *testing.T) {
 }
 
 func TestPascalCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -363,6 +369,7 @@ func TestPascalCase(t *testing.T) {
 }
 
 func TestSnakeCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -385,6 +392,7 @@ func TestSnakeCase(t *testing.T) {
 }
 
 func TestKebabCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -406,6 +414,7 @@ func TestKebabCase(t *testing.T) {
 }
 
 func TestTitleCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -426,6 +435,7 @@ func TestTitleCase(t *testing.T) {
 }
 
 func TestJoinAnd(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input any
 		want  string
@@ -449,6 +459,7 @@ func TestJoinAnd(t *testing.T) {
 }
 
 func TestUnique(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input any
 		want  []string
@@ -469,6 +480,7 @@ func TestUnique(t *testing.T) {
 }
 
 func TestIndent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input  string
 		spaces int
@@ -491,6 +503,7 @@ func TestIndent(t *testing.T) {
 }
 
 func TestDefaultIfEmpty(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input        interface{}
 		defaultValue any
@@ -515,6 +528,7 @@ func TestDefaultIfEmpty(t *testing.T) {
 }
 
 func TestLength(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input any
 		want  int
@@ -537,6 +551,7 @@ func TestLength(t *testing.T) {
 }
 
 func TestSplitWords(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  []string
@@ -561,6 +576,7 @@ func TestSplitWords(t *testing.T) {
 }
 
 func TestToStringSlice(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input any
 		want  []string
@@ -581,6 +597,7 @@ func TestToStringSlice(t *testing.T) {
 }
 
 func TestConcurrentRenderSafety(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 	template := "Hello {{.name}}!"
 
@@ -602,6 +619,7 @@ func TestConcurrentRenderSafety(t *testing.T) {
 }
 
 func TestComplexTemplateScenarios(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	tests := []struct {
@@ -655,85 +673,8 @@ func TestComplexTemplateScenarios(t *testing.T) {
 	}
 }
 
-// Benchmarks
-
-func BenchmarkRender(b *testing.B) {
-	engine := NewEngine()
-	template := "Hello {{.name}}! Your items: {{join .items \", \"}}"
-	vars := map[string]any{
-		"name":  "World",
-		"items": []string{"a", "b", "c"},
-	}
-
-	b.ResetTimer()
-	for range b.N {
-		_, err := engine.Render(template, vars)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkSlugify(b *testing.B) {
-	input := "This is a Test String with Special@#$ Characters"
-
-	b.ResetTimer()
-	for range b.N {
-		_ = slugify(input)
-	}
-}
-
-func BenchmarkExtractVariables(b *testing.B) {
-	engine := NewEngine()
-	template := "{{.user.name}} {{if .active}}{{.status}}{{end}} {{range .items}}{{.id}}{{end}}"
-
-	b.ResetTimer()
-	for range b.N {
-		_, err := engine.ExtractVariables(template)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// Example tests
-
-func ExampleEngine_Render() {
-	engine := NewEngine()
-
-	template := "Hello {{.name}}! Today is {{.day}}."
-	variables := map[string]any{
-		"name": "Alice",
-		"day":  "Monday",
-	}
-
-	result, err := engine.Render(template, variables)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(result)
-	// Output: Hello Alice! Today is Monday.
-}
-
-func ExampleEngine_ExtractVariables() {
-	engine := NewEngine()
-
-	template := "{{.user.name}} has {{len .items}} items"
-
-	vars, err := engine.ExtractVariables(template)
-	if err != nil {
-		panic(err)
-	}
-
-	// vars will contain ["user", "items"]
-	fmt.Println(strings.Join(vars, ", "))
-	// Output: user, items
-}
-
-// Error cases
-
 func TestErrorHandling(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	// Test template execution error

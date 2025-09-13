@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewBuilder(t *testing.T) {
+	t.Parallel()
 	builder := NewBuilder()
 
 	assert.NotNil(t, builder)
@@ -27,6 +28,7 @@ func TestNewBuilder(t *testing.T) {
 }
 
 func TestBuilder_Register(t *testing.T) {
+	t.Parallel()
 	builder := NewBuilder()
 
 	// Register a custom format
@@ -43,6 +45,7 @@ func TestBuilder_Register(t *testing.T) {
 }
 
 func TestBuilder_Build(t *testing.T) {
+	t.Parallel()
 	builder := NewBuilder()
 	fs := afero.NewMemMapFs()
 
@@ -107,6 +110,7 @@ func TestBuilder_Build(t *testing.T) {
 }
 
 func TestBuilder_GetSupportedFormats(t *testing.T) {
+	t.Parallel()
 	builder := NewBuilder()
 
 	formats := builder.GetSupportedFormats()
@@ -119,6 +123,7 @@ func TestBuilder_GetSupportedFormats(t *testing.T) {
 }
 
 func TestBuiltInConstructors(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 
 	t.Run("claude constructor", func(t *testing.T) {

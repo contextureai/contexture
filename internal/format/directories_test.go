@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewDirectoryManager(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	dm := NewDirectoryManager(fs)
 
@@ -18,6 +19,7 @@ func TestNewDirectoryManager(t *testing.T) {
 }
 
 func TestDirectoryManager_CreateFormatDirectories(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		formatType      domain.FormatType
@@ -69,6 +71,7 @@ func TestDirectoryManager_CreateFormatDirectories(t *testing.T) {
 }
 
 func TestDirectoryManager_CreateFormatDirectories_UnknownFormat(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	dm := NewDirectoryManager(fs)
 
@@ -78,6 +81,7 @@ func TestDirectoryManager_CreateFormatDirectories_UnknownFormat(t *testing.T) {
 }
 
 func TestDirectoryManager_CreateFormatDirectories_ErrorHandling(t *testing.T) {
+	t.Parallel()
 	// Test with read-only filesystem to trigger errors
 	fs := afero.NewReadOnlyFs(afero.NewMemMapFs())
 	dm := NewDirectoryManager(fs)
@@ -96,6 +100,7 @@ func TestDirectoryManager_CreateFormatDirectories_ErrorHandling(t *testing.T) {
 }
 
 func TestDirectoryManager_CreateFormatDirectories_Idempotent(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	dm := NewDirectoryManager(fs)
 
