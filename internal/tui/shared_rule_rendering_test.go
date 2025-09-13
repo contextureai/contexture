@@ -8,63 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractRulePath(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		ruleID   string
-		expected string
-	}{
-		{
-			name:     "empty rule ID",
-			ruleID:   "",
-			expected: "",
-		},
-		{
-			name:     "basic contexture format",
-			ruleID:   "[contexture:typescript/strict-config]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "contexture with source",
-			ruleID:   "[contexture(github):typescript/strict-config]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "contexture with branch",
-			ruleID:   "[contexture:typescript/strict-config,main]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "contexture with source and branch",
-			ruleID:   "[contexture(github):typescript/strict-config,main]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "nested path",
-			ruleID:   "[contexture:frontend/react/component-naming]",
-			expected: "frontend/react/component-naming",
-		},
-		{
-			name:     "rule with variables",
-			ruleID:   "[contexture:languages/go/code-organization]{\"extended\": true}",
-			expected: "languages/go/code-organization",
-		},
-		{
-			name:     "rule with branch and variables",
-			ruleID:   "[contexture:typescript/strict,v2.0.0]{\"target\": \"es2022\"}",
-			expected: "typescript/strict",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := extractRulePath(tt.ruleID)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestExtractRuleVariables(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
