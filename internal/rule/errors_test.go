@@ -9,6 +9,7 @@ import (
 )
 
 func TestCombineErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		errs     []error
@@ -90,6 +91,7 @@ func TestCombineErrors(t *testing.T) {
 }
 
 func TestCombineErrors_PreservesOriginalError(t *testing.T) {
+	t.Parallel()
 	originalErr := errors.New("original error")
 	errs := []error{originalErr}
 

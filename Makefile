@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt generate integration e2e docker-integration docker-e2e install deps tag
+.PHONY: build test lint fmt generate install deps tag
 
 export GOBIN ?= $(shell pwd)/bin
 
@@ -33,8 +33,8 @@ build:
 	@mkdir -p $(BINARY_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE)
 
-test:
-	@go test -race -cover -coverprofile=coverage.out -timeout=5m $(shell go list ./... | grep -v -E '/(e2e|integration)$$')
+test: build
+	@go test -race -cover -coverprofile=coverage.out -timeout=5m ./...
 
 lint: $(GOLANGCI_LINT)
 	@echo "Running linter..."
@@ -48,33 +48,6 @@ fmt: $(GOIMPORTS) $(GOFUMPT)
 generate: $(MOCKERY)
 	@echo "Generating mocks..."
 	$(MOCKERY)
-
-integration:
-	@go test -v -race -timeout=10m ./integration/...
-
-e2e:
-	@go test -race -timeout=15m ./e2e/...
-
-docker-integration:
-	@docker build -f build/Dockerfile.test -t contexture-test . > /dev/null 2>&1 || echo "Using existing image..."
-	@docker run --rm \
-		-v "$(PWD)":/app \
-		-v contexture-go-mod-cache:/go/pkg/mod \
-		-v contexture-go-cache:/go/cache \
-		-w /app \
-		contexture-test sh -c "make integration"
-
-docker-e2e:
-	@docker build -f build/Dockerfile.test -t contexture-test . > /dev/null 2>&1 || echo "Using existing image..."
-	@mkdir -p test-output && chmod 755 test-output
-	@docker run --rm \
-		-v "$(PWD)/e2e":/app/e2e \
-		-v "$(PWD)/test-output":/app/test-output \
-		-v contexture-go-mod-cache:/go/pkg/mod \
-		-v contexture-go-cache:/go/cache \
-		-w /app \
-		-e CONTEXTURE_DOCKER_TEST=true \
-		contexture-test sh -c "make e2e"
 
 install:
 	@echo "Installing $(BINARY_NAME) $(VERSION)..."

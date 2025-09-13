@@ -81,10 +81,6 @@ func TestCommandActions_Dependencies(t *testing.T) {
 }
 
 func TestCommandActions_IntegrationWithCLI(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration tests in short mode")
-	}
-
 	deps := dependencies.NewForTesting(context.Background())
 	actions := NewCommandActions(deps)
 
@@ -121,31 +117,6 @@ func TestCommandActions_IntegrationWithCLI(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
-
-// Benchmark action creation
-func BenchmarkNewCommandActions(b *testing.B) {
-	deps := dependencies.NewForTesting(context.Background())
-
-	b.ResetTimer()
-	for range b.N {
-		_ = NewCommandActions(deps)
-	}
-}
-
-func BenchmarkCommandActions_ActionAccess(b *testing.B) {
-	deps := dependencies.NewForTesting(context.Background())
-	actions := NewCommandActions(deps)
-
-	b.ResetTimer()
-	for range b.N {
-		// Measure the overhead of accessing action functions
-		_ = actions.InitAction
-		_ = actions.AddAction
-		_ = actions.BuildAction
-	}
-}
-
-// Example documentation removed due to output variability in CLI applications
 
 func TestCommandActions_ErrorHandling(t *testing.T) {
 	t.Parallel()

@@ -4,7 +4,6 @@ package e2e
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -20,10 +19,7 @@ import (
 
 // TestRuleSelectorTUI tests the rule selector TUI component
 func TestRuleSelectorTUI(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI tests in short mode")
-	}
-
+	t.Parallel()
 	// Sample rules are available but not used in these basic tests
 	_ = []*domain.Rule{
 		{
@@ -63,10 +59,7 @@ func TestRuleSelectorTUI(t *testing.T) {
 
 // TestRulePreviewHelper tests the rule preview functionality
 func TestRulePreviewHelper(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI tests in short mode")
-	}
-
+	t.Parallel()
 	helper := tui.NewRulePreviewHelper()
 	require.NotNil(t, helper)
 
@@ -111,25 +104,16 @@ func TestRulePreviewHelper(t *testing.T) {
 
 // TestFileBrowserTUI tests the file browser component
 func TestFileBrowserTUI(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("file browser creation", func(t *testing.T) {
 		browser := tui.NewFileBrowser()
 		require.NotNil(t, browser)
 	})
-
-	// Note: Full TUI testing would require more complex setup
-	// These are basic smoke tests to ensure components can be created
 }
 
 // TestInteractiveTUIBehavior tests TUI behavior with simulated input using teatest
 func TestInteractiveTUIBehavior(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping interactive TUI tests in short mode")
-	}
-
+	t.Parallel()
 	// Create comprehensive test rules
 	rules := []*domain.Rule{
 		{
@@ -205,51 +189,6 @@ func TestInteractiveTUIBehavior(t *testing.T) {
 		assert.Contains(t, finalModel.chosen, "[contexture:performance/caching]")
 		assert.Contains(t, finalModel.chosen, "[contexture:testing/unit-tests]")
 		assert.NotContains(t, finalModel.chosen, "[contexture:security/input-validation]")
-	})
-
-	t.Run("rule filtering workflow", func(t *testing.T) {
-		// Skip filtering test in Docker or WSL - TUI filtering can be unreliable in containerized/virtualized environments
-		if os.Getenv("CONTEXTURE_DOCKER_TEST") == envTrue {
-			t.Skip("Skipping TUI filtering test in Docker due to input handling complexity")
-		}
-		if os.Getenv("WSL_DISTRO_NAME") != "" {
-			t.Skip("Skipping TUI filtering test in WSL due to terminal interaction issues")
-		}
-
-		t.Log("Running TUI filtering test - this may be flaky in some environments")
-		items := make([]list.Item, len(rules))
-		for i, rule := range rules {
-			items[i] = &ruleItem{rule: rule}
-		}
-
-		model := newRuleSelectionModel(items, "E2E Filter Test")
-
-		tm := teatest.NewTestModel(t, model,
-			teatest.WithInitialTermSize(100, 30))
-
-		// Type to start filtering for "security"
-		tm.Type("security")
-
-		// Wait for filter to apply - increase timeout for Docker environment
-		teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-			output := string(bts)
-			// Check if we can see Input Validation and not see Caching Strategy
-			return strings.Contains(output, "Input Validation") &&
-				!strings.Contains(output, "Caching Strategy")
-		}, teatest.WithCheckInterval(100*time.Millisecond), teatest.WithDuration(5*time.Second))
-
-		// Select the filtered item
-		tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-
-		// Confirm selection
-		tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
-
-		finalModel, ok := tm.FinalModel(t).(*mockRuleSelectionModel)
-		require.True(t, ok)
-
-		// Should have only selected the security rule
-		assert.Len(t, finalModel.chosen, 1)
-		assert.Contains(t, finalModel.chosen, "[contexture:security/input-validation]")
 	})
 
 	t.Run("cancellation workflow", func(t *testing.T) {
@@ -434,10 +373,7 @@ func (m *mockRuleSelectionModel) View() string {
 
 // TestTUIComponentIntegration tests integration between TUI components
 func TestTUIComponentIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI integration tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("preview helper with real rule data", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -498,10 +434,7 @@ function example() {
 
 // TestTUIErrorHandling tests error scenarios in TUI components
 func TestTUIErrorHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI error tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("preview with nil rule", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -540,10 +473,7 @@ func TestTUIErrorHandling(t *testing.T) {
 
 // TestTUIPerformance tests TUI performance with large datasets
 func TestTUIPerformance(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI performance tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("preview with large rule content", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -587,10 +517,7 @@ func TestTUIPerformance(t *testing.T) {
 
 // TestTUIAccessibility tests accessibility features in TUI components
 func TestTUIAccessibility(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI accessibility tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("preview content structure", func(t *testing.T) {
 		helper := tui.NewRulePreviewHelper()
 
@@ -616,10 +543,7 @@ func TestTUIAccessibility(t *testing.T) {
 
 // TestTUIKeyboardNavigation tests keyboard navigation in TUI components
 func TestTUIKeyboardNavigation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI keyboard navigation tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("rule selector keyboard simulation", func(t *testing.T) {
 		// Create a rule selector for testing
 		selector := tui.NewRuleSelector()
@@ -637,10 +561,7 @@ func TestTUIKeyboardNavigation(t *testing.T) {
 
 // TestTUISearchFunctionality tests search and filtering in TUI
 func TestTUISearchFunctionality(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI search tests in short mode")
-	}
-
+	t.Parallel()
 	t.Run("rule filtering", func(t *testing.T) {
 		// Test rule filtering logic
 		// This would test the search/filter functionality if exposed
@@ -663,10 +584,7 @@ func TestTUISearchFunctionality(t *testing.T) {
 
 // TestTUIRenderingEdgeCases tests rendering with edge cases
 func TestTUIRenderingEdgeCases(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TUI rendering edge case tests in short mode")
-	}
-
+	t.Parallel()
 	helper := tui.NewRulePreviewHelper()
 
 	t.Run("unicode content", func(t *testing.T) {

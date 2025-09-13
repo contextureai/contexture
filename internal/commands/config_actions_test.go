@@ -12,6 +12,7 @@ import (
 )
 
 func TestConfigActionsErrorHandling(t *testing.T) {
+	t.Parallel()
 	// Test that config actions handle missing dependencies gracefully
 	t.Run("action_with_nil_dependencies", func(t *testing.T) {
 		ctx := context.Background()

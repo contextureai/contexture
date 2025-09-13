@@ -10,6 +10,7 @@ import (
 )
 
 func TestCard(t *testing.T) {
+	t.Parallel()
 	t.Run("simple_card", func(t *testing.T) {
 		card := NewCard("Card Title")
 		result := card.Render()

@@ -15,6 +15,7 @@ import (
 )
 
 func TestNewInitCommand(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,
@@ -28,6 +29,7 @@ func TestNewInitCommand(t *testing.T) {
 }
 
 func TestInitCommand_Execute(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		setupFS        func(afero.Fs) string
@@ -191,6 +193,7 @@ rules: []
 }
 
 func TestInitCommand_ProjectManagerIntegration(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	tempDir := "/tmp/test-integration"
 	_ = fs.MkdirAll(tempDir, 0o755)
@@ -221,6 +224,7 @@ func TestInitCommand_ProjectManagerIntegration(t *testing.T) {
 }
 
 func TestInitAction(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,

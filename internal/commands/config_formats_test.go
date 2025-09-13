@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewFormatManager(t *testing.T) {
+	t.Parallel()
 	deps := &dependencies.Dependencies{
 		FS:      afero.NewMemMapFs(),
 		Context: context.Background(),
@@ -25,6 +26,7 @@ func TestNewFormatManager(t *testing.T) {
 }
 
 func TestFormatManager_HelperMethods(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,

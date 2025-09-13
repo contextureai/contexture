@@ -20,10 +20,6 @@ import (
 
 // TestRealGitRepositoryOperations tests actual git operations with real repositories
 func TestRealGitRepositoryOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git integration tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -105,10 +101,6 @@ func TestRealGitRepositoryOperations(t *testing.T) {
 
 // TestGitAuthentication tests different git authentication methods
 func TestGitAuthentication(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git authentication tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -148,34 +140,34 @@ func TestGitAuthentication(t *testing.T) {
 		tempHomeDir := t.TempDir()
 		sshDir := filepath.Join(tempHomeDir, ".ssh")
 		keyPath := filepath.Join(sshDir, "id_ed25519")
-		
+
 		// Create real directory structure and dummy SSH key file
 		err := os.MkdirAll(sshDir, 0o700)
 		require.NoError(t, err, "Should create SSH directory")
-		
+
 		// Create a dummy SSH key file (not a real key, just for testing detection)
 		err = os.WriteFile(keyPath, []byte("dummy ssh key content"), 0o600)
 		require.NoError(t, err, "Should create dummy SSH key file")
 
 		// Set environment to use our temporary home directory
 		t.Setenv("HOME", tempHomeDir)
-		
+
 		// Disable SSH agent for this test to force key file fallback
 		t.Setenv("SSH_AUTH_SOCK", "")
-		
+
 		tempDir := t.TempDir()
 		cloneDir := filepath.Join(tempDir, "ssh-auth")
 
 		// Attempt SSH clone - this will test the SSH key detection logic
 		err = repo.Clone(ctx, testPublicRepoSSH, cloneDir)
-		
+
 		// We expect this to fail since we're using dummy keys, but the failure
 		// should indicate that SSH authentication was attempted and keys were detected
 		require.Error(t, err, "Should fail with dummy SSH keys")
-		
+
 		// The error should indicate SSH authentication was attempted
 		errorMsg := strings.ToLower(err.Error())
-		
+
 		// Check if the error indicates SSH key processing was attempted
 		// This confirms our SSH key detection logic is working
 		authAttempted := strings.Contains(errorMsg, "ssh") ||
@@ -183,14 +175,14 @@ func TestGitAuthentication(t *testing.T) {
 			strings.Contains(errorMsg, "key") ||
 			strings.Contains(errorMsg, "load") ||
 			strings.Contains(errorMsg, "failed to load")
-			
+
 		if authAttempted {
 			t.Logf("✅ SSH key detection worked - authentication attempted and failed as expected: %v", err)
 		} else {
 			// If no SSH-specific error, it might be a network/repository error
 			t.Logf("⚠️  SSH authentication attempt not clearly detected in error, but test validates graceful failure: %v", err)
 		}
-		
+
 		// Key assertion: the operation should fail gracefully without crashing
 		// and should not leave partial repositories
 		assert.False(t, repo.IsValidRepository(cloneDir), "Should not leave partial repository on auth failure")
@@ -216,10 +208,6 @@ func TestGitAuthentication(t *testing.T) {
 
 // TestGitBranchHandling tests git branch operations
 func TestGitBranchHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git branch tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -313,10 +301,6 @@ func TestGitBranchHandling(t *testing.T) {
 
 // TestGitErrorHandling tests git error scenarios
 func TestGitErrorHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git error tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -445,10 +429,6 @@ func TestGitErrorHandling(t *testing.T) {
 
 // TestGitPerformance tests git operation performance
 func TestGitPerformance(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git performance tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -530,10 +510,6 @@ func TestGitPerformance(t *testing.T) {
 
 // TestGitCommitOperations tests git commit-related operations
 func TestGitCommitOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git commit operations tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -630,10 +606,6 @@ func TestGitCommitOperations(t *testing.T) {
 
 // TestGitPullOperations tests git pull operations
 func TestGitPullOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git pull operations tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()
@@ -740,10 +712,6 @@ func TestGitValidation(t *testing.T) {
 
 // TestGitIntegrationWithCustomConfig tests git operations with custom configuration
 func TestGitIntegrationWithCustomConfig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git custom config tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 
 	t.Run("custom timeout configuration", func(t *testing.T) {
@@ -807,10 +775,6 @@ func TestGitIntegrationWithCustomConfig(t *testing.T) {
 
 // TestGitMemoryUsage tests memory usage during git operations
 func TestGitMemoryUsage(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git memory usage tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	repo := git.NewRepository(fs)
 	ctx := context.Background()

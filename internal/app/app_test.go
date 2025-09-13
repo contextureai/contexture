@@ -219,10 +219,6 @@ func TestApplication_CommandBuilders(t *testing.T) {
 }
 
 func TestApplication_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration tests in short mode")
-	}
-
 	t.Run("help_commands_execute", func(t *testing.T) {
 		deps := dependencies.NewForTesting(context.Background())
 		app := New(deps)

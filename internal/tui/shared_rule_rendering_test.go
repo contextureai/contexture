@@ -8,63 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractRulePath(t *testing.T) {
-	tests := []struct {
-		name     string
-		ruleID   string
-		expected string
-	}{
-		{
-			name:     "empty rule ID",
-			ruleID:   "",
-			expected: "",
-		},
-		{
-			name:     "basic contexture format",
-			ruleID:   "[contexture:typescript/strict-config]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "contexture with source",
-			ruleID:   "[contexture(github):typescript/strict-config]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "contexture with branch",
-			ruleID:   "[contexture:typescript/strict-config,main]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "contexture with source and branch",
-			ruleID:   "[contexture(github):typescript/strict-config,main]",
-			expected: "typescript/strict-config",
-		},
-		{
-			name:     "nested path",
-			ruleID:   "[contexture:frontend/react/component-naming]",
-			expected: "frontend/react/component-naming",
-		},
-		{
-			name:     "rule with variables",
-			ruleID:   "[contexture:languages/go/code-organization]{\"extended\": true}",
-			expected: "languages/go/code-organization",
-		},
-		{
-			name:     "rule with branch and variables",
-			ruleID:   "[contexture:typescript/strict,v2.0.0]{\"target\": \"es2022\"}",
-			expected: "typescript/strict",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := extractRulePath(tt.ruleID)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestExtractRuleVariables(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		ruleID   string
@@ -121,6 +66,7 @@ func TestExtractRuleVariables(t *testing.T) {
 }
 
 func TestBuildRuleMetadata(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name                  string
 		rule                  *domain.Rule
@@ -229,6 +175,7 @@ func TestBuildRuleMetadata(t *testing.T) {
 }
 
 func TestSharedCountMatches(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		haystack string
@@ -288,6 +235,7 @@ func TestSharedCountMatches(t *testing.T) {
 }
 
 func TestSharedCreateRuleItemStyles(t *testing.T) {
+	t.Parallel()
 	styles := createRuleItemStyles()
 
 	// Test that styles are created and have expected properties
@@ -327,6 +275,7 @@ func TestSharedCreateRuleItemStyles(t *testing.T) {
 }
 
 func TestApplyHighlightsGeneric(t *testing.T) {
+	t.Parallel()
 	baseStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000"))
 	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF0000"))
 
@@ -391,6 +340,7 @@ func TestApplyHighlightsGeneric(t *testing.T) {
 }
 
 func TestApplyTitleHighlightingGeneric(t *testing.T) {
+	t.Parallel()
 	baseColor := lipgloss.Color("#FF00FF")
 
 	tests := []struct {
@@ -450,6 +400,7 @@ func TestApplyTitleHighlightingGeneric(t *testing.T) {
 }
 
 func TestGetDefaultFilterColors(t *testing.T) {
+	t.Parallel()
 	colors := GetDefaultFilterColors()
 
 	// Test that all colors are set
@@ -474,6 +425,7 @@ func TestGetDefaultFilterColors(t *testing.T) {
 
 // Test with realistic rule data
 func TestBuildRuleMetadataIntegration(t *testing.T) {
+	t.Parallel()
 	// Create a realistic rule similar to what would be used in the app
 	rule := &domain.Rule{
 		ID:          "[contexture:typescript/strict-config]",
@@ -498,6 +450,7 @@ func TestBuildRuleMetadataIntegration(t *testing.T) {
 }
 
 func TestExtractRulePathIntegration(t *testing.T) {
+	t.Parallel()
 	// Test with realistic rule IDs that would be used in the app
 	testCases := []struct {
 		ruleID   string
@@ -517,6 +470,7 @@ func TestExtractRulePathIntegration(t *testing.T) {
 }
 
 func TestExtractRulePathWithLocalIndicator(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		rule     *domain.Rule

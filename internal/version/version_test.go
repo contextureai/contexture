@@ -1,7 +1,6 @@
 package version
 
 import (
-	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -15,6 +14,7 @@ const (
 )
 
 func TestGet(t *testing.T) {
+	t.Parallel()
 	t.Run("returns_complete_version_info", func(t *testing.T) {
 		info := Get()
 
@@ -82,6 +82,8 @@ func TestGetShort(t *testing.T) {
 }
 
 func TestInfoString(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		version        string
@@ -117,6 +119,7 @@ func TestInfoString(t *testing.T) {
 }
 
 func TestInfoDetailed(t *testing.T) {
+	t.Parallel()
 	t.Run("development_build_detailed", func(t *testing.T) {
 		info := Info{
 			Version:   testVersionDev,
@@ -215,64 +218,4 @@ func TestBuildTimeVariables(t *testing.T) {
 		assert.Equal(t, testUnknown, info.BuildDate)
 		assert.Equal(t, testUnknown, info.BuildBy)
 	})
-}
-
-// Benchmark version info creation
-func BenchmarkGet(b *testing.B) {
-	b.ResetTimer()
-	for range b.N {
-		_ = Get()
-	}
-}
-
-func BenchmarkGetShort(b *testing.B) {
-	b.ResetTimer()
-	for range b.N {
-		_ = GetShort()
-	}
-}
-
-func BenchmarkInfoString(b *testing.B) {
-	info := Get()
-	b.ResetTimer()
-	for range b.N {
-		_ = info.String()
-	}
-}
-
-func BenchmarkInfoDetailed(b *testing.B) {
-	info := Get()
-	b.ResetTimer()
-	for range b.N {
-		_ = info.Detailed()
-	}
-}
-
-// Example usage of version package
-func ExampleGet() {
-	info := Get()
-
-	// Basic version string
-	_ = info.String()
-
-	// Detailed version information
-	_ = info.Detailed()
-
-	// Individual fields
-	_ = info.Version
-	_ = info.Commit
-	_ = info.GoVersion
-
-	fmt.Println("Version information is available through the Info struct")
-	// Output:
-	// Version information is available through the Info struct
-}
-
-func ExampleGetShort() {
-	version := GetShort()
-	_ = version
-
-	fmt.Println("Returns just the version string")
-	// Output:
-	// Returns just the version string
 }

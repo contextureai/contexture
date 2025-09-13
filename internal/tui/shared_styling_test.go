@@ -19,6 +19,7 @@ const (
 )
 
 func TestSharedColorConstants(t *testing.T) {
+	t.Parallel()
 	// Test that shared color constants are properly defined
 	assert.NotNil(t, darkGray)
 	assert.NotNil(t, mutedGray)
@@ -47,6 +48,7 @@ func TestSharedColorConstants(t *testing.T) {
 }
 
 func TestStyleConfig(t *testing.T) {
+	t.Parallel()
 	// Test StyleConfig struct can be created
 	theme := ui.DefaultTheme()
 	config := StyleConfig{
@@ -96,6 +98,7 @@ func getStyleConfig() StyleConfig {
 }
 
 func TestRenderStyledLinesForEmptyFilter_WithPath(t *testing.T) {
+	t.Parallel()
 	config := getStyleConfig()
 
 	lines := []string{
@@ -124,6 +127,7 @@ func TestRenderStyledLinesForEmptyFilter_WithPath(t *testing.T) {
 }
 
 func TestRenderStyledLinesForEmptyFilter_WithoutPath(t *testing.T) {
+	t.Parallel()
 	config := getStyleConfig()
 
 	lines := []string{
@@ -151,6 +155,7 @@ func TestRenderStyledLinesForEmptyFilter_WithoutPath(t *testing.T) {
 }
 
 func TestRenderStyledLinesForEmptyFilter_Selected(t *testing.T) {
+	t.Parallel()
 	config := getStyleConfig()
 
 	lines := []string{
@@ -179,6 +184,7 @@ func TestRenderStyledLinesForEmptyFilter_Selected(t *testing.T) {
 }
 
 func TestRenderStyledLinesForEmptyFilter_EmptyLines(t *testing.T) {
+	t.Parallel()
 	config := getStyleConfig()
 
 	lines := []string{}
@@ -193,6 +199,7 @@ func TestRenderStyledLinesForEmptyFilter_EmptyLines(t *testing.T) {
 }
 
 func TestRenderStyledLinesForEmptyFilter_SingleLine(t *testing.T) {
+	t.Parallel()
 	config := getStyleConfig()
 
 	lines := []string{"Single Title"}
@@ -211,6 +218,7 @@ func TestRenderStyledLinesForEmptyFilter_SingleLine(t *testing.T) {
 
 // Integration test with realistic data
 func TestRenderStyledLinesForEmptyFilter_Integration(t *testing.T) {
+	t.Parallel()
 	config := getStyleConfig()
 
 	// Test with realistic rule data

@@ -10,6 +10,7 @@ import (
 )
 
 func TestBanner(t *testing.T) {
+	t.Parallel()
 	t.Run("simple_banner", func(t *testing.T) {
 		banner := NewBanner("Test Banner")
 		result := banner.Render()
@@ -43,13 +44,4 @@ func TestBanner(t *testing.T) {
 
 		assert.Contains(t, result, "Test")
 	})
-}
-
-// Benchmark tests
-func BenchmarkBannerRender(b *testing.B) {
-	banner := NewBanner("Benchmark Test").WithSubtitle("Performance Testing")
-	b.ResetTimer()
-	for range b.N {
-		banner.Render()
-	}
 }

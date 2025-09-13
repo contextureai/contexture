@@ -8,6 +8,7 @@ import (
 )
 
 func TestMenu(t *testing.T) {
+	t.Parallel()
 	t.Run("simple_menu", func(t *testing.T) {
 		menu := NewMenu("Main Menu")
 		result := menu.Render()
@@ -58,16 +59,4 @@ func TestMenu(t *testing.T) {
 
 		assert.Contains(t, result, "Wide Menu")
 	})
-}
-
-// Benchmark tests
-func BenchmarkMenuRender(b *testing.B) {
-	menu := NewMenu("Benchmark Menu").
-		AddItem("Option 1", "Description 1").
-		AddItem("Option 2", "Description 2").
-		AddItemWithShortcut("Option 3", "Description 3", "3")
-	b.ResetTimer()
-	for range b.N {
-		menu.Render()
-	}
 }

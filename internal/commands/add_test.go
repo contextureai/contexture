@@ -16,6 +16,7 @@ import (
 )
 
 func TestNewAddCommand(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,
@@ -30,6 +31,7 @@ func TestNewAddCommand(t *testing.T) {
 }
 
 func TestAddAction(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	deps := &dependencies.Dependencies{
 		FS:      fs,
@@ -54,6 +56,7 @@ func TestAddAction(t *testing.T) {
 }
 
 func TestAddCommand_Execute_NoConfig(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	tempDir := "/tmp/test-add"
 	_ = fs.MkdirAll(tempDir, 0o755)
@@ -75,6 +78,7 @@ func TestAddCommand_Execute_NoConfig(t *testing.T) {
 }
 
 func TestAddCommand_CustomDataParsing(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		dataInput    string
@@ -141,6 +145,7 @@ func TestAddCommand_CustomDataParsing(t *testing.T) {
 }
 
 func TestAddCommand_SourceAndRefFlags(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		originalRuleID string
@@ -250,6 +255,7 @@ func TestAddCommand_SourceAndRefFlags(t *testing.T) {
 }
 
 func TestAddCommand_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		originalRuleID string

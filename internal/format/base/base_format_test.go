@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewBaseFormat(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	base := NewBaseFormat(fs, domain.FormatClaude)
 
@@ -21,6 +22,7 @@ func TestNewBaseFormat(t *testing.T) {
 }
 
 func TestBaseFormat_ValidateRule(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	tests := []struct {
@@ -79,6 +81,7 @@ func TestBaseFormat_ValidateRule(t *testing.T) {
 }
 
 func TestBaseFormat_ProcessTemplate(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	rule := &domain.Rule{
@@ -103,6 +106,7 @@ func TestBaseFormat_ProcessTemplate(t *testing.T) {
 }
 
 func TestBaseFormat_ProcessTemplateWithVars(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	rule := &domain.Rule{
@@ -125,6 +129,7 @@ func TestBaseFormat_ProcessTemplateWithVars(t *testing.T) {
 }
 
 func TestBaseFormat_CreateTransformedRule(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	rule := &domain.Rule{
@@ -152,6 +157,7 @@ func TestBaseFormat_CreateTransformedRule(t *testing.T) {
 }
 
 func TestBaseFormat_GenerateFilename(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	tests := []struct {
@@ -195,6 +201,7 @@ func TestBaseFormat_GenerateFilename(t *testing.T) {
 }
 
 func TestBaseFormat_ExtractRuleIDFromFilename(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	tests := []struct {
@@ -223,6 +230,7 @@ func TestBaseFormat_ExtractRuleIDFromFilename(t *testing.T) {
 }
 
 func TestBaseFormat_ExtractTitleFromContent(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	tests := []struct {
@@ -261,6 +269,7 @@ func TestBaseFormat_ExtractTitleFromContent(t *testing.T) {
 }
 
 func TestBaseFormat_FileOperations(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	base := NewBaseFormat(fs, domain.FormatClaude)
 
@@ -303,6 +312,7 @@ func TestBaseFormat_FileOperations(t *testing.T) {
 }
 
 func TestBaseFormat_ParseRuleFromContent(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	content := `<!-- Contexture Rule: [contexture:test/rule] -->
@@ -320,6 +330,7 @@ Some content here`
 }
 
 func TestBaseFormat_CalculateContentHash(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	content := []byte("test content")
@@ -338,6 +349,7 @@ func TestBaseFormat_CalculateContentHash(t *testing.T) {
 }
 
 func TestBaseFormat_ProcessTemplateWithVars_BooleanConversion(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	tests := []struct {
@@ -443,6 +455,7 @@ func TestBaseFormat_ProcessTemplateWithVars_BooleanConversion(t *testing.T) {
 }
 
 func TestBaseFormat_ProcessTemplateWithVars_RuleIDVariables(t *testing.T) {
+	t.Parallel()
 	base := NewBaseFormat(afero.NewMemMapFs(), domain.FormatClaude)
 
 	tests := []struct {
@@ -505,6 +518,7 @@ func TestBaseFormat_ProcessTemplateWithVars_RuleIDVariables(t *testing.T) {
 }
 
 func TestCreateTrackingComment(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	base := NewBaseFormat(fs, domain.FormatClaude)
 
@@ -553,6 +567,7 @@ func TestCreateTrackingComment(t *testing.T) {
 }
 
 func TestCreateTrackingCommentFromParsed(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	base := NewBaseFormat(fs, domain.FormatClaude)
 
@@ -619,6 +634,7 @@ func TestCreateTrackingCommentFromParsed(t *testing.T) {
 }
 
 func TestTrackingCommentNoDuplication(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewMemMapFs()
 	base := NewBaseFormat(fs, domain.FormatClaude)
 

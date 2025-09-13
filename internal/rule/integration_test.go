@@ -15,6 +15,7 @@ import (
 
 // TestRuleProcessingPipeline tests the complete rule processing workflow
 func TestRuleProcessingPipeline(t *testing.T) {
+	t.Parallel()
 	// Set up components
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
@@ -285,6 +286,7 @@ Invalid content`
 
 // TestRuleServiceIntegration tests a higher-level service that combines all components
 func TestRuleServiceIntegration(t *testing.T) {
+	t.Parallel()
 	// Create a service that combines all rule processing components
 	service := NewRuleService()
 

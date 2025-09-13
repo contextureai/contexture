@@ -11,6 +11,7 @@ import (
 
 // TestSelect_BasicSelection tests basic selection functionality
 func TestSelect_BasicSelection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		options  SelectOptions
@@ -83,6 +84,7 @@ func TestSelect_BasicSelection(t *testing.T) {
 
 // TestSelect_EmptyOptions tests error handling for empty options
 func TestSelect_EmptyOptions(t *testing.T) {
+	t.Parallel()
 	opts := SelectOptions{
 		Title:   "Empty Test",
 		Options: []SelectOption{},
@@ -102,6 +104,7 @@ func TestSelect_EmptyOptions(t *testing.T) {
 
 // TestMultiSelect_BasicSelection tests multi-selection functionality
 func TestMultiSelect_BasicSelection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		options  MultiSelectOptions
@@ -179,6 +182,7 @@ func TestMultiSelect_BasicSelection(t *testing.T) {
 
 // TestMultiSelect_EmptyOptions tests error handling for empty options
 func TestMultiSelect_EmptyOptions(t *testing.T) {
+	t.Parallel()
 	opts := MultiSelectOptions{
 		Title:   "Empty Multi Test",
 		Options: []SelectOption{},
@@ -195,6 +199,7 @@ func TestMultiSelect_EmptyOptions(t *testing.T) {
 
 // TestHandleFormError tests error handling transformation
 func TestHandleFormError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		inputError  error
@@ -236,6 +241,7 @@ func TestHandleFormError(t *testing.T) {
 
 // TestSelectOptions_Validation tests option validation
 func TestSelectOptions_Validation(t *testing.T) {
+	t.Parallel()
 	t.Run("valid options", func(t *testing.T) {
 		opts := SelectOptions{
 			Title: "Valid Test",
@@ -274,6 +280,7 @@ func TestSelectOptions_Validation(t *testing.T) {
 
 // TestMultiSelectOptions_Validation tests multi-select option validation
 func TestMultiSelectOptions_Validation(t *testing.T) {
+	t.Parallel()
 	t.Run("valid multi-select options", func(t *testing.T) {
 		opts := MultiSelectOptions{
 			Title:   "Valid Multi Test",
@@ -321,6 +328,7 @@ func TestMultiSelectOptions_Validation(t *testing.T) {
 
 // TestSelectOption_Structure tests the SelectOption struct
 func TestSelectOption_Structure(t *testing.T) {
+	t.Parallel()
 	opt := SelectOption{
 		Label:       "Test Label",
 		Value:       "test_value",
@@ -344,6 +352,7 @@ func TestSelectOption_Structure(t *testing.T) {
 
 // TestErrUserCancelled tests the custom error
 func TestErrUserCancelled(t *testing.T) {
+	t.Parallel()
 	require.Error(t, ErrUserCancelled)
 	assert.Equal(t, "operation cancelled by user", ErrUserCancelled.Error())
 
@@ -354,6 +363,7 @@ func TestErrUserCancelled(t *testing.T) {
 
 // TestSelectOptions_EdgeCases tests edge cases for SelectOptions
 func TestSelectOptions_EdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("default not in options", func(t *testing.T) {
 		opts := SelectOptions{
 			Title:   "Bad Default Test",
@@ -396,6 +406,7 @@ func TestSelectOptions_EdgeCases(t *testing.T) {
 
 // TestMultiSelectOptions_EdgeCases tests edge cases for MultiSelectOptions
 func TestMultiSelectOptions_EdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("defaults not in options", func(t *testing.T) {
 		opts := MultiSelectOptions{
 			Title:   "Bad Defaults Test",

@@ -12,10 +12,6 @@ import (
 
 // TestNetworkFailures tests behavior when network operations fail
 func TestNetworkFailures(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping network tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -45,10 +41,6 @@ func TestNetworkFailures(t *testing.T) {
 
 // TestGitAuthentication tests various git authentication scenarios
 func TestGitAuthentication(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git authentication tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -90,10 +82,6 @@ func TestGitAuthentication(t *testing.T) {
 
 // TestGitBranchHandling tests branch and tag specification
 func TestGitBranchHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping git branch tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -121,10 +109,6 @@ func TestGitBranchHandling(t *testing.T) {
 
 // TestRulePinning tests rule pinning and version management
 func TestRulePinning(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping rule pinning tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -157,10 +141,6 @@ rules:
 
 // TestConcurrentOperations tests concurrent git operations
 func TestConcurrentOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping concurrent operations tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -212,10 +192,6 @@ func TestConcurrentOperations(t *testing.T) {
 
 // TestRepositoryCleanup tests that temporary repositories are cleaned up properly
 func TestRepositoryCleanup(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping cleanup tests in short mode")
-	}
-
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
