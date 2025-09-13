@@ -197,8 +197,9 @@ When run without arguments, shows an interactive list of available rules.`,
 				Usage: "Set a variable (can be used multiple times): --var key=value or --var key='{\"complex\": \"json\"}'",
 			},
 			&cli.StringFlag{
-				Name:  "source",
-				Usage: "Custom source repository to pull from",
+				Name:    "source",
+				Aliases: []string{"src"},
+				Usage:   "Custom source repository to pull from",
 			},
 			&cli.StringFlag{
 				Name:  "ref",

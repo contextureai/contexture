@@ -275,15 +275,34 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
 		displayRuleID := ruleRefWithOrig.originalID
 		var variables map[string]any
+		var parsed *domain.ParsedRuleID
+
 		if strings.HasPrefix(ruleRefWithOrig.originalID, "[contexture:") {
 			// Parse to extract just the path component
-			parsed, err := c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID)
+			var err error
+			parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID)
+			if err == nil && parsed.RulePath != "" {
+				displayRuleID = parsed.RulePath
+				variables = parsed.Variables
+			}
+		} else {
+			// Parse the full rule ID from ruleRef to get source info
+			var err error
+			parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.ruleRef.ID)
 			if err == nil && parsed.RulePath != "" {
 				displayRuleID = parsed.RulePath
 				variables = parsed.Variables
 			}
 		}
+
 		fmt.Printf("  %s\n", displayRuleID)
+
+		// Show source information for custom source rules (like in remove command)
+		if parsed != nil && parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
+			darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+			sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
+			fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
+		}
 
 		// Show variables only if they differ from defaults
 		if rule.ShouldDisplayVariables(variables, ruleRefWithOrig.defaultVars) {
@@ -302,15 +321,26 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 
 // ShowAvailableRules lists available rules from remote repositories for adding
 func (c *AddCommand) ShowAvailableRules(ctx context.Context, cmd *cli.Command) error {
-	// Get source repository and branch
-	defaultRepo := domain.DefaultRepository
-	defaultBranch := domain.DefaultBranch
+	// Get source repository and branch from flags or use defaults
+	sourceRepo := cmd.String("source")
+	if sourceRepo == "" {
+		sourceRepo = domain.DefaultRepository
+	}
+
+	refBranch := cmd.String("ref")
+	if refBranch == "" {
+		refBranch = domain.DefaultBranch
+	}
 
 	// Fetch available rules with spinner (no completion message)
-	spinner := ui.NewBubblesSpinner("Fetching available rules")
+	spinnerMessage := "Fetching available rules"
+	if sourceRepo != domain.DefaultRepository {
+		spinnerMessage = fmt.Sprintf("Fetching rules from %s", sourceRepo)
+	}
+	spinner := ui.NewBubblesSpinner(spinnerMessage)
 	fmt.Print(spinner.View())
 
-	rules, err := c.ruleFetcher.ListAvailableRules(ctx, defaultRepo, defaultBranch)
+	rules, err := c.ruleFetcher.ListAvailableRules(ctx, sourceRepo, refBranch)
 	spinner.Stop("") // Stop without message
 	if err != nil {
 		log.Error("Failed to fetch available rules", "error", err)
@@ -329,7 +359,7 @@ func (c *AddCommand) ShowAvailableRules(ctx context.Context, cmd *cli.Command) e
 	sort.Strings(rules)
 
 	// Always show interactive mode since no flags are available for non-interactive filtering
-	return c.showInteractiveRulesForAdding(ctx, cmd, rules, defaultRepo, defaultBranch)
+	return c.showInteractiveRulesForAdding(ctx, cmd, rules, sourceRepo, refBranch)
 }
 
 // generateRules automatically generates output after adding rules
@@ -359,7 +389,7 @@ func (c *AddCommand) showInteractiveRulesForAdding(
 	ctx context.Context,
 	cmd *cli.Command,
 	rules []string,
-	_, _ string,
+	sourceRepo, refBranch string,
 ) error {
 	// Check if we're in a project
 	currentDir, _ := os.Getwd()
@@ -381,7 +411,18 @@ func (c *AddCommand) showInteractiveRulesForAdding(
 	var availableRules []string
 	for _, ruleID := range rules {
 		// Convert simple format to full format for comparison
-		fullRuleID := fmt.Sprintf("[contexture:%s]", ruleID)
+		var fullRuleID string
+		if sourceRepo != domain.DefaultRepository {
+			// Use custom source format
+			if refBranch != domain.DefaultBranch {
+				fullRuleID = fmt.Sprintf("[contexture(%s):%s,%s]", sourceRepo, ruleID, refBranch)
+			} else {
+				fullRuleID = fmt.Sprintf("[contexture(%s):%s]", sourceRepo, ruleID)
+			}
+		} else {
+			// Use default format
+			fullRuleID = fmt.Sprintf("[contexture:%s]", ruleID)
+		}
 
 		// Check if rule already exists (check both formats)
 		if !c.projectManager.HasRule(config, fullRuleID) &&
@@ -403,8 +444,21 @@ func (c *AddCommand) showInteractiveRulesForAdding(
 
 	var detailedRules []*domain.Rule
 	for _, ruleID := range rules {
-		// For rules from ListAvailableRules, we know they're remote rules from the default repository
-		// Force them to be fetched via the GitFetcher
+		// Construct proper rule ID format using the custom source and ref
+		var processedRuleID string
+		if sourceRepo != domain.DefaultRepository {
+			// Use custom source format
+			if refBranch != domain.DefaultBranch {
+				processedRuleID = fmt.Sprintf("[contexture(%s):%s,%s]", sourceRepo, ruleID, refBranch)
+			} else {
+				processedRuleID = fmt.Sprintf("[contexture(%s):%s]", sourceRepo, ruleID)
+			}
+		} else {
+			// For default repository, use simple format which will be processed correctly
+			processedRuleID = ruleID
+		}
+
+		// Force remote fetching using the processed rule ID
 		var rule *domain.Rule
 		var fetchErr error
 
@@ -415,10 +469,10 @@ func (c *AddCommand) showInteractiveRulesForAdding(
 
 		if compositeFetcher, ok := c.ruleFetcher.(sourceAwareFetcher); ok {
 			// Use the source-aware method to force remote fetching (empty source = default/remote)
-			rule, fetchErr = compositeFetcher.FetchRuleWithSource(ctx, ruleID, "")
+			rule, fetchErr = compositeFetcher.FetchRuleWithSource(ctx, processedRuleID, "")
 		} else {
 			// Fallback to regular fetch
-			rule, fetchErr = c.ruleFetcher.FetchRule(ctx, ruleID)
+			rule, fetchErr = c.ruleFetcher.FetchRule(ctx, processedRuleID)
 		}
 
 		if fetchErr != nil {
@@ -447,6 +501,7 @@ func (c *AddCommand) showInteractiveRulesForAdding(
 	}
 
 	// Process selected rules using existing add logic
+	// Just pass the simple rule IDs - the Execute function will handle source/ref flags
 	return c.Execute(ctx, cmd, filteredRules)
 }
 
@@ -463,6 +518,13 @@ func showInteractiveRuleBrowser(rules []*domain.Rule, title string) ([]string, e
 		rulePath := domain.ExtractRulePath(rule.ID)
 		if rulePath == "" {
 			rulePath = rule.FilePath
+		}
+		// If still empty, use the rule ID directly (it might already be a simple path)
+		if rulePath == "" && rule.ID != "" {
+			// Check if the rule.ID is already a simple path
+			if !strings.HasPrefix(rule.ID, "[contexture") {
+				rulePath = rule.ID
+			}
 		}
 		if rulePath != "" {
 			rulePaths = append(rulePaths, rulePath)
