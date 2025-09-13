@@ -34,7 +34,7 @@ build:
 	@go build -ldflags "$(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME) $(MAIN_PACKAGE)
 
 test: build
-	@go test -race -cover -coverprofile=coverage.out -timeout=5m ./...
+	@go test -race -parallel 16 -cover -coverprofile=coverage.out -timeout=5m ./...
 
 lint: $(GOLANGCI_LINT)
 	@echo "Running linter..."
