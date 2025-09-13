@@ -184,9 +184,12 @@ type TestProject struct {
 	Runner *CLIRunner
 }
 
-// NewTestProject creates a new test project in a local test directory
+// NewTestProject creates a new test project in a parallel-safe test directory
 func NewTestProject(t *testing.T, fs afero.Fs, binaryPath string) *TestProject {
 	t.Helper()
+
+	// Use t.TempDir() for parallel-safe temporary directories
+	testDir := t.TempDir()
 
 	// Get the project root directory (where the binary should be)
 	cwd, err := os.Getwd()
@@ -197,11 +200,7 @@ func NewTestProject(t *testing.T, fs afero.Fs, binaryPath string) *TestProject {
 		cwd = filepath.Dir(cwd)
 	}
 
-	// Create test directory in project root
-	testDir := filepath.Join(cwd, "test-output", fmt.Sprintf("test-%d", time.Now().UnixNano()))
-	require.NoError(t, fs.MkdirAll(testDir, 0o755))
-
-	// Ensure binary path is absolute from the test directory
+	// Ensure binary path is absolute
 	var absPath string
 	if filepath.IsAbs(binaryPath) {
 		absPath = binaryPath
@@ -209,10 +208,7 @@ func NewTestProject(t *testing.T, fs afero.Fs, binaryPath string) *TestProject {
 		absPath = filepath.Join(cwd, binaryPath)
 	}
 
-	// Cleanup on test completion
-	t.Cleanup(func() {
-		_ = fs.RemoveAll(testDir)
-	})
+	// No need for explicit cleanup - t.TempDir() handles it automatically
 
 	return &TestProject{
 		Dir:    testDir,

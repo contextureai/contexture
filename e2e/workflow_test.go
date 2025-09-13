@@ -11,6 +11,7 @@ import (
 
 // TestCompleteWorkflow tests a complete user workflow from start to finish
 func TestCompleteWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -87,6 +88,7 @@ Implement comprehensive error handling throughout the application.`
 
 // TestMixedRulesWorkflow tests working with both local and remote rules
 func TestMixedRulesWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -131,6 +133,7 @@ This is a local rule for mixed rules testing.`
 
 // TestConfigLocationWorkflow tests different config locations
 func TestConfigLocationWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 
 	t.Run("root config location", func(t *testing.T) {
@@ -188,6 +191,7 @@ Test content for config location workflow testing.`)
 
 // TestErrorRecoveryWorkflow tests error conditions and recovery
 func TestErrorRecoveryWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -343,6 +347,7 @@ This rule has malformed frontmatter.`)
 
 // TestFormatWorkflow tests different output format scenarios
 func TestFormatWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -396,6 +401,7 @@ Test content for format testing.`)
 
 // TestLargeProjectWorkflow tests performance with many rules
 func TestLargeProjectWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
@@ -453,6 +459,7 @@ This is rule content for ` + category + ` testing.`
 
 // TestVariableSubstitutionWorkflow tests variable substitution functionality
 func TestVariableSubstitutionWorkflow(t *testing.T) {
+	t.Parallel()
 	fs := afero.NewOsFs()
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
