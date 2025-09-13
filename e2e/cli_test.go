@@ -14,8 +14,6 @@ import (
 const (
 	// Binary path - assumes binary is built in bin/ directory
 	binaryPath = "./bin/contexture"
-	// Environment variable values
-	envTrue = "true"
 )
 
 // TestCLIBasics tests basic CLI functionality
