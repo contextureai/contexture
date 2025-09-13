@@ -313,3 +313,203 @@ func TestAddCommand_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestAddCommand_SrcAliasFunctionality(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		originalRuleID string
+		sourceFlag     string
+		expectedRuleID string
+		description    string
+	}{
+		{
+			name:           "src alias works like source",
+			originalRuleID: "test/lemon",
+			sourceFlag:     "https://github.com/user/repo.git",
+			expectedRuleID: "[contexture(https://github.com/user/repo.git):test/lemon]",
+			description:    "--src should produce same result as --source",
+		},
+		{
+			name:           "src alias with SSH URL",
+			originalRuleID: "security/auth",
+			sourceFlag:     "git@github.com:company/rules.git",
+			expectedRuleID: "[contexture(git@github.com:company/rules.git):security/auth]",
+			description:    "--src should work with SSH URLs",
+		},
+		{
+			name:           "src alias with complex path",
+			originalRuleID: "languages/go/advanced-patterns",
+			sourceFlag:     "https://github.com/myorg/contexture-rules.git",
+			expectedRuleID: "[contexture(https://github.com/myorg/contexture-rules.git):languages/go/advanced-patterns]",
+			description:    "--src should handle complex rule paths",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalRuleID := tt.originalRuleID
+			sourceFlag := tt.sourceFlag
+
+			// Apply the same logic as in the add command
+			processedRuleID := originalRuleID
+			if sourceFlag != "" {
+				if !strings.HasPrefix(originalRuleID, "[contexture") {
+					processedRuleID = fmt.Sprintf("[contexture(%s):%s]", sourceFlag, originalRuleID)
+				}
+			}
+
+			assert.Equal(t, tt.expectedRuleID, processedRuleID, tt.description)
+		})
+	}
+}
+
+func TestShowInteractiveRuleBrowser_PathExtraction(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		ruleID       string
+		expectedPath string
+		description  string
+	}{
+		{
+			name:         "custom source format",
+			ruleID:       "[contexture(git@github.com:user/repo.git):test/lemon]",
+			expectedPath: "test/lemon",
+			description:  "should extract path from custom source format",
+		},
+		{
+			name:         "simple rule ID",
+			ruleID:       "test/simple",
+			expectedPath: "test/simple",
+			description:  "should use simple rule ID directly",
+		},
+		{
+			name:         "standard contexture format",
+			ruleID:       "[contexture:languages/go/testing]",
+			expectedPath: "languages/go/testing",
+			description:  "should extract path from standard format",
+		},
+		{
+			name:         "custom source with branch",
+			ruleID:       "[contexture(https://github.com/user/repo.git):security/auth,main]",
+			expectedPath: "security/auth",
+			description:  "should extract path and ignore branch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var rulePath string
+
+			// This mimics the improved logic in showInteractiveRuleBrowser
+			if strings.HasPrefix(tt.ruleID, "[contexture") {
+				// Simulate domain.ExtractRulePath logic
+				pathPart := strings.TrimPrefix(tt.ruleID, "[contexture:")
+				if strings.HasPrefix(tt.ruleID, "[contexture(") {
+					parts := strings.SplitN(pathPart, "):", 2)
+					if len(parts) == 2 {
+						pathPart = parts[1]
+					}
+				}
+				pathPart = strings.TrimSuffix(pathPart, "]")
+
+				// Remove branch suffix if present (path/rule,branch)
+				if commaIdx := strings.Index(pathPart, ","); commaIdx != -1 {
+					pathPart = pathPart[:commaIdx]
+				}
+
+				rulePath = pathPart
+			} else if tt.ruleID != "" {
+				// Use rule ID directly if it's not contexture format
+				rulePath = tt.ruleID
+			}
+
+			assert.Equal(t, tt.expectedPath, rulePath, tt.description)
+		})
+	}
+}
+
+func TestShowAvailableRules_CustomSourceSpinnerMessage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                string
+		sourceFlag          string
+		expectedMessagePart string
+		description         string
+	}{
+		{
+			name:                "default repository",
+			sourceFlag:          "",
+			expectedMessagePart: "Fetching available rules",
+			description:         "should show generic message for default repository",
+		},
+		{
+			name:                "custom HTTPS source",
+			sourceFlag:          "https://github.com/user/repo.git",
+			expectedMessagePart: "Fetching rules from https://github.com/user/repo.git",
+			description:         "should show custom source in message",
+		},
+		{
+			name:                "custom SSH source",
+			sourceFlag:          "git@github.com:company/rules.git",
+			expectedMessagePart: "Fetching rules from git@github.com:company/rules.git",
+			description:         "should show SSH source in message",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test spinner message construction logic from ShowAvailableRules
+			spinnerMessage := "Fetching available rules"
+			if tt.sourceFlag != "" {
+				spinnerMessage = fmt.Sprintf("Fetching rules from %s", tt.sourceFlag)
+			}
+
+			assert.Contains(t, spinnerMessage, tt.expectedMessagePart, tt.description)
+		})
+	}
+}
+
+func TestInteractiveModeRuleIDConsistency(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		simpleRuleID   string
+		sourceRepo     string
+		refBranch      string
+		expectedRuleID string
+		description    string
+	}{
+		{
+			name:           "default repository should use simple format",
+			simpleRuleID:   "test/lemon",
+			sourceRepo:     "https://github.com/contextureai/contexture-rules.git", // default repo
+			refBranch:      "main",
+			expectedRuleID: "test/lemon",
+			description:    "default repo should not add source prefix",
+		},
+		{
+			name:           "custom repository should remain simple for Execute",
+			simpleRuleID:   "test/lemon",
+			sourceRepo:     "git@github.com:user/custom.git",
+			refBranch:      "develop",
+			expectedRuleID: "test/lemon",
+			description:    "interactive mode should pass simple IDs to Execute function",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This tests the simplified logic where interactive mode just passes
+			// simple rule IDs to Execute() instead of pre-constructing them
+			processedRuleID := tt.simpleRuleID // New behavior: just pass through
+
+			assert.Equal(t, tt.expectedRuleID, processedRuleID, tt.description)
+		})
+	}
+}

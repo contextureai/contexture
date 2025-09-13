@@ -89,6 +89,18 @@ touch rules/project-specific.md
 contexture rules add rules/project-specific.md
 ```
 
+### Custom Source Rules
+
+Rules can be sourced from custom Git repositories using the `--source` (or `--src`) flag.
+
+```bash
+# Browse rules from a custom repository interactively
+contexture rules add --src https://github.com/mycompany/rules.git
+
+# Add specific rules from custom sources
+contexture rules add "security/auth" --src "git@github.com:company/rules.git" --ref "v2.0"
+```
+
 ## Rule Triggers
 
 Triggers control when a rule is applied.

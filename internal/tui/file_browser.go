@@ -77,12 +77,21 @@ func (fb *FileBrowser) BrowseRules(ruleTree *domain.RuleNode, allRules []*domain
 	// Create a map of rule IDs to rules for quick lookup
 	ruleMap := make(map[string]*domain.Rule)
 	for _, rule := range allRules {
-		// Extract rule display path from the rule's file path or ID (includes source for custom rules)
-		rulePath := domain.ExtractRuleDisplayPath(rule.ID)
+		// Use simple rule path to match what's in the rule tree
+		rulePath := domain.ExtractRulePath(rule.ID)
 		if rulePath == "" {
 			rulePath = rule.FilePath
 		}
-		ruleMap[rulePath] = rule
+		// If still empty, use the rule ID directly (it might already be a simple path)
+		if rulePath == "" && rule.ID != "" {
+			// Check if the rule.ID is already a simple path
+			if !strings.HasPrefix(rule.ID, "[contexture") {
+				rulePath = rule.ID
+			}
+		}
+		if rulePath != "" {
+			ruleMap[rulePath] = rule
+		}
 	}
 
 	// Create the model
