@@ -146,6 +146,14 @@ func (bf *Base) ProcessTemplateWithVars(
 		"frameworks":  rule.Frameworks,
 	}
 
+	// Add trigger if it exists (convert to basic types for template compatibility)
+	if rule.Trigger != nil {
+		variables["trigger"] = map[string]any{
+			"type":  string(rule.Trigger.Type),
+			"globs": rule.Trigger.Globs,
+		}
+	}
+
 	// Add variables from the parsed rule ID if they exist
 	if rule.Variables != nil {
 		for key, value := range rule.Variables {

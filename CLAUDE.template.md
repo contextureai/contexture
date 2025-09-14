@@ -116,38 +116,4 @@ Go 1.25+ required. Binary name: `contexture`. CI runs on Ubuntu with matrix buil
 
 # Rules
 
-# Preferred Tools
-
-Preferred tools for the project
-
-**Applies:** Always active
-
-
-**Tags:** tools
-You run in an environment where several high performance, productivity enhancing tools are available to help you with your tasks. You should always use these tools rather than the default system tools wherever possible.
-
-Whenever a search requires syntax-aware or structural matching, default to ast-grep run --lang go --pattern "<pattern>" (or set --lang appropriately) and avoid falling back to text-only tools like rg or grep unless I explicitly request a plain-text search.
-
-If you need to find specific files, use 'fd'
-
-If you need to find specific text/strings, use 'rg' (ripgrep)
-
-If you need to select from multiple results, pipe to 'fzf'
-
-Do you need to interact with JSON? use 'jq' -- or 'yq' for YAML
-
-<!-- id: [contexture(local):tools] -->
-
----
-
-# Thought Process
-
-Thought process when working on the project
-
-**Applies:** Always active
-
-
-**Tags:** process
-Think carefully and only action the specific task that I have given you, with the most concise and elegant solution that changes as little code as possible.
-
-<!-- id: [contexture(local):think] -->
+{{ .Rules }}

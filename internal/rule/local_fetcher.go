@@ -234,11 +234,13 @@ func (f *LocalFetcher) findRulesDirectory() (string, error) {
 	// Check for config files to understand project structure
 	contextureConfigPath := filepath.Join(currentDir, domain.ContextureDir, "config.yaml")
 	rootConfigPath := filepath.Join(currentDir, domain.ConfigFile)
+	contextureInDirConfigPath := filepath.Join(currentDir, domain.ContextureDir, domain.ConfigFile)
 	contextureExists, _ := afero.Exists(f.fs, contextureConfigPath)
 	rootExists, _ := afero.Exists(f.fs, rootConfigPath)
+	contextureInDirExists, _ := afero.Exists(f.fs, contextureInDirConfigPath)
 
 	// If config exists, use config-based rules directory detection
-	if contextureExists {
+	if contextureExists || contextureInDirExists {
 		// Config is in .contexture/ directory, so rules are in .contexture/rules/
 		return filepath.Join(currentDir, domain.ContextureDir, domain.LocalRulesDir), nil
 	} else if rootExists {
