@@ -125,7 +125,58 @@ your-project/
 
 Note: `contexture` automatically runs a build when rules are added or updated.
 
-## Step 4: Verify the Setup
+## Step 4: Customize with Templates (Optional)
+
+You can customize the structure of your `CLAUDE.md` file using a custom template:
+
+1. **Create a template file** in your project root:
+
+```bash
+# Create a custom template
+cat > CLAUDE.template.md << 'EOF'
+# My Team's AI Assistant Instructions
+
+## Project Overview
+This project follows our established development practices and coding standards.
+
+## Team Guidelines  
+- All code must be reviewed before merging
+- Tests are required for new functionality
+- Follow the style guide in our documentation
+
+## Generated Rules
+{{.Rules}}
+
+## Additional Resources
+- Check our internal documentation wiki
+- Refer to the project README for setup instructions
+- Contact the team leads for architectural decisions
+EOF
+```
+
+2. **Update your configuration** to use the template:
+
+```yaml
+# In .contexture.yaml
+formats:
+  - type: claude
+    enabled: true
+    template: CLAUDE.template.md
+  - type: cursor
+    enabled: true
+  - type: windsurf
+    enabled: true
+```
+
+3. **Rebuild to apply the template**:
+
+```bash
+contexture build
+```
+
+Now your `CLAUDE.md` file will use your custom structure while still including all the generated rules.
+
+## Step 5: Verify the Setup
 
 To verify the setup:
 
@@ -157,4 +208,9 @@ contexture rules list                               # Show configured rules
 contexture build                                    # Generate output files
 contexture config                                   # View the project configuration
 contexture --help                                  # Show help
+
+# Template customization (Claude format only)
+# 1. Create CLAUDE.template.md with {{.Rules}} placeholder
+# 2. Add 'template: CLAUDE.template.md' to claude format config
+# 3. Run 'contexture build' to apply template
 ```

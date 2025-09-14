@@ -89,39 +89,13 @@ func (f *Format) Write(rules []*domain.TransformedRule, config *domain.FormatCon
 	// Get output path
 	outputPath := f.getOutputPath(config)
 
-	// Combine all rules into a single document
-	var content strings.Builder
-
-	// Write header
-	content.WriteString(f.getFileHeader(len(rules)))
-	content.WriteString("\n\n")
-
-	// Write each rule
-	for i, rule := range rules {
-		if i > 0 {
-			content.WriteString("\n\n---\n\n")
-		}
-
-		// Write rule content
-		ruleContent := rule.Content
-
-		// Append tracking comment using the new system, only including non-default variables
-		ruleContent = f.AppendTrackingCommentWithDefaults(ruleContent, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
-
-		content.WriteString(ruleContent)
+	// Check if a custom template is specified
+	if config != nil && config.Template != "" {
+		return f.writeWithTemplate(rules, config, outputPath)
 	}
 
-	// Write footer
-	content.WriteString("\n\n")
-	content.WriteString(f.getFileFooter())
-
-	// Write to file using BaseFormat
-	if err := f.WriteFile(outputPath, []byte(content.String())); err != nil {
-		return fmt.Errorf("failed to write Claude format file: %w", err)
-	}
-
-	f.LogInfo("Successfully wrote Claude format file", "path", outputPath, "rules", len(rules))
-	return nil
+	// Default behavior: use extracted method for consistency
+	return f.writeWithoutTemplate(rules, config, outputPath)
 }
 
 // Remove deletes a specific rule from the Claude format file by rebuilding it from scratch
@@ -386,4 +360,101 @@ func (f *Format) extractRuleFromSection(section string) (string, string) {
 	}
 
 	return ruleID, title
+}
+
+// writeWithTemplate processes rules using a custom template file
+func (f *Format) writeWithTemplate(rules []*domain.TransformedRule, config *domain.FormatConfig, outputPath string) error {
+	f.LogDebug("Using custom template for Claude format", "template", config.Template)
+
+	// Get template path - relative to project directory
+	templatePath := config.Template
+	if config.BaseDir != "" {
+		templatePath = filepath.Join(config.BaseDir, config.Template)
+	}
+
+	// Check if template file exists
+	exists, err := f.FileExists(templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to check template file: %w", err)
+	}
+	if !exists {
+		f.LogWarn("Template file not found, falling back to default format", "template", templatePath)
+		return f.writeWithoutTemplate(rules, config, outputPath)
+	}
+
+	// Read template content
+	templateBytes, err := f.ReadFile(templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read template file %s: %w", templatePath, err)
+	}
+	templateContent := string(templateBytes)
+
+	// Generate rules content (same as default format but without header/footer)
+	rulesContent := f.generateRulesContent(rules)
+
+	// Process template with rules content
+	variables := map[string]any{
+		"Rules": rulesContent,
+	}
+
+	// Create a dummy rule for template processing (we only need the template engine functionality)
+	dummyRule := &domain.Rule{ID: "template", Title: "Template Processing"}
+	processedContent, err := f.ProcessTemplateWithVars(dummyRule, templateContent, variables)
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	// Write to file using BaseFormat
+	if err := f.WriteFile(outputPath, []byte(processedContent)); err != nil {
+		return fmt.Errorf("failed to write Claude format file with template: %w", err)
+	}
+
+	f.LogInfo("Successfully wrote Claude format file using template", "path", outputPath, "template", config.Template, "rules", len(rules))
+	return nil
+}
+
+// writeWithoutTemplate is the default write behavior (extracted for reuse)
+func (f *Format) writeWithoutTemplate(rules []*domain.TransformedRule, _ *domain.FormatConfig, outputPath string) error {
+	// Combine all rules into a single document
+	var content strings.Builder
+
+	// Write header
+	content.WriteString(f.getFileHeader(len(rules)))
+	content.WriteString("\n\n")
+
+	// Write rules content
+	content.WriteString(f.generateRulesContent(rules))
+
+	// Write footer
+	content.WriteString("\n\n")
+	content.WriteString(f.getFileFooter())
+
+	// Write to file using BaseFormat
+	if err := f.WriteFile(outputPath, []byte(content.String())); err != nil {
+		return fmt.Errorf("failed to write Claude format file: %w", err)
+	}
+
+	f.LogInfo("Successfully wrote Claude format file", "path", outputPath, "rules", len(rules))
+	return nil
+}
+
+// generateRulesContent creates the formatted rules content without header/footer
+func (f *Format) generateRulesContent(rules []*domain.TransformedRule) string {
+	var content strings.Builder
+
+	for i, rule := range rules {
+		if i > 0 {
+			content.WriteString("\n\n---\n\n")
+		}
+
+		// Write rule content
+		ruleContent := rule.Content
+
+		// Append tracking comment using the new system, only including non-default variables
+		ruleContent = f.AppendTrackingCommentWithDefaults(ruleContent, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
+
+		content.WriteString(ruleContent)
+	}
+
+	return content.String()
 }

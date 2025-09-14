@@ -27,9 +27,10 @@ func (ft FormatType) String() string {
 
 // FormatConfig represents the core format configuration
 type FormatConfig struct {
-	Type    FormatType `yaml:"type"    json:"type"    validate:"required,oneof=claude cursor windsurf"`
-	Enabled bool       `yaml:"enabled" json:"enabled"`
-	BaseDir string     `yaml:"-"       json:"-"` // Runtime option, not serialized
+	Type     FormatType `yaml:"type"     json:"type"     validate:"required,oneof=claude cursor windsurf"`
+	Enabled  bool       `yaml:"enabled"  json:"enabled"`
+	Template string     `yaml:"template,omitempty" json:"template,omitempty"` // Optional template file path
+	BaseDir  string     `yaml:"-"        json:"-"`                            // Runtime option, not serialized
 }
 
 // FormatSpecificRule represents a rule with format-specific configuration

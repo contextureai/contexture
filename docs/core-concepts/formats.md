@@ -21,7 +21,8 @@ The `claude` format generates a single `CLAUDE.md` file for use with the Claude 
 ```
 project-root/
 ├── .contexture.yaml
-└── CLAUDE.md
+├── CLAUDE.md
+└── CLAUDE.template.md (optional)
 ```
 
 ### Content Format
@@ -48,12 +49,52 @@ Write comprehensive tests for all new functionality...
 <!-- id: [contexture:testing/unit-tests] -->
 ```
 
-### Configuration
+### Custom Templates
+
+You can customize the structure of your `CLAUDE.md` file using a template:
+
+1. **Create a template file** (e.g., `CLAUDE.template.md`):
+
+```markdown
+# My AI Assistant Instructions
+
+## Project Context
+This project follows our team's coding standards.
+
+## Generated Rules
+{{.Rules}}
+
+## Additional Guidelines
+- Always run tests before committing
+- Follow the project's code style
+```
+
+2. **Configure the template** in your project:
 
 ```yaml
 formats:
   - type: claude
     enabled: true
+    template: CLAUDE.template.md
+```
+
+The `{{.Rules}}` placeholder will be replaced with all processed rules from your configuration. If the template file is not found, Contexture automatically falls back to the default format.
+
+### Configuration
+
+**Basic Configuration:**
+```yaml
+formats:
+  - type: claude
+    enabled: true
+```
+
+**With Custom Template:**
+```yaml
+formats:
+  - type: claude
+    enabled: true
+    template: CLAUDE.template.md
 ```
 
 ## Cursor Format

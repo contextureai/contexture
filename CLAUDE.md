@@ -113,3 +113,18 @@ Custom error types in `internal/errors` with display formatting and exit codes.
 ## Build System
 
 Go 1.25+ required. Binary name: `contexture`. CI runs on Ubuntu with matrix builds for linux/windows/darwin on amd64/arm64.
+
+# Rules
+
+# Preferred Tools
+
+Preferred tools for the project
+
+**Applies:** Always active
+
+
+**Tags:** tools
+
+Hello! This is a test.
+
+<!-- id: [contexture(local):tools] -->
