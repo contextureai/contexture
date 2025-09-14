@@ -101,9 +101,11 @@ func NewUpdateCommandWithDependencies(
 
 // Execute runs the update command
 func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
-	// Show command header
-	fmt.Println(ui.CommandHeader("update"))
-	fmt.Println()
+	// Show header like add and list commands
+	commandHeaderStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+	fmt.Printf("%s\n\n", commandHeaderStyle.Render("Update Rules"))
 	dryRun := cmd.Bool("dry-run")
 	skipConfirmation := cmd.Bool("yes")
 

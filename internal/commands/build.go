@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
@@ -13,7 +14,6 @@ import (
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
-	"github.com/contextureai/contexture/internal/ui"
 	"github.com/spf13/afero"
 	"github.com/urfave/cli/v3"
 )
@@ -67,9 +67,11 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 
-	// Show command header only when we have rules to build
-	fmt.Println(ui.CommandHeader("build"))
-	fmt.Println()
+	// Show header like add and list commands
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+	fmt.Printf("%s\n\n", headerStyle.Render("Build Rules"))
 
 	// Get target formats (either user-specified or all enabled)
 	targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
