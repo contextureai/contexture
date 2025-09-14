@@ -45,3 +45,8 @@ func TestListCommand_SpecificBehavior(t *testing.T) {
 	cmd := NewListCommand(deps)
 	assert.NotNil(t, cmd.ruleFetcher, "ListCommand should have ruleFetcher")
 }
+
+// Integration tests for list command output are covered by:
+// 1. Unit tests in internal/ui/rules/display_test.go for output formatting
+// 2. Existing command structure tests in this file
+// 3. E2E tests in the e2e/ directory for full command workflows

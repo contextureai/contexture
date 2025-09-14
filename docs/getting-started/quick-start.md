@@ -205,6 +205,7 @@ contexture init                                      # Initialize a new project
 contexture rules add                                # Browse and add rules
 contexture rules add --src https://github.com/...  # Browse rules from custom source
 contexture rules list                               # Show configured rules
+contexture rules list -o json                      # Show rules as JSON
 contexture build                                    # Generate output files
 contexture config                                   # View the project configuration
 contexture --help                                  # Show help

@@ -16,41 +16,116 @@ contexture rules list [flags]
 
 ## Description
 
-The `rules list` command prints a list of all rules that have been added to the project. The output includes the rule's ID, title, and description. Using the `--verbose` flag provides a more detailed view.
+The `rules list` command displays all rules that have been added to the project in a clean, terminal-friendly format. Each rule shows its path, title, and source information. The command supports pattern-based filtering to help you find specific rules quickly.
 
 ## Flags
 
 | Flag          | Description                                                                  |
 | :------------ | :--------------------------------------------------------------------------- |
-| `--verbose`, `-v` | Show detailed information for each rule, including metadata and source info. |
-| `--formats`   | Filter the list to show only rules compatible with the specified format(s).  |
+| `--pattern`, `-p` | Filter rules using a regex pattern (matches ID, title, description, tags, frameworks, languages, source) |
+| `--output`, `-o` | Output format: `default` for terminal display, `json` for JSON output |
 
 ## Usage
 
-### Standard List
+### List All Rules
 
-Displays a summary of each configured rule.
+Displays all configured rules with their paths, titles, and source information.
 
 ```bash
 contexture rules list
 ```
 
-### Verbose List
+### Filter by Pattern
 
-Displays detailed information for each rule.
-
-```bash
-contexture rules list --verbose
-```
-
-### Filtering by Format
-
-To see which rules apply to a specific output format, use the `--formats` flag. The flag can be used multiple times.
+Use regex patterns to filter rules across multiple fields. Patterns are case-insensitive by default.
 
 ```bash
-# Show rules for the 'claude' format
-contexture rules list --formats claude
+# Find rules related to Go
+contexture rules list --pattern "go"
 
-# Show rules for both 'cursor' and 'windsurf' formats
-contexture rules list --formats cursor --formats windsurf
+# Find testing-related rules
+contexture rules list -p "testing"
+
+# Use regex patterns
+contexture rules list --pattern "(python|javascript)"
+
+# Find security rules
+contexture rules list --pattern "security.*validation"
 ```
+
+### JSON Output
+
+Use JSON output for programmatic processing or integration with other tools.
+
+```bash
+# Output rules as JSON
+contexture rules list --output json
+
+# Use short flag
+contexture rules list -o json
+
+# Combine with pattern filtering
+contexture rules list --pattern "go" --output json
+```
+
+**JSON Structure:**
+```json
+{
+  "command": "rules list",
+  "version": "1.0",
+  "metadata": {
+    "command": "rules list",
+    "version": "1.0", 
+    "pattern": "go",
+    "totalRules": 5,
+    "filteredRules": 2,
+    "timestamp": "2025-09-14T19:30:45Z"
+  },
+  "rules": [
+    {
+      "id": "[contexture:languages/go/testing]",
+      "title": "Go Testing Best Practices",
+      "description": "Write idiomatic table-driven tests...",
+      "tags": ["go", "testing", "best-practices"],
+      "languages": ["go"],
+      "frameworks": [],
+      "trigger": {
+        "type": "glob",
+        "globs": ["**/*_test.go"]
+      },
+      "content": "Rule content...",
+      "variables": {},
+      "defaultVariables": {},
+      "filePath": "languages/go/testing",
+      "source": "https://github.com/contextureai/rules.git",
+      "ref": "main",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+## Output Format
+
+### Terminal Output Format
+
+The default terminal output displays rules in a compact format:
+- **Rule Path**: The rule's identifier path (e.g., `languages/go/testing`)
+- **Title**: A descriptive title (e.g., `Go Testing Best Practices`)
+- **Source**: Where the rule comes from (only shown for non-default sources)
+
+When using a pattern filter, the active pattern is shown in the header for clarity.
+
+### JSON Output Format  
+
+JSON output provides structured data suitable for programmatic processing:
+- **Metadata**: Command information, pattern filter, rule counts, timestamp
+- **Rules Array**: Complete rule objects with all fields
+- **Consistent Schema**: Version-tagged structure for reliable parsing
+
+The JSON format is ideal for:
+- Integration with CI/CD pipelines  
+- Custom tooling and automation
+- Data analysis and reporting
+- API responses and web interfaces

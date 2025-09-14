@@ -179,7 +179,7 @@ rules:
 | `rules add`            | Add rules to the project.                                        |
 | `rules add --src URL`  | Browse and add rules from a custom Git repository interactively. |
 | `rules remove`         | Remove rules from the project.                                   |
-| `rules list`           | List all configured rules.                                       |
+| `rules list`           | List all configured rules. Use `-o json` for structured output.  |
 | `rules update`         | Update remote rules to their latest versions.                    |
 
 ### Build

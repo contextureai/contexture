@@ -270,14 +270,16 @@ func (a *Application) buildRulesListCommand() *cli.Command {
 To browse and add available rules, use 'contexture rules add' with no arguments.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "verbose",
-				Aliases: []string{"v"},
-				Usage:   "Show additional information",
+			&cli.StringFlag{
+				Name:    "pattern",
+				Aliases: []string{"p"},
+				Usage:   "Filter rules by regex pattern (matches ID, title, description, tags, etc.)",
 			},
-			&cli.StringSliceFlag{
-				Name:  "formats",
-				Usage: "Filter by format compatibility",
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Usage:   "Output format (default, json)",
+				Value:   "default",
 			},
 		},
 		Action: a.actions.ListAction,

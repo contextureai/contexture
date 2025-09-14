@@ -5,14 +5,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
-	"github.com/contextureai/contexture/internal/tui"
 	"github.com/urfave/cli/v3"
 )
 
@@ -52,23 +53,14 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 
 	config := configResult.Config
 
-	// Apply filters if provided
-	filteredRuleRefs := c.applyFilters(config.Rules, cmd)
-
 	// Fetch the actual rules from the rule references
-	rules, err := c.fetchRulesFromReferences(ctx, filteredRuleRefs)
+	rules, err := c.fetchRulesFromReferences(ctx, config.Rules)
 	if err != nil {
 		return fmt.Errorf("failed to fetch rules: %w", err)
 	}
 
-	// Use interactive rule selector for display
-	return c.showInteractiveList(rules, "Installed Rules")
-}
-
-// applyFilters applies filters to a list of rules (currently no filters available)
-func (c *ListCommand) applyFilters(rules []domain.RuleRef, _ *cli.Command) []domain.RuleRef {
-	// No filters available since --search and --tags flags were removed
-	return rules
+	// Use simple rule list display
+	return c.showRuleList(rules, cmd)
 }
 
 // fetchRulesFromReferences fetches the actual rule content from rule references
@@ -117,16 +109,33 @@ func (c *ListCommand) fetchRulesFromReferences(
 	return rules, nil
 }
 
-// showInteractiveList displays rules using the interactive rule selector
-func (c *ListCommand) showInteractiveList(rules []*domain.Rule, title string) error {
-	if len(rules) == 0 {
-		fmt.Printf("No rules found.\n")
-		return nil
+// showRuleList displays rules using the configured output format
+func (c *ListCommand) showRuleList(ruleList []*domain.Rule, cmd *cli.Command) error {
+	// Determine output format
+	outputFormat := output.Format(cmd.String("output"))
+
+	// Create output manager
+	outputMgr, err := output.NewManager(outputFormat)
+	if err != nil {
+		return err
 	}
 
-	// Create rule selector and display rules
-	selector := tui.NewRuleSelector()
-	return selector.DisplayRules(rules, title)
+	totalRules := len(ruleList)
+	pattern := cmd.String("pattern")
+
+	// Prepare metadata - for now, both counts are the same since filtering
+	// happens inside the writers. This will be refined when we extract
+	// the filtering logic for better JSON metadata
+	metadata := output.ListMetadata{
+		Command:       "rules list",
+		Pattern:       pattern,
+		TotalRules:    totalRules,
+		FilteredRules: totalRules, // This will be corrected by the writers
+		Timestamp:     time.Now(),
+	}
+
+	// Write output in requested format
+	return outputMgr.WriteRulesList(ruleList, metadata)
 }
 
 // ListAction is the CLI action handler for the list command
