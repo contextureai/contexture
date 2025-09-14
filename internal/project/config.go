@@ -620,16 +620,16 @@ func (m *DefaultRuleMatcher) ExtractPath(ruleID string) (string, error) {
 	}
 
 	matches := m.regex.FindStringSubmatch(ruleID)
-	if len(matches) < 2 {
+	if len(matches) < 3 {
 		return "", fmt.Errorf("invalid rule ID format: %s", ruleID)
 	}
 
-	return matches[1], nil
+	return matches[2], nil
 }
 
 // IsFullFormat checks if the rule ID is in full format
 func (m *DefaultRuleMatcher) IsFullFormat(ruleID string) bool {
-	return strings.HasPrefix(ruleID, "[contexture:")
+	return strings.HasPrefix(ruleID, "[contexture")
 }
 
 // Implementation of DefaultConfigValidator

@@ -268,12 +268,21 @@ func TestManager_HasRule(t *testing.T) {
 		Rules: []domain.RuleRef{
 			{ID: "[contexture:test/rule1]"},
 			{ID: "[contexture:test/rule2]"},
+			{ID: "[contexture(git@github.com:user/custom-rules):custom/rule,branch]"},
 		},
 	}
 
+	// Test exact matching
 	assert.True(t, manager.HasRule(config, "[contexture:test/rule1]"))
 	assert.True(t, manager.HasRule(config, "[contexture:test/rule2]"))
+	assert.True(t, manager.HasRule(config, "[contexture(git@github.com:user/custom-rules):custom/rule,branch]"))
 	assert.False(t, manager.HasRule(config, "[contexture:test/nonexistent]"))
+
+	// Test short ID matching (the bug we fixed)
+	assert.True(t, manager.HasRule(config, "test/rule1"))
+	assert.True(t, manager.HasRule(config, "test/rule2"))
+	assert.True(t, manager.HasRule(config, "custom/rule"))
+	assert.False(t, manager.HasRule(config, "nonexistent/rule"))
 }
 
 func TestManager_GetConfigLocation(t *testing.T) {
