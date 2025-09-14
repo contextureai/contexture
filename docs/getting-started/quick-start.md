@@ -46,20 +46,7 @@ rules: []
 
 ## Step 2: Add Rules
 
-The `rules add` command can be run without arguments to interactively browse and select rules from the default repository:
-
-```bash
-# Browse available rules interactively
-contexture rules add
-```
-
-This opens an interactive selector which supports:
-- Navigation with arrow keys
-- Rule previews with `Enter`
-- Toggling selection with `Space`
-- Confirming with `Tab` or `Enter`
-
-Alternatively, rule IDs can be passed as arguments:
+Add rules by specifying their IDs as arguments:
 
 ```bash
 # Add code quality rules
@@ -71,11 +58,11 @@ contexture rules add docs/readme-best-practices
 
 #### Using Custom Sources
 
-You can also browse and add rules from your own repositories:
+You can also add rules from your own repositories:
 
 ```bash
-# Browse rules from a custom repository interactively
-contexture rules add --src https://github.com/mycompany/contexture-rules.git
+# Add rules from a custom repository
+contexture rules add my/custom-rule --src https://github.com/mycompany/contexture-rules.git
 
 # Add specific rules from a custom source
 contexture rules add "security/auth" --src "git@github.com:mycompany/rules.git"

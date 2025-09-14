@@ -90,14 +90,11 @@ rules: []
 
 ### 2. Add Rules
 
-Run `rules add` to open an interactive browser for selecting rules, or add them directly by ID.
+Add rules directly by specifying their IDs.
 
 ```bash
-# Interactive rule browser
-contexture rules add
-
-# Browse rules from a custom repository interactively
-contexture rules add --src https://github.com/mycompany/contexture-rules.git
+# Add rules using simple format
+contexture rules add languages/go/code-organization testing/unit-tests
 
 # Add specific rules by ID
 contexture rules add "[contexture:code/clean-code]" "[contexture:docs/readme-best-practices]"
@@ -177,7 +174,7 @@ rules:
 | Command                | Description                                                      |
 | :--------------------- | :--------------------------------------------------------------- |
 | `rules add`            | Add rules to the project.                                        |
-| `rules add --src URL`  | Browse and add rules from a custom Git repository interactively. |
+| `rules add --src URL`  | Add rules from a custom Git repository.                          |
 | `rules remove`         | Remove rules from the project.                                   |
 | `rules list`           | List all configured rules. Use `-o json` for structured output.  |
 | `rules update`         | Update remote rules to their latest versions.                    |

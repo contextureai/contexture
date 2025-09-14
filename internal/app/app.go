@@ -171,12 +171,12 @@ func (a *Application) buildRulesAddCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "add",
 		Usage:     "Add rules to the project",
-		ArgsUsage: "[rule-id...] (if no args provided, shows available rules)",
+		ArgsUsage: "[rule-id...]",
 		Description: `Add one or more rules to the current project.
 Rules are specified using the format: [contexture:path/to/rule]
 or with custom sources: [contexture(source):path/to/rule,branch]
 
-When run without arguments, shows an interactive list of available rules.`,
+Rule IDs are required. Use --help for examples and available options.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

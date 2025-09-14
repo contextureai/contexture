@@ -17,6 +17,7 @@ import (
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
+	"github.com/contextureai/contexture/internal/tui"
 	"github.com/contextureai/contexture/internal/ui"
 	"github.com/spf13/afero"
 	"github.com/urfave/cli/v3"
@@ -379,6 +380,12 @@ func (c *RemoveCommand) showInteractiveRulesForRemoving(
 // showRuleListSelectionForRemoval shows an interactive bubbles list for rule removal selection
 func (c *RemoveCommand) showRuleListSelectionForRemoval(rules []*domain.Rule) ([]string, error) {
 	return showInteractiveRuleSelection(rules, "Select Rules to Remove")
+}
+
+// showInteractiveRuleSelection shows an interactive searchable list of rules for selection (shared function)
+func showInteractiveRuleSelection(rules []*domain.Rule, title string) ([]string, error) {
+	selector := tui.NewRuleSelector()
+	return selector.SelectRules(rules, title)
 }
 
 // RemoveAction is the CLI action handler for the remove command

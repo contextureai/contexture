@@ -41,7 +41,7 @@ func TestAddAction(t *testing.T) {
 	// Create a context with empty arguments to simulate CLI with no args
 	ctx := context.Background()
 
-	// Test with no arguments (should now show available rules instead of failing)
+	// Test with no arguments (should now return helpful error message)
 	// Create a command that will have no arguments
 	app := &cli.Command{
 		Name: "test",
@@ -51,8 +51,10 @@ func TestAddAction(t *testing.T) {
 	}
 
 	err := app.Run(ctx, []string{"test"})
-	// Should not error now - it should show available rules
-	require.NoError(t, err)
+	// Should error now with helpful message
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no rule IDs provided")
+	assert.Contains(t, err.Error(), "contexture rules add [rule-id...]")
 }
 
 func TestAddCommand_Execute_NoConfig(t *testing.T) {
@@ -365,7 +367,7 @@ func TestAddCommand_SrcAliasFunctionality(t *testing.T) {
 	}
 }
 
-func TestShowInteractiveRuleBrowser_PathExtraction(t *testing.T) {
+func TestPathExtraction_ForDocumentationPurposes(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -404,7 +406,7 @@ func TestShowInteractiveRuleBrowser_PathExtraction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var rulePath string
 
-			// This mimics the improved logic in showInteractiveRuleBrowser
+			// This demonstrates the path extraction logic (previously used in TUI)
 			if strings.HasPrefix(tt.ruleID, "[contexture") {
 				// Simulate domain.ExtractRulePath logic
 				pathPart := strings.TrimPrefix(tt.ruleID, "[contexture:")
@@ -428,48 +430,6 @@ func TestShowInteractiveRuleBrowser_PathExtraction(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.expectedPath, rulePath, tt.description)
-		})
-	}
-}
-
-func TestShowAvailableRules_CustomSourceSpinnerMessage(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name                string
-		sourceFlag          string
-		expectedMessagePart string
-		description         string
-	}{
-		{
-			name:                "default repository",
-			sourceFlag:          "",
-			expectedMessagePart: "Fetching available rules",
-			description:         "should show generic message for default repository",
-		},
-		{
-			name:                "custom HTTPS source",
-			sourceFlag:          "https://github.com/user/repo.git",
-			expectedMessagePart: "Fetching rules from https://github.com/user/repo.git",
-			description:         "should show custom source in message",
-		},
-		{
-			name:                "custom SSH source",
-			sourceFlag:          "git@github.com:company/rules.git",
-			expectedMessagePart: "Fetching rules from git@github.com:company/rules.git",
-			description:         "should show SSH source in message",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Test spinner message construction logic from ShowAvailableRules
-			spinnerMessage := "Fetching available rules"
-			if tt.sourceFlag != "" {
-				spinnerMessage = fmt.Sprintf("Fetching rules from %s", tt.sourceFlag)
-			}
-
-			assert.Contains(t, spinnerMessage, tt.expectedMessagePart, tt.description)
 		})
 	}
 }

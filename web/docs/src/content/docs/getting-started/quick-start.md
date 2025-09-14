@@ -46,20 +46,7 @@ rules: []
 
 ## Step 2: Add Rules
 
-The `rules add` command can be run without arguments to interactively browse and select rules from the default repository:
-
-```bash
-# Browse available rules interactively
-contexture rules add
-```
-
-This opens an interactive selector which supports:
-- Navigation with arrow keys
-- Rule previews with `Enter`
-- Toggling selection with `Space`
-- Confirming with `Tab` or `Enter`
-
-Alternatively, rule IDs can be passed as arguments:
+Add rules by specifying their IDs as arguments:
 
 ```bash
 # Add code quality rules

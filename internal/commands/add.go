@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -17,7 +16,6 @@ import (
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
-	"github.com/contextureai/contexture/internal/tui"
 	"github.com/contextureai/contexture/internal/ui"
 	"github.com/spf13/afero"
 	"github.com/urfave/cli/v3"
@@ -54,10 +52,6 @@ func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 
 // Execute runs the add command
 func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
-	// Show command header (this is non-interactive mode with rule IDs provided)
-	fmt.Println(ui.CommandHeader("add"))
-	fmt.Println()
-
 	// Parse custom data if provided
 	var customData map[string]any
 	if dataStr := cmd.String("data"); dataStr != "" {
@@ -108,7 +102,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	}
 	var validRuleRefs []ruleRefWithOriginal
 
-	err = ui.WithProgressTiming("Fetched rules", func() error {
+	err = ui.WithProgressTiming("Validated rules", func() error {
 		for _, ruleID := range ruleIDs {
 			// Construct proper rule ID format if --source flag is provided
 			processedRuleID := ruleID
@@ -319,49 +313,6 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	return nil
 }
 
-// ShowAvailableRules lists available rules from remote repositories for adding
-func (c *AddCommand) ShowAvailableRules(ctx context.Context, cmd *cli.Command) error {
-	// Get source repository and branch from flags or use defaults
-	sourceRepo := cmd.String("source")
-	if sourceRepo == "" {
-		sourceRepo = domain.DefaultRepository
-	}
-
-	refBranch := cmd.String("ref")
-	if refBranch == "" {
-		refBranch = domain.DefaultBranch
-	}
-
-	// Fetch available rules with spinner (no completion message)
-	spinnerMessage := "Fetching available rules"
-	if sourceRepo != domain.DefaultRepository {
-		spinnerMessage = fmt.Sprintf("Fetching rules from %s", sourceRepo)
-	}
-	spinner := ui.NewBubblesSpinner(spinnerMessage)
-	fmt.Print(spinner.View())
-
-	rules, err := c.ruleFetcher.ListAvailableRules(ctx, sourceRepo, refBranch)
-	spinner.Stop("") // Stop without message
-	if err != nil {
-		log.Error("Failed to fetch available rules", "error", err)
-		fmt.Printf("Failed to fetch available rules: %v\n", err)
-		return nil
-	}
-
-	if len(rules) == 0 {
-		fmt.Println("\nNo rules found in the repository.")
-		return nil
-	}
-
-	// No filters available since --search flag was removed
-
-	// Sort rules for consistent output
-	sort.Strings(rules)
-
-	// Always show interactive mode since no flags are available for non-interactive filtering
-	return c.showInteractiveRulesForAdding(ctx, cmd, rules, sourceRepo, refBranch)
-}
-
 // generateRules automatically generates output after adding rules
 func (c *AddCommand) generateRules(
 	ctx context.Context,
@@ -382,171 +333,6 @@ func (c *AddCommand) generateRules(
 
 	// Use shared rule generator with consistent UI styling
 	return c.ruleGenerator.GenerateRules(ctx, config, targetFormats)
-}
-
-// showInteractiveRulesForAdding shows an interactive searchable list of rules for adding
-func (c *AddCommand) showInteractiveRulesForAdding(
-	ctx context.Context,
-	cmd *cli.Command,
-	rules []string,
-	sourceRepo, refBranch string,
-) error {
-	// Check if we're in a project
-	currentDir, _ := os.Getwd()
-
-	var config *domain.Project
-	var hasValidConfig bool
-	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
-	if err == nil && configResult != nil {
-		hasValidConfig = true
-		config = configResult.Config
-	}
-
-	if !hasValidConfig {
-		fmt.Println("No project configuration found. Please run 'contexture init' first.")
-		return nil
-	}
-
-	// Filter out already added rules
-	var availableRules []string
-	for _, ruleID := range rules {
-		// Convert simple format to full format for comparison
-		var fullRuleID string
-		if sourceRepo != domain.DefaultRepository {
-			// Use custom source format
-			if refBranch != domain.DefaultBranch {
-				fullRuleID = fmt.Sprintf("[contexture(%s):%s,%s]", sourceRepo, ruleID, refBranch)
-			} else {
-				fullRuleID = fmt.Sprintf("[contexture(%s):%s]", sourceRepo, ruleID)
-			}
-		} else {
-			// Use default format
-			fullRuleID = fmt.Sprintf("[contexture:%s]", ruleID)
-		}
-
-		// Check if rule already exists (check both formats)
-		if !c.projectManager.HasRule(config, fullRuleID) &&
-			!c.projectManager.HasRule(config, ruleID) {
-			availableRules = append(availableRules, ruleID)
-		}
-	}
-
-	if len(availableRules) == 0 {
-		fmt.Println("All available rules have already been added to your project.")
-		return nil
-	}
-
-	rules = availableRules
-
-	// Fetch detailed rule information with spinner
-	detailSpinner := ui.NewBubblesSpinner("Loading rule details")
-	fmt.Print(detailSpinner.View())
-
-	var detailedRules []*domain.Rule
-	for _, ruleID := range rules {
-		// Construct proper rule ID format using the custom source and ref
-		var processedRuleID string
-		if sourceRepo != domain.DefaultRepository {
-			// Use custom source format
-			if refBranch != domain.DefaultBranch {
-				processedRuleID = fmt.Sprintf("[contexture(%s):%s,%s]", sourceRepo, ruleID, refBranch)
-			} else {
-				processedRuleID = fmt.Sprintf("[contexture(%s):%s]", sourceRepo, ruleID)
-			}
-		} else {
-			// For default repository, use simple format which will be processed correctly
-			processedRuleID = ruleID
-		}
-
-		// Force remote fetching using the processed rule ID
-		var rule *domain.Rule
-		var fetchErr error
-
-		// Try to use source-aware fetching if available
-		type sourceAwareFetcher interface {
-			FetchRuleWithSource(ctx context.Context, ruleID, source string) (*domain.Rule, error)
-		}
-
-		if compositeFetcher, ok := c.ruleFetcher.(sourceAwareFetcher); ok {
-			// Use the source-aware method to force remote fetching (empty source = default/remote)
-			rule, fetchErr = compositeFetcher.FetchRuleWithSource(ctx, processedRuleID, "")
-		} else {
-			// Fallback to regular fetch
-			rule, fetchErr = c.ruleFetcher.FetchRule(ctx, processedRuleID)
-		}
-
-		if fetchErr != nil {
-			log.Warn("Failed to fetch rule details", "rule", ruleID, "error", fetchErr)
-			// Continue with other rules even if one fails
-			continue
-		}
-		detailedRules = append(detailedRules, rule)
-	}
-	detailSpinner.Stop("") // Stop without message
-
-	if len(detailedRules) == 0 {
-		fmt.Println("No rule details could be loaded.")
-		return nil
-	}
-
-	// Show interactive list for rule selection
-	filteredRules, err := c.showRuleListSelection(detailedRules)
-	if err != nil {
-		return err
-	}
-
-	if len(filteredRules) == 0 {
-		log.Info("No rules selected")
-		return nil
-	}
-
-	// Process selected rules using existing add logic
-	// Just pass the simple rule IDs - the Execute function will handle source/ref flags
-	return c.Execute(ctx, cmd, filteredRules)
-}
-
-// showRuleListSelection shows an interactive bubbles list for rule selection using file browser
-func (c *AddCommand) showRuleListSelection(rules []*domain.Rule) ([]string, error) {
-	return showInteractiveRuleBrowser(rules, "Select Rules to Add")
-}
-
-// showInteractiveRuleBrowser shows an interactive file browser for rule selection
-func showInteractiveRuleBrowser(rules []*domain.Rule, title string) ([]string, error) {
-	// Extract rule paths from rules for building the tree
-	var rulePaths []string
-	for _, rule := range rules {
-		rulePath := domain.ExtractRulePath(rule.ID)
-		if rulePath == "" {
-			rulePath = rule.FilePath
-		}
-		// If still empty, use the rule ID directly (it might already be a simple path)
-		if rulePath == "" && rule.ID != "" {
-			// Check if the rule.ID is already a simple path
-			if !strings.HasPrefix(rule.ID, "[contexture") {
-				rulePath = rule.ID
-			}
-		}
-		if rulePath != "" {
-			rulePaths = append(rulePaths, rulePath)
-		}
-	}
-
-	if len(rulePaths) == 0 {
-		return nil, fmt.Errorf("no valid rules found for selection")
-	}
-
-	// Build the rule tree
-	ruleTree := domain.NewRuleTree(rulePaths)
-
-	// Use the file browser
-	browser := tui.NewFileBrowser()
-	return browser.BrowseRules(ruleTree, rules, title)
-}
-
-// showInteractiveRuleSelection shows an interactive searchable list of rules for selection (shared function)
-func showInteractiveRuleSelection(rules []*domain.Rule, title string) ([]string, error) {
-	selector := tui.NewRuleSelector()
-	return selector.SelectRules(rules, title)
 }
 
 // fetchLatestCommitHash fetches the latest commit hash for a specific rule file
@@ -612,9 +398,9 @@ func AddAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depende
 	ruleIDs := cmd.Args().Slice()
 	addCmd := NewAddCommand(deps)
 
-	// If no rule IDs provided, show available rules to add
+	// If no rule IDs provided, show helpful error message
 	if len(ruleIDs) == 0 {
-		return addCmd.ShowAvailableRules(ctx, cmd)
+		return fmt.Errorf("no rule IDs provided\n\nUsage:\n  contexture rules add [rule-id...]\n\nExamples:\n  # Add specific rules (simple format)\n  contexture rules add languages/go/code-organization testing/unit-tests\n  \n  # Add rules (full format)\n  contexture rules add \"[contexture:languages/go/advanced-patterns]\" \"[contexture:security/input-validation]\"\n  \n  # Add rule with variables\n  contexture rules add languages/go/testing --var threshold=90\n  \n  # Add from custom source\n  contexture rules add my/custom-rule --source \"https://github.com/my-org/rules.git\"\n\nTo browse available rules:\n  1. Check the repository at https://github.com/contextureai/rules\n  2. Use 'contexture rules list' to see currently installed rules\n  \nRun 'contexture rules add --help' for more options")
 	}
 
 	return addCmd.Execute(ctx, cmd, ruleIDs)
