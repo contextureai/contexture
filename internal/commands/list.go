@@ -12,7 +12,7 @@ import (
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
-	"github.com/contextureai/contexture/internal/tui"
+	"github.com/contextureai/contexture/internal/ui/rules"
 	"github.com/urfave/cli/v3"
 )
 
@@ -61,8 +61,8 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 		return fmt.Errorf("failed to fetch rules: %w", err)
 	}
 
-	// Use interactive rule selector for display
-	return c.showInteractiveList(rules, "Installed Rules")
+	// Use simple rule list display
+	return c.showRuleList(rules)
 }
 
 // applyFilters applies filters to a list of rules (currently no filters available)
@@ -117,16 +117,11 @@ func (c *ListCommand) fetchRulesFromReferences(
 	return rules, nil
 }
 
-// showInteractiveList displays rules using the interactive rule selector
-func (c *ListCommand) showInteractiveList(rules []*domain.Rule, title string) error {
-	if len(rules) == 0 {
-		fmt.Printf("No rules found.\n")
-		return nil
-	}
-
-	// Create rule selector and display rules
-	selector := tui.NewRuleSelector()
-	return selector.DisplayRules(rules, title)
+// showRuleList displays rules using simple formatted output
+func (c *ListCommand) showRuleList(ruleList []*domain.Rule) error {
+	// Use default display options with source information
+	options := rules.DefaultDisplayOptions()
+	return rules.DisplayRuleList(ruleList, options)
 }
 
 // ListAction is the CLI action handler for the list command

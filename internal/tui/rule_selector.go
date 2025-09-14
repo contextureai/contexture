@@ -288,6 +288,7 @@ func (rs *RuleSelector) SelectRules(rules []*domain.Rule, title string) ([]strin
 }
 
 // DisplayRules shows rules in a read-only interface for browsing
+// Deprecated: This method is no longer used and will be removed
 func (rs *RuleSelector) DisplayRules(rules []*domain.Rule, title string) error {
 	if len(rules) == 0 {
 		fmt.Println("No rules found.")
