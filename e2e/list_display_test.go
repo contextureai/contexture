@@ -191,3 +191,127 @@ func TestListCommand_WithInvalidPattern(t *testing.T) {
 	result := project.Run(t, "rules", "list", "--pattern", "[invalid").ExpectFailure(t)
 	result.ExpectStderr(t, "invalid pattern")
 }
+
+func TestListCommand_JSONOutput(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test JSON output
+	result := project.Run(t, "rules", "list", "--output", "json").ExpectSuccess(t)
+
+	// Should contain JSON structure
+	result.ExpectStdout(t, `"command": "rules list"`)
+	result.ExpectStdout(t, `"version": "1.0"`)
+	result.ExpectStdout(t, `"metadata":`)
+	result.ExpectStdout(t, `"rules":`)
+	result.ExpectStdout(t, `"totalRules": 1`)
+	result.ExpectStdout(t, `"filteredRules": 1`)
+
+	// Should contain rule data
+	result.ExpectStdout(t, `"id": "[contexture:languages/go/testing]"`)
+	result.ExpectStdout(t, `"title": "Go Testing Best Practices"`)
+}
+
+func TestListCommand_JSONOutputShortFlag(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test JSON output with short flag
+	result := project.Run(t, "rules", "list", "-o", "json").ExpectSuccess(t)
+
+	// Should contain JSON structure
+	result.ExpectStdout(t, `"command": "rules list"`)
+	result.ExpectStdout(t, `"version": "1.0"`)
+}
+
+func TestListCommand_JSONOutputWithPattern(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test JSON output with pattern
+	result := project.Run(t, "rules", "list", "-p", "testing", "-o", "json").ExpectSuccess(t)
+
+	// Should contain pattern in metadata
+	result.ExpectStdout(t, `"pattern": "testing"`)
+	result.ExpectStdout(t, `"command": "rules list"`)
+}
+
+func TestListCommand_JSONOutputEmptyRules(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project (no rules added)
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Test JSON output with no rules
+	result := project.Run(t, "rules", "list", "-o", "json").ExpectSuccess(t)
+
+	// Should contain empty rules array
+	result.ExpectStdout(t, `"rules": []`)
+	result.ExpectStdout(t, `"totalRules": 0`)
+	result.ExpectStdout(t, `"filteredRules": 0`)
+}
+
+func TestListCommand_InvalidOutputFormat(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Test invalid output format
+	result := project.Run(t, "rules", "list", "--output", "yaml").ExpectFailure(t)
+	result.ExpectStderr(t, "unsupported output format: yaml")
+	result.ExpectStderr(t, "supported formats: default, json")
+}
+
+func TestListCommand_DefaultOutputFormat(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test explicit default output format
+	result := project.Run(t, "rules", "list", "--output", "default").ExpectSuccess(t)
+
+	// Should contain terminal format (not JSON)
+	result.ExpectStdout(t, "Installed Rules")
+	result.ExpectStdout(t, "languages/go/testing")
+	result.ExpectStdout(t, "Go Testing Best Practices")
+	result.ExpectNotStdout(t, `"command":`)
+	result.ExpectNotStdout(t, `"version":`)
+}

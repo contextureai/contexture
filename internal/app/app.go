@@ -275,6 +275,12 @@ To browse and add available rules, use 'contexture rules add' with no arguments.
 				Aliases: []string{"p"},
 				Usage:   "Filter rules by regex pattern (matches ID, title, description, tags, etc.)",
 			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Usage:   "Output format (default, json)",
+				Value:   "default",
+			},
 		},
 		Action: a.actions.ListAction,
 	}

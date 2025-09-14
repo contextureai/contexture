@@ -5,14 +5,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
-	"github.com/contextureai/contexture/internal/ui/rules"
 	"github.com/urfave/cli/v3"
 )
 
@@ -108,17 +109,33 @@ func (c *ListCommand) fetchRulesFromReferences(
 	return rules, nil
 }
 
-// showRuleList displays rules using simple formatted output
+// showRuleList displays rules using the configured output format
 func (c *ListCommand) showRuleList(ruleList []*domain.Rule, cmd *cli.Command) error {
-	// Use default display options with source information
-	options := rules.DefaultDisplayOptions()
+	// Determine output format
+	outputFormat := output.Format(cmd.String("output"))
 
-	// Apply pattern filter if provided
-	if pattern := cmd.String("pattern"); pattern != "" {
-		options.Pattern = pattern
+	// Create output manager
+	outputMgr, err := output.NewManager(outputFormat)
+	if err != nil {
+		return err
 	}
 
-	return rules.DisplayRuleList(ruleList, options)
+	totalRules := len(ruleList)
+	pattern := cmd.String("pattern")
+
+	// Prepare metadata - for now, both counts are the same since filtering
+	// happens inside the writers. This will be refined when we extract
+	// the filtering logic for better JSON metadata
+	metadata := output.ListMetadata{
+		Command:       "rules list",
+		Pattern:       pattern,
+		TotalRules:    totalRules,
+		FilteredRules: totalRules, // This will be corrected by the writers
+		Timestamp:     time.Now(),
+	}
+
+	// Write output in requested format
+	return outputMgr.WriteRulesList(ruleList, metadata)
 }
 
 // ListAction is the CLI action handler for the list command
