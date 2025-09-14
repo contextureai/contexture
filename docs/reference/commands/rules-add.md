@@ -12,7 +12,7 @@ contexture rules add [rule-id...] [flags]
 
 ## Description
 
-The `rules add` command adds new rules to the project. When run without arguments, it opens an interactive browser to select rules from available sources. Rules can also be added directly by providing their rule IDs as arguments.
+The `rules add` command adds new rules to the project. Rules must be specified by providing their rule IDs as arguments.
 
 ## Arguments
 
@@ -33,31 +33,15 @@ The `rules add` command adds new rules to the project. When run without argument
 
 ## Usage
 
-### Interactive Mode
-
-To browse and select rules interactively, run the command without arguments.
-
-```bash
-contexture rules add
-```
-
-#### Interactive Mode with Custom Sources
-
-You can also browse rules from custom repositories interactively by specifying a custom source:
-
-```bash
-# Browse rules from a custom repository
-contexture rules add --src https://github.com/mycompany/contexture-rules.git
-
-# Browse rules from a custom repository at a specific branch
-contexture rules add --source git@github.com:mycompany/rules.git --ref develop
-```
-
-### Adding Specific Rules
+### Adding Rules
 
 Add one or more rules by providing their IDs.
 
 ```bash
+# Simple format (recommended)
+contexture rules add languages/go/code-organization testing/unit-tests
+
+# Full format
 contexture rules add "[contexture:code/clean-code]" "[contexture:testing/unit-tests]"
 ```
 
@@ -66,14 +50,14 @@ contexture rules add "[contexture:code/clean-code]" "[contexture:testing/unit-te
 Variables can be provided inline as a JSON5 string.
 
 ```bash
-contexture rules add '[contexture:testing/coverage] {"threshold": 90}'
+contexture rules add 'testing/coverage {"threshold": 90}'
 ```
 
 Alternatively, use the `--data` or `--var` flags.
 
 ```bash
-contexture rules add "[contexture:testing/coverage]" --data '{"threshold": 90}'
-contexture rules add "[contexture:testing/coverage]" --var threshold=90
+contexture rules add testing/coverage --data '{"threshold": 90}'
+contexture rules add testing/coverage --var threshold=90
 ```
 
 ### Adding a Rule from a Custom Source
