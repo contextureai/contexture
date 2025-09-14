@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -17,7 +16,6 @@ import (
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
-	"github.com/contextureai/contexture/internal/tui"
 	"github.com/contextureai/contexture/internal/ui"
 	"github.com/spf13/afero"
 	"github.com/urfave/cli/v3"
@@ -43,9 +41,11 @@ func NewRemoveCommand(deps *dependencies.Dependencies) *RemoveCommand {
 
 // Execute runs the remove command
 func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
-	// Show command header
-	fmt.Println(ui.CommandHeader("remove"))
-	fmt.Println()
+	// Show header like other commands
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+	fmt.Printf("%s\n\n", headerStyle.Render("Remove Rules"))
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -204,64 +204,6 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	return nil
 }
 
-// ShowInstalledRules lists installed rules from project configuration for removal
-func (c *RemoveCommand) ShowInstalledRules(ctx context.Context, cmd *cli.Command) error {
-	// Get current directory and load configuration
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
-	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
-	}
-
-	if len(configResult.Config.Rules) == 0 {
-		log.Info("No rules are currently installed in this project")
-		return nil
-	}
-
-	// Extract rule IDs from configuration, but only include removable rules
-	var installedRuleIDs []string
-	var localRuleCount int
-	for _, ruleRef := range configResult.Config.Rules {
-		// Skip local rules - they can't be removed through the configuration
-		if ruleRef.Source == "local" {
-			localRuleCount++
-			continue
-		}
-
-		// Use the full rule ID as stored in configuration
-		// Don't attempt to convert to "simple format" as it breaks custom source rules
-		installedRuleIDs = append(installedRuleIDs, ruleRef.ID)
-	}
-
-	// Inform user about local rules if any exist
-	if localRuleCount > 0 {
-		log.Debug("Local rules found", "count", localRuleCount, "note", "Local rules are files on disk and cannot be removed through configuration")
-	}
-
-	// No filters available since --search flag was removed
-
-	if len(installedRuleIDs) == 0 {
-		if localRuleCount > 0 {
-			log.Info("No remote rules found", "local_rules", localRuleCount)
-			fmt.Printf("No remote rules can be removed from this project.\n")
-			fmt.Printf("Found %d local rules (files on disk) - to remove local rules, delete the .md files from the rules directory.\n", localRuleCount)
-		} else {
-			log.Info("No installed rules found")
-		}
-		return nil
-	}
-
-	// Sort rules for consistent output
-	sort.Strings(installedRuleIDs)
-
-	// Always show interactive mode since no flags are available for non-interactive filtering
-	return c.showInteractiveRulesForRemoving(ctx, cmd, installedRuleIDs, configResult)
-}
-
 // removeFromOutputs removes rules from generated format outputs
 func (c *RemoveCommand) removeFromOutputs(
 	_ context.Context,
@@ -295,107 +237,14 @@ func (c *RemoveCommand) removeFromOutputs(
 	return nil
 }
 
-// showInteractiveRulesForRemoving shows an interactive searchable list of rules for removal
-func (c *RemoveCommand) showInteractiveRulesForRemoving(
-	ctx context.Context,
-	cmd *cli.Command,
-	ruleIDs []string,
-	configResult *domain.ConfigResult,
-) error {
-	// Fetch detailed rule information with spinner
-	detailSpinner := ui.NewBubblesSpinner("Loading rule details")
-	fmt.Print(detailSpinner.View())
-
-	var detailedRules []*domain.Rule
-	for _, ruleID := range ruleIDs {
-		// Use source-aware fetching to ensure we fetch from remote repository
-		type sourceAwareFetcher interface {
-			FetchRuleWithSource(ctx context.Context, ruleID, source string) (*domain.Rule, error)
-		}
-
-		var rule *domain.Rule
-		var fetchErr error
-
-		if compositeFetcher, ok := c.ruleFetcher.(sourceAwareFetcher); ok {
-			// Use the source-aware method to force remote fetching (empty source = default/remote)
-			rule, fetchErr = compositeFetcher.FetchRuleWithSource(ctx, ruleID, "")
-		} else {
-			// Fallback to regular fetch
-			rule, fetchErr = c.ruleFetcher.FetchRule(ctx, ruleID)
-		}
-
-		if fetchErr != nil {
-			log.Warn("Failed to fetch rule details", "rule", ruleID, "error", fetchErr)
-			// Create a minimal rule object for display if fetch fails
-			minimalRule := &domain.Rule{
-				ID:          ruleID, // Use the actual rule ID as stored in config
-				Title:       ruleID,
-				Description: "Failed to load rule details",
-				Tags:        []string{"unknown"},
-			}
-			detailedRules = append(detailedRules, minimalRule)
-			continue
-		}
-
-		// Find the configured variables for this rule from the project configuration
-		var configuredVariables map[string]any
-		for _, configRule := range configResult.Config.Rules {
-			// Use the centralized matching logic from project manager
-			if configRule.ID == ruleID {
-				configuredVariables = configRule.Variables
-				break
-			}
-		}
-
-		// Merge configured variables with the fetched rule
-		// The fetched rule already has DefaultVariables populated, we just need to set Variables
-		if configuredVariables != nil {
-			rule.Variables = configuredVariables
-		}
-
-		detailedRules = append(detailedRules, rule)
-	}
-	detailSpinner.Stop("") // Stop without message
-
-	if len(detailedRules) == 0 {
-		fmt.Println("No rule details could be loaded.")
-		return nil
-	}
-
-	// Show interactive list for rule selection
-	selectedRules, err := c.showRuleListSelectionForRemoval(detailedRules)
-	if err != nil {
-		return err
-	}
-
-	if len(selectedRules) == 0 {
-		log.Info("No rules selected for removal")
-		return nil
-	}
-
-	// Process selected rules using existing remove logic
-	return c.Execute(ctx, cmd, selectedRules)
-}
-
-// showRuleListSelectionForRemoval shows an interactive bubbles list for rule removal selection
-func (c *RemoveCommand) showRuleListSelectionForRemoval(rules []*domain.Rule) ([]string, error) {
-	return showInteractiveRuleSelection(rules, "Select Rules to Remove")
-}
-
-// showInteractiveRuleSelection shows an interactive searchable list of rules for selection (shared function)
-func showInteractiveRuleSelection(rules []*domain.Rule, title string) ([]string, error) {
-	selector := tui.NewRuleSelector()
-	return selector.SelectRules(rules, title)
-}
-
 // RemoveAction is the CLI action handler for the remove command
 func RemoveAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Dependencies) error {
 	ruleIDs := cmd.Args().Slice()
 	removeCmd := NewRemoveCommand(deps)
 
-	// If no rule IDs provided, show installed rules for removal
+	// If no rule IDs provided, show helpful error message
 	if len(ruleIDs) == 0 {
-		return removeCmd.ShowInstalledRules(ctx, cmd)
+		return fmt.Errorf("no rule IDs provided\n\nUsage:\n  contexture rules remove [rule-id...]\n\nExamples:\n  # Remove specific rules (simple format)\n  contexture rules remove languages/go/code-organization testing/unit-tests\n  \n  # Remove rules (full format)\n  contexture rules remove \"[contexture:languages/go/advanced-patterns]\" \"[contexture:security/input-validation]\"\n  \n  # Remove from custom source\n  contexture rules remove my/custom-rule\n\nTo see installed rules:\n  Use 'contexture rules list' to see currently installed rules\n  \nRun 'contexture rules remove --help' for more options")
 	}
 
 	return removeCmd.Execute(ctx, cmd, ruleIDs)

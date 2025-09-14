@@ -36,7 +36,7 @@ func TestRemoveAction(t *testing.T) {
 	// Create a context with empty arguments to simulate CLI with no args
 	ctx := context.Background()
 
-	// Test with no arguments (should show interactive mode but fail due to no config)
+	// Test with no arguments (should show usage information)
 	app := &cli.Command{
 		Name: "test",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -46,7 +46,7 @@ func TestRemoveAction(t *testing.T) {
 
 	err := app.Run(ctx, []string{"test"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no project configuration found")
+	assert.Contains(t, err.Error(), "no rule IDs provided")
 }
 
 func TestRemoveCommand_Execute_NoConfig(t *testing.T) {

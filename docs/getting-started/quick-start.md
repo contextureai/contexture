@@ -189,8 +189,8 @@ ls -la CLAUDE.md .cursor/rules/ .windsurf/rules/
 ```bash
 # Common commands
 contexture init                                      # Initialize a new project
-contexture rules add                                # Browse and add rules
-contexture rules add --src https://github.com/...  # Browse rules from custom source
+contexture rules add code/clean-code              # Add specific rules
+contexture rules add --src https://github.com/...  # Add rules from custom source
 contexture rules list                               # Show configured rules
 contexture rules list -o json                      # Show rules as JSON
 contexture build                                    # Generate output files
