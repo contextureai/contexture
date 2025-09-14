@@ -279,7 +279,7 @@ func WithProgress(message string, fn func() error) error {
 		return err
 	}
 
-	spinner.Stop(fmt.Sprintf("%s completed", message))
+	spinner.Stop(message)
 	return nil
 }
 

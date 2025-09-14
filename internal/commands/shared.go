@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
@@ -55,7 +55,7 @@ func (g *RuleGenerator) GenerateRules(
 
 	// Fetch all rules in parallel with progress indicator and timing
 	var rules []*domain.Rule
-	err := ui.WithProgressTiming("Fetched rules", func() error {
+	err := ui.WithProgress("Fetched rules", func() error {
 		var fetchErr error
 		rules, fetchErr = rule.FetchRulesParallel(
 			ctx,
@@ -71,7 +71,7 @@ func (g *RuleGenerator) GenerateRules(
 
 	// Process rules (templates, validation) with progress indicator and timing
 	var processedRules []*domain.ProcessedRule
-	err = ui.WithProgressTiming("Generated rules", func() error {
+	err = ui.WithProgress("Generated rules", func() error {
 		var processErr error
 		processedRules, processErr = g.processRules(ctx, rules)
 		return processErr
@@ -80,18 +80,18 @@ func (g *RuleGenerator) GenerateRules(
 		return fmt.Errorf("failed to process rules: %w", err)
 	}
 
-	// Generate output for each format with individual timing
+	// Generate output for each format
 	for _, formatConfig := range targetFormats {
-		formatStart := time.Now()
 		if err := g.generateFormat(ctx, processedRules, formatConfig); err != nil {
 			log.Warn("Failed to generate format", "format", formatConfig.Type, "error", err)
 			continue
 		}
-		formatElapsed := time.Since(formatStart)
 
-		// Show format completion with timing (consistent with add command)
+		// Show format completion without timing
 		if handler, exists := g.registry.GetHandler(formatConfig.Type); exists {
-			ui.ShowFormatCompletion(handler.GetDisplayName(), formatElapsed)
+			theme := ui.DefaultTheme()
+			successStyle := lipgloss.NewStyle().Foreground(theme.Success)
+			fmt.Printf("  %s %s\n", successStyle.Render("✓"), handler.GetDisplayName())
 		}
 	}
 

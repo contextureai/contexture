@@ -52,6 +52,11 @@ func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 
 // Execute runs the add command
 func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
+	// Show header like list command
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+	fmt.Printf("%s\n\n", headerStyle.Render("Add Rule"))
 	// Parse custom data if provided
 	var customData map[string]any
 	if dataStr := cmd.String("data"); dataStr != "" {
@@ -102,7 +107,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	}
 	var validRuleRefs []ruleRefWithOriginal
 
-	err = ui.WithProgressTiming("Validated rules", func() error {
+	err = ui.WithProgress("Validated rules", func() error {
 		for _, ruleID := range ruleIDs {
 			// Construct proper rule ID format if --source flag is provided
 			processedRuleID := ruleID
