@@ -115,3 +115,79 @@ func TestListCommand_NoProject(t *testing.T) {
 	// Should provide helpful error message
 	result.ExpectStderr(t, "no project configuration found")
 }
+
+func TestListCommand_WithPattern(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule that we know exists
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test filtering by language - should match
+	result := project.Run(t, "rules", "list", "--pattern", "go").ExpectSuccess(t)
+	result.ExpectStdout(t, "pattern: go")          // Should show pattern in header
+	result.ExpectStdout(t, "languages/go/testing") // Should include go rule
+
+	// Test filtering with pattern that won't match
+	result = project.Run(t, "rules", "list", "--pattern", "python").ExpectSuccess(t)
+	result.ExpectStdout(t, "No rules found matching pattern: python")
+	result.ExpectNotStdout(t, "go/testing")
+}
+
+func TestListCommand_WithPatternShortFlag(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test using short flag -p
+	result := project.Run(t, "rules", "list", "-p", "go").ExpectSuccess(t)
+	result.ExpectStdout(t, "pattern: go")
+	result.ExpectStdout(t, "languages/go/testing")
+}
+
+func TestListCommand_WithPatternNoMatches(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test pattern that doesn't match anything
+	result := project.Run(t, "rules", "list", "--pattern", "nonexistent").ExpectSuccess(t)
+	result.ExpectStdout(t, "No rules found matching pattern: nonexistent")
+	result.ExpectNotStdout(t, "go/testing")
+}
+
+func TestListCommand_WithInvalidPattern(t *testing.T) {
+	t.Parallel()
+
+	fs := afero.NewMemMapFs()
+	project := helpers.NewTestProject(t, fs, binaryPath)
+
+	// Initialize project
+	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
+
+	// Add a rule
+	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+
+	// Test invalid regex pattern
+	result := project.Run(t, "rules", "list", "--pattern", "[invalid").ExpectFailure(t)
+	result.ExpectStderr(t, "invalid pattern")
+}

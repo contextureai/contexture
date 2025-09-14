@@ -630,3 +630,334 @@ func TestDisplayRuleList_SortingOrder(t *testing.T) {
 
 	assert.Equal(t, expected, rulePaths)
 }
+
+func TestFilterRulesByPattern_EmptyPattern(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "test-rule",
+			Title:       "Test Rule",
+			Description: "A test rule",
+			Tags:        []string{"testing"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, rules, filtered)
+}
+
+func TestFilterRulesByPattern_InvalidRegex(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "test-rule",
+			Title:       "Test Rule",
+			Description: "A test rule",
+			Tags:        []string{"testing"},
+		},
+	}
+
+	_, err := filterRulesByPattern(rules, "[invalid")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing regexp")
+}
+
+func TestFilterRulesByPattern_MatchesID(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "contexture:test-rule",
+			Title:       "Test Rule",
+			Description: "A test rule",
+			Tags:        []string{"testing"},
+		},
+		{
+			ID:          "contexture:other-rule",
+			Title:       "Other Rule",
+			Description: "Another rule",
+			Tags:        []string{"other"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "test-rule")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "contexture:test-rule", filtered[0].ID)
+}
+
+func TestFilterRulesByPattern_MatchesTitle(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Go Testing Rules",
+			Description: "Rules for testing Go code",
+			Tags:        []string{"testing"},
+		},
+		{
+			ID:          "rule2",
+			Title:       "Python Style Guide",
+			Description: "Style rules for Python",
+			Tags:        []string{"style"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "Go Testing")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "Go Testing Rules", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_MatchesDescription(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Test Rule",
+			Description: "Comprehensive testing guidelines for Go applications",
+			Tags:        []string{"testing"},
+		},
+		{
+			ID:          "rule2",
+			Title:       "Style Rule",
+			Description: "Code formatting rules",
+			Tags:        []string{"style"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "testing guidelines")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "Test Rule", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_MatchesTags(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Test Rule",
+			Description: "A test rule",
+			Tags:        []string{"testing", "validation"},
+		},
+		{
+			ID:          "rule2",
+			Title:       "Style Rule",
+			Description: "A style rule",
+			Tags:        []string{"style", "formatting"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "validation")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "Test Rule", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_MatchesFrameworks(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "React Rule",
+			Description: "Rules for React",
+			Tags:        []string{"frontend"},
+			Frameworks:  []string{"react", "nextjs"},
+		},
+		{
+			ID:          "rule2",
+			Title:       "Vue Rule",
+			Description: "Rules for Vue",
+			Tags:        []string{"frontend"},
+			Frameworks:  []string{"vue", "nuxt"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "nextjs")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "React Rule", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_MatchesLanguages(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Go Rule",
+			Description: "Rules for Go",
+			Tags:        []string{"backend"},
+			Languages:   []string{"go", "golang"},
+		},
+		{
+			ID:          "rule2",
+			Title:       "Python Rule",
+			Description: "Rules for Python",
+			Tags:        []string{"backend"},
+			Languages:   []string{"python"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "golang")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "Go Rule", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_MatchesSource(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Default Rule",
+			Description: "Rule from default source",
+			Tags:        []string{"default"},
+			Source:      "contexture:default",
+		},
+		{
+			ID:          "rule2",
+			Title:       "Custom Rule",
+			Description: "Rule from custom source",
+			Tags:        []string{"custom"},
+			Source:      "myorg:custom-rules",
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "myorg")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "Custom Rule", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_CaseInsensitive(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Test Rule",
+			Description: "Testing Guidelines",
+			Tags:        []string{"TESTING"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "testing")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "Test Rule", filtered[0].Title)
+}
+
+func TestFilterRulesByPattern_RegexPattern(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Test Rule 1",
+			Description: "First test rule",
+			Tags:        []string{"testing"},
+		},
+		{
+			ID:          "rule2",
+			Title:       "Test Rule 2",
+			Description: "Second test rule",
+			Tags:        []string{"testing"},
+		},
+		{
+			ID:          "rule3",
+			Title:       "Style Rule",
+			Description: "Style rule",
+			Tags:        []string{"style"},
+		},
+	}
+
+	// Match rules ending with digit
+	filtered, err := filterRulesByPattern(rules, "Rule \\d$")
+	require.NoError(t, err)
+	assert.Len(t, filtered, 2)
+	assert.Equal(t, "Test Rule 1", filtered[0].Title)
+	assert.Equal(t, "Test Rule 2", filtered[1].Title)
+}
+
+func TestFilterRulesByPattern_NoMatches(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Test Rule",
+			Description: "A test rule",
+			Tags:        []string{"testing"},
+		},
+	}
+
+	filtered, err := filterRulesByPattern(rules, "nonexistent")
+	require.NoError(t, err)
+	assert.Empty(t, filtered)
+}
+
+func TestDisplayRuleList_WithPattern(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "contexture:languages/go/testing",
+			Title:       "Go Testing Standards",
+			Description: "Comprehensive testing guidelines for Go applications",
+			Tags:        []string{"testing", "go", "standards"},
+			Source:      "contexture:default",
+		},
+		{
+			ID:          "contexture:languages/python/style",
+			Title:       "Python Style Guide",
+			Description: "PEP 8 style guidelines for Python code",
+			Tags:        []string{"style", "python", "pep8"},
+			Source:      "contexture:default",
+		},
+	}
+
+	options := DisplayOptions{
+		ShowSource: true,
+		Pattern:    "go",
+	}
+
+	output := captureOutput(t, func() {
+		err := DisplayRuleList(rules, options)
+		require.NoError(t, err)
+	})
+
+	// Should show only the Go rule
+	assert.Contains(t, output, "Go Testing Standards")
+	assert.NotContains(t, output, "Python Style Guide")
+	assert.Contains(t, output, "pattern: go") // Should show pattern in header
+}
+
+func TestDisplayRuleList_WithPatternNoMatches(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "contexture:languages/go/testing",
+			Title:       "Go Testing Standards",
+			Description: "Comprehensive testing guidelines for Go applications",
+			Tags:        []string{"testing", "go", "standards"},
+			Source:      "contexture:default",
+		},
+	}
+
+	options := DisplayOptions{
+		ShowSource: true,
+		Pattern:    "nonexistent",
+	}
+
+	output := captureOutput(t, func() {
+		err := DisplayRuleList(rules, options)
+		require.NoError(t, err)
+	})
+
+	// Should show no matches message with pattern
+	assert.Contains(t, output, "No rules found matching pattern: nonexistent")
+	assert.NotContains(t, output, "Go Testing Standards")
+}
+
+func TestDisplayRuleList_WithInvalidPattern(t *testing.T) {
+	rules := []*domain.Rule{
+		{
+			ID:          "rule1",
+			Title:       "Test Rule",
+			Description: "A test rule",
+			Tags:        []string{"testing"},
+		},
+	}
+
+	options := DisplayOptions{
+		Pattern: "[invalid",
+	}
+
+	err := DisplayRuleList(rules, options)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid pattern")
+}

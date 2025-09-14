@@ -52,23 +52,14 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 
 	config := configResult.Config
 
-	// Apply filters if provided
-	filteredRuleRefs := c.applyFilters(config.Rules, cmd)
-
 	// Fetch the actual rules from the rule references
-	rules, err := c.fetchRulesFromReferences(ctx, filteredRuleRefs)
+	rules, err := c.fetchRulesFromReferences(ctx, config.Rules)
 	if err != nil {
 		return fmt.Errorf("failed to fetch rules: %w", err)
 	}
 
 	// Use simple rule list display
-	return c.showRuleList(rules)
-}
-
-// applyFilters applies filters to a list of rules (currently no filters available)
-func (c *ListCommand) applyFilters(rules []domain.RuleRef, _ *cli.Command) []domain.RuleRef {
-	// No filters available since --search and --tags flags were removed
-	return rules
+	return c.showRuleList(rules, cmd)
 }
 
 // fetchRulesFromReferences fetches the actual rule content from rule references
@@ -118,9 +109,15 @@ func (c *ListCommand) fetchRulesFromReferences(
 }
 
 // showRuleList displays rules using simple formatted output
-func (c *ListCommand) showRuleList(ruleList []*domain.Rule) error {
+func (c *ListCommand) showRuleList(ruleList []*domain.Rule, cmd *cli.Command) error {
 	// Use default display options with source information
 	options := rules.DefaultDisplayOptions()
+
+	// Apply pattern filter if provided
+	if pattern := cmd.String("pattern"); pattern != "" {
+		options.Pattern = pattern
+	}
+
 	return rules.DisplayRuleList(ruleList, options)
 }
 

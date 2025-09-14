@@ -16,41 +16,47 @@ contexture rules list [flags]
 
 ## Description
 
-The `rules list` command prints a list of all rules that have been added to the project. The output includes the rule's ID, title, and description. Using the `--verbose` flag provides a more detailed view.
+The `rules list` command displays all rules that have been added to the project in a clean, terminal-friendly format. Each rule shows its path, title, and source information. The command supports pattern-based filtering to help you find specific rules quickly.
 
 ## Flags
 
 | Flag          | Description                                                                  |
 | :------------ | :--------------------------------------------------------------------------- |
-| `--verbose`, `-v` | Show detailed information for each rule, including metadata and source info. |
-| `--formats`   | Filter the list to show only rules compatible with the specified format(s).  |
+| `--pattern`, `-p` | Filter rules using a regex pattern (matches ID, title, description, tags, frameworks, languages, source) |
 
 ## Usage
 
-### Standard List
+### List All Rules
 
-Displays a summary of each configured rule.
+Displays all configured rules with their paths, titles, and source information.
 
 ```bash
 contexture rules list
 ```
 
-### Verbose List
+### Filter by Pattern
 
-Displays detailed information for each rule.
-
-```bash
-contexture rules list --verbose
-```
-
-### Filtering by Format
-
-To see which rules apply to a specific output format, use the `--formats` flag. The flag can be used multiple times.
+Use regex patterns to filter rules across multiple fields. Patterns are case-insensitive by default.
 
 ```bash
-# Show rules for the 'claude' format
-contexture rules list --formats claude
+# Find rules related to Go
+contexture rules list --pattern "go"
 
-# Show rules for both 'cursor' and 'windsurf' formats
-contexture rules list --formats cursor --formats windsurf
+# Find testing-related rules
+contexture rules list -p "testing"
+
+# Use regex patterns
+contexture rules list --pattern "(python|javascript)"
+
+# Find security rules
+contexture rules list --pattern "security.*validation"
 ```
+
+## Output Format
+
+The command displays rules in a compact format:
+- **Rule Path**: The rule's identifier path (e.g., `languages/go/testing`)
+- **Title**: A descriptive title (e.g., `Go Testing Best Practices`)
+- **Source**: Where the rule comes from (only shown for non-default sources)
+
+When using a pattern filter, the active pattern is shown in the header for clarity.

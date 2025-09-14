@@ -3,6 +3,7 @@ package rules
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -17,6 +18,7 @@ type DisplayOptions struct {
 	ShowTriggers  bool
 	ShowVariables bool
 	ShowTags      bool
+	Pattern       string // Regex pattern for filtering rules
 }
 
 // DefaultDisplayOptions returns sensible defaults for rule display
@@ -69,6 +71,79 @@ func createDisplayStyles() DisplayStyles {
 	}
 }
 
+// filterRulesByPattern filters rules based on a regex pattern matching across multiple fields
+func filterRulesByPattern(rules []*domain.Rule, pattern string) ([]*domain.Rule, error) {
+	if pattern == "" {
+		return rules, nil
+	}
+
+	// Compile the regex pattern
+	regex, err := regexp.Compile("(?i)" + pattern) // Case-insensitive
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []*domain.Rule
+	for _, rule := range rules {
+		if ruleMatchesPattern(rule, regex) {
+			filtered = append(filtered, rule)
+		}
+	}
+
+	return filtered, nil
+}
+
+// ruleMatchesPattern checks if a rule matches the given regex pattern
+func ruleMatchesPattern(rule *domain.Rule, regex *regexp.Regexp) bool {
+	// Check ID
+	if regex.MatchString(rule.ID) {
+		return true
+	}
+
+	// Check Title
+	if regex.MatchString(rule.Title) {
+		return true
+	}
+
+	// Check Description
+	if regex.MatchString(rule.Description) {
+		return true
+	}
+
+	// Check Tags
+	for _, tag := range rule.Tags {
+		if regex.MatchString(tag) {
+			return true
+		}
+	}
+
+	// Check Frameworks
+	for _, framework := range rule.Frameworks {
+		if regex.MatchString(framework) {
+			return true
+		}
+	}
+
+	// Check Languages
+	for _, language := range rule.Languages {
+		if regex.MatchString(language) {
+			return true
+		}
+	}
+
+	// Check Source
+	if regex.MatchString(rule.Source) {
+		return true
+	}
+
+	// Check FilePath
+	if regex.MatchString(rule.FilePath) {
+		return true
+	}
+
+	return false
+}
+
 // DisplayRuleList displays a list of rules in a compact format
 func DisplayRuleList(rules []*domain.Rule, options DisplayOptions) error {
 	if len(rules) == 0 {
@@ -76,14 +151,33 @@ func DisplayRuleList(rules []*domain.Rule, options DisplayOptions) error {
 		return nil
 	}
 
+	// Apply pattern filtering if provided
+	filteredRules, err := filterRulesByPattern(rules, options.Pattern)
+	if err != nil {
+		return fmt.Errorf("invalid pattern: %w", err)
+	}
+
+	if len(filteredRules) == 0 {
+		if options.Pattern != "" {
+			fmt.Printf("No rules found matching pattern: %s\n", options.Pattern)
+		} else {
+			fmt.Println("No rules found.")
+		}
+		return nil
+	}
+
 	styles := createDisplayStyles()
 
-	// Header
-	fmt.Printf("%s\n\n", styles.header.Render("Installed Rules"))
+	// Header with pattern info if applicable
+	headerText := "Installed Rules"
+	if options.Pattern != "" {
+		headerText = fmt.Sprintf("Installed Rules (pattern: %s)", options.Pattern)
+	}
+	fmt.Printf("%s\n\n", styles.header.Render(headerText))
 
 	// Sort rules by path for consistent output
-	sortedRules := make([]*domain.Rule, len(rules))
-	copy(sortedRules, rules)
+	sortedRules := make([]*domain.Rule, len(filteredRules))
+	copy(sortedRules, filteredRules)
 	sort.Slice(sortedRules, func(i, j int) bool {
 		pathI := extractRulePath(sortedRules[i].ID)
 		pathJ := extractRulePath(sortedRules[j].ID)
