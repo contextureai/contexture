@@ -112,24 +112,22 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		return fmt.Errorf("failed to remove any rules")
 	}
 
-	// Automatically clean outputs unless --keep-outputs is specified
-	if !cmd.Bool("keep-outputs") {
-		err = c.removeFromOutputs(ctx, configResult.Config, removedRules, currentDir)
-		if err != nil {
-			log.Warn("Failed to clean some outputs", "error", err)
-		}
+	// Automatically clean outputs
+	err = c.removeFromOutputs(ctx, configResult.Config, removedRules, currentDir)
+	if err != nil {
+		log.Warn("Failed to clean some outputs", "error", err)
+	}
 
-		// Clean up empty directories after removing rules, similar to build command
-		targetFormats := configResult.Config.GetEnabledFormats()
-		for _, formatConfig := range targetFormats {
-			format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
-			if err != nil {
-				log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
-				continue
-			}
-			if err := format.CleanupEmptyDirectories(&formatConfig); err != nil {
-				log.Warn("Failed to cleanup empty directories", "format", formatConfig.Type, "error", err)
-			}
+	// Clean up empty directories after removing rules, similar to build command
+	targetFormats := configResult.Config.GetEnabledFormats()
+	for _, formatConfig := range targetFormats {
+		format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+		if err != nil {
+			log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
+			continue
+		}
+		if err := format.CleanupEmptyDirectories(&formatConfig); err != nil {
+			log.Warn("Failed to cleanup empty directories", "format", formatConfig.Type, "error", err)
 		}
 	}
 

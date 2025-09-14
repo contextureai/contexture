@@ -36,7 +36,7 @@ func TestListCommand_WithRules(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Run list command
 	result := project.Run(t, "rules", "list").ExpectSuccess(t)
@@ -72,7 +72,7 @@ func TestListCommand_OutputFormat(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Run list command
 	result := project.Run(t, "rules", "list").ExpectSuccess(t)
@@ -126,7 +126,7 @@ func TestListCommand_WithPattern(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule that we know exists
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test filtering by language - should match
 	result := project.Run(t, "rules", "list", "--pattern", "go").ExpectSuccess(t)
@@ -149,7 +149,7 @@ func TestListCommand_WithPatternShortFlag(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test using short flag -p
 	result := project.Run(t, "rules", "list", "-p", "go").ExpectSuccess(t)
@@ -167,7 +167,7 @@ func TestListCommand_WithPatternNoMatches(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test pattern that doesn't match anything
 	result := project.Run(t, "rules", "list", "--pattern", "nonexistent").ExpectSuccess(t)
@@ -185,7 +185,7 @@ func TestListCommand_WithInvalidPattern(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test invalid regex pattern
 	result := project.Run(t, "rules", "list", "--pattern", "[invalid").ExpectFailure(t)
@@ -202,7 +202,7 @@ func TestListCommand_JSONOutput(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test JSON output
 	result := project.Run(t, "rules", "list", "--output", "json").ExpectSuccess(t)
@@ -230,7 +230,7 @@ func TestListCommand_JSONOutputShortFlag(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test JSON output with short flag
 	result := project.Run(t, "rules", "list", "-o", "json").ExpectSuccess(t)
@@ -250,7 +250,7 @@ func TestListCommand_JSONOutputWithPattern(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test JSON output with pattern
 	result := project.Run(t, "rules", "list", "-p", "testing", "-o", "json").ExpectSuccess(t)
@@ -303,7 +303,7 @@ func TestListCommand_DefaultOutputFormat(t *testing.T) {
 	project.Run(t, "init", "--no-interactive", "--force").ExpectSuccess(t)
 
 	// Add a rule
-	project.Run(t, "rules", "add", "languages/go/testing", "--force").ExpectSuccess(t)
+	project.Run(t, "rules", "add", "languages/go/testing").ExpectSuccess(t)
 
 	// Test explicit default output format
 	result := project.Run(t, "rules", "list", "--output", "default").ExpectSuccess(t)

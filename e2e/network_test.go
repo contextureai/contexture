@@ -17,24 +17,24 @@ func TestNetworkFailures(t *testing.T) {
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
 	// Initialize project with remote rules
-	project.Run(t, "init", "--force", "--no-interactive").ExpectSuccess(t)
+	project.Run(t, "init", "--no-interactive").ExpectSuccess(t)
 
 	t.Run("invalid git repository", func(t *testing.T) {
-		result := project.Run(t, "rules", "add", "[contexture(https://invalid-repo.example.com):test/rule]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://invalid-repo.example.com):test/rule]")
 		result.ExpectFailure(t).
 			ExpectStderr(t, "failed to clone repository")
 	})
 
 	t.Run("timeout handling", func(t *testing.T) {
 		// Use a very slow DNS resolution to simulate timeout
-		result := project.Run(t, "rules", "add", "[contexture(https://very-slow-dns-that-should-not-exist.example.invalid):test/rule]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://very-slow-dns-that-should-not-exist.example.invalid):test/rule]")
 		result.ExpectFailure(t).
 			ExpectStderr(t, "failed")
 	})
 
 	t.Run("unsupported URL scheme", func(t *testing.T) {
 		// Test with http URL which is not allowed (only https and ssh)
-		result := project.Run(t, "rules", "add", "[contexture(http://127.0.0.1:9999):test/rule]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(http://127.0.0.1:9999):test/rule]")
 		result.ExpectFailure(t).
 			ExpectStderr(t, "unsupported URL scheme")
 	})
@@ -47,7 +47,7 @@ func TestGitAuthentication(t *testing.T) {
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
 	// Initialize project
-	project.Run(t, "init", "--force", "--no-interactive").ExpectSuccess(t)
+	project.Run(t, "init", "--no-interactive").ExpectSuccess(t)
 
 	t.Run("ssh authentication without agent", func(t *testing.T) {
 		// Temporarily unset SSH_AUTH_SOCK to simulate no SSH agent
@@ -59,7 +59,7 @@ func TestGitAuthentication(t *testing.T) {
 			}
 		}()
 
-		result := project.Run(t, "rules", "add", "[contexture(git@github.com:nonexistent/repo.git):test/rule]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(git@github.com:nonexistent/repo.git):test/rule]")
 		result.ExpectFailure(t).
 			ExpectStderr(t, "authentication")
 	})
@@ -68,14 +68,14 @@ func TestGitAuthentication(t *testing.T) {
 		// Test with a token (should fail gracefully for invalid token)
 		t.Setenv("GITHUB_TOKEN", "invalid-token")
 
-		result := project.Run(t, "rules", "add", "[contexture(https://github.com/nonexistent/repo.git):test/rule]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://github.com/nonexistent/repo.git):test/rule]")
 		result.ExpectFailure(t).
 			ExpectStderr(t, "authentication")
 	})
 
 	t.Run("public repository access", func(t *testing.T) {
 		// Test accessing a public repository (this might succeed if the repo exists)
-		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example]")
 		// Don't assert success/failure as it depends on network availability
 		// Just ensure it doesn't crash
 		t.Logf("Public repo access result: exit code %d", result.ExitCode)
@@ -89,22 +89,22 @@ func TestGitBranchHandling(t *testing.T) {
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
 	// Initialize project
-	project.Run(t, "init", "--force", "--no-interactive").ExpectSuccess(t)
+	project.Run(t, "init", "--no-interactive").ExpectSuccess(t)
 
 	t.Run("specify branch", func(t *testing.T) {
-		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,develop]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,develop]")
 		// Test that branch specification is parsed correctly (may fail if branch doesn't exist)
 		t.Logf("Branch specification result: exit code %d", result.ExitCode)
 	})
 
 	t.Run("specify tag", func(t *testing.T) {
-		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,v1.0.0]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,v1.0.0]")
 		// Test that tag specification is parsed correctly
 		t.Logf("Tag specification result: exit code %d", result.ExitCode)
 	})
 
 	t.Run("invalid branch", func(t *testing.T) {
-		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,nonexistent-branch]", "--force")
+		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,nonexistent-branch]")
 		result.ExpectFailure(t).
 			ExpectStderr(t, "branch")
 	})
@@ -116,7 +116,7 @@ func TestRulePinning(t *testing.T) {
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
 	// Initialize project
-	project.Run(t, "init", "--force", "--no-interactive").ExpectSuccess(t)
+	project.Run(t, "init", "--no-interactive").ExpectSuccess(t)
 
 	// Create a config with pinned rules
 	project.WithConfig(`version: 1
@@ -148,7 +148,7 @@ func TestConcurrentOperations(t *testing.T) {
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
 	// Initialize project
-	project.Run(t, "init", "--force", "--no-interactive").ExpectSuccess(t)
+	project.Run(t, "init", "--no-interactive").ExpectSuccess(t)
 
 	t.Run("parallel rule fetching", func(t *testing.T) {
 		// Add multiple rules simultaneously to test parallel fetching
@@ -158,13 +158,13 @@ func TestConcurrentOperations(t *testing.T) {
 
 		// Run multiple operations in parallel
 		go func() {
-			result := project.Run(t, "rules", "add", "[contexture:core/example1]", "--force")
+			result := project.Run(t, "rules", "add", "[contexture:core/example1]")
 			t.Logf("Parallel operation 1: exit code %d", result.ExitCode)
 			done <- true
 		}()
 
 		go func() {
-			result := project.Run(t, "rules", "add", "[contexture:core/example2]", "--force")
+			result := project.Run(t, "rules", "add", "[contexture:core/example2]")
 			t.Logf("Parallel operation 2: exit code %d", result.ExitCode)
 			done <- true
 		}()
@@ -199,7 +199,7 @@ func TestRepositoryCleanup(t *testing.T) {
 	project := helpers.NewTestProject(t, fs, binaryPath)
 
 	// Initialize project
-	project.Run(t, "init", "--force", "--no-interactive").ExpectSuccess(t)
+	project.Run(t, "init", "--no-interactive").ExpectSuccess(t)
 
 	t.Run("cleanup after successful operation", func(t *testing.T) {
 		// Count temp directories before
@@ -207,7 +207,7 @@ func TestRepositoryCleanup(t *testing.T) {
 		tempCount1 := len(tempFiles1)
 
 		// Perform operation that should create and cleanup temp directory
-		project.Run(t, "rules", "add", "[contexture:core/example]", "--force")
+		project.Run(t, "rules", "add", "[contexture:core/example]")
 
 		// Count temp directories after
 		tempFiles2, _ := os.ReadDir("/tmp")
@@ -225,7 +225,7 @@ func TestRepositoryCleanup(t *testing.T) {
 		tempCount1 := len(tempFiles1)
 
 		// Perform operation that should fail but still cleanup
-		project.Run(t, "rules", "add", "[contexture(https://invalid-repo.example.com):test/rule]", "--force")
+		project.Run(t, "rules", "add", "[contexture(https://invalid-repo.example.com):test/rule]")
 
 		// Count temp directories after
 		tempFiles2, _ := os.ReadDir("/tmp")

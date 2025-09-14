@@ -179,15 +179,6 @@ or with custom sources: [contexture(source):path/to/rule,branch]
 Rule IDs are required. Use --help for examples and available options.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "force",
-				Aliases: []string{"f"},
-				Usage:   "Update existing rules if they already exist",
-			},
-			&cli.StringSliceFlag{
-				Name:  "formats",
-				Usage: "Specific formats to target (claude, cursor, windsurf)",
-			},
 			&cli.StringFlag{
 				Name:  "data",
 				Usage: "Additional rule data or variables (JSON format)",
@@ -217,20 +208,11 @@ func (a *Application) buildRulesRemoveCommand() *cli.Command {
 		Usage:     "Remove rules from the project",
 		ArgsUsage: "[rule-id...]",
 		Description: `Remove one or more rules from the current project.
-This will update the configuration and optionally clean generated files.
+This will update the configuration and clean generated files.
 Rule IDs are required as arguments.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "keep-outputs",
-				Usage: "Keep rules in generated format files (default: false)",
-			},
-			&cli.StringSliceFlag{
-				Name:  "formats",
-				Usage: "Specific formats to target (claude, cursor, windsurf)",
-			},
-		},
-		Action: a.actions.RemoveAction,
+		Flags:              []cli.Flag{},
+		Action:             a.actions.RemoveAction,
 	}
 }
 
