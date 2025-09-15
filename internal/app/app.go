@@ -173,10 +173,18 @@ func (a *Application) buildRulesAddCommand() *cli.Command {
 		Usage:     "Add rules to the project",
 		ArgsUsage: "[rule-id...]",
 		Description: `Add one or more rules to the current project.
-Rules are specified using the format: [contexture:path/to/rule]
-or with custom sources: [contexture(source):path/to/rule,branch]
 
-Rule IDs are required. Use --help for examples and available options.`,
+Rule IDs can be specified in multiple ways:
+• Short format: path/to/rule
+• Full format: [contexture:path/to/rule]  
+• Custom sources: [contexture(source):path/to/rule,branch]
+• With flags: path/to/rule --source https://github.com/user/repo --ref branch
+
+Examples:
+  contexture rules add languages/go/testing
+  contexture rules add [contexture:languages/go/testing]
+  contexture rules add [contexture(git@github.com:user/rules):custom/rule,main]
+  contexture rules add my/rule --source https://github.com/user/repo --ref v1.0`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
