@@ -2,6 +2,7 @@ version: 1
 formats:
     - type: claude
       enabled: true
+      template: CLAUDE.template.md
     - type: cursor
       enabled: true
 rules: []
