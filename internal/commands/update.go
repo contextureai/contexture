@@ -244,6 +244,8 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 				rulesUpToDate = append(rulesUpToDate, result.DisplayName)
 			case StatusError:
 				rulesFailed = append(rulesFailed, result.DisplayName)
+			case StatusChecking, StatusUpdateAvailable, StatusApplying, StatusApplied:
+				// These statuses shouldn't occur in this context (no updates available)
 			}
 		}
 
@@ -282,6 +284,8 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 				rulesUpToDate = append(rulesUpToDate, result.DisplayName)
 			case StatusError:
 				rulesFailed = append(rulesFailed, result.DisplayName)
+			case StatusChecking, StatusApplying, StatusApplied:
+				// These statuses shouldn't occur in dry run mode
 			}
 		}
 
@@ -360,6 +364,8 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 			rulesUpToDate = append(rulesUpToDate, result.DisplayName)
 		case StatusError:
 			rulesFailed = append(rulesFailed, result.DisplayName)
+		case StatusChecking, StatusUpdateAvailable, StatusApplying:
+			// These statuses shouldn't occur in final result processing
 		}
 	}
 

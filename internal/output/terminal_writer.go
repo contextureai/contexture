@@ -28,19 +28,19 @@ func (w *TerminalWriter) WriteRulesList(rulesSlice []*domain.Rule, metadata List
 }
 
 // WriteRulesAdd writes rules add result in terminal format (no output - already handled by command)
-func (w *TerminalWriter) WriteRulesAdd(metadata AddMetadata) error {
+func (w *TerminalWriter) WriteRulesAdd(_ AddMetadata) error {
 	// Terminal format doesn't output anything for add - the command already shows output
 	return nil
 }
 
 // WriteRulesRemove writes rules remove result in terminal format (no output - already handled by command)
-func (w *TerminalWriter) WriteRulesRemove(metadata RemoveMetadata) error {
+func (w *TerminalWriter) WriteRulesRemove(_ RemoveMetadata) error {
 	// Terminal format doesn't output anything for remove - the command already shows output
 	return nil
 }
 
 // WriteRulesUpdate writes rules update result in terminal format (no output - already handled by command)
-func (w *TerminalWriter) WriteRulesUpdate(metadata UpdateMetadata) error {
+func (w *TerminalWriter) WriteRulesUpdate(_ UpdateMetadata) error {
 	// Terminal format doesn't output anything for update - the command already shows output
 	return nil
 }

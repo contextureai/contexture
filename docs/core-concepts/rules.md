@@ -94,7 +94,7 @@ contexture rules add rules/project-specific.md
 Rules can be sourced from custom Git repositories using the `--source` (or `--src`) flag.
 
 ```bash
-# Browse rules from a custom repository interactively
+# Add rules from a custom repository
 contexture rules add --src https://github.com/mycompany/rules.git
 
 # Add specific rules from custom sources
