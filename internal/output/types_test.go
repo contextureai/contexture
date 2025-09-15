@@ -2,7 +2,6 @@ package output
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,20 +44,13 @@ func TestUnsupportedFormatError(t *testing.T) {
 }
 
 func TestListMetadata(t *testing.T) {
-	now := time.Now()
 	metadata := ListMetadata{
-		Command:       "rules list",
-		Version:       "1.0",
 		Pattern:       "testing",
 		TotalRules:    5,
 		FilteredRules: 2,
-		Timestamp:     now,
 	}
 
-	assert.Equal(t, "rules list", metadata.Command)
-	assert.Equal(t, "1.0", metadata.Version)
 	assert.Equal(t, "testing", metadata.Pattern)
 	assert.Equal(t, 5, metadata.TotalRules)
 	assert.Equal(t, 2, metadata.FilteredRules)
-	assert.Equal(t, now, metadata.Timestamp)
 }

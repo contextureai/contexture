@@ -2,8 +2,6 @@
 package output
 
 import (
-	"time"
-
 	"github.com/contextureai/contexture/internal/domain"
 )
 
@@ -20,16 +18,33 @@ const (
 // Writer interface for different output formats
 type Writer interface {
 	WriteRulesList(rules []*domain.Rule, metadata ListMetadata) error
+	WriteRulesAdd(metadata AddMetadata) error
+	WriteRulesRemove(metadata RemoveMetadata) error
+	WriteRulesUpdate(metadata UpdateMetadata) error
 }
 
 // ListMetadata contains contextual information for rules list commands
 type ListMetadata struct {
-	Command       string    `json:"command"`
-	Version       string    `json:"version"`
-	Pattern       string    `json:"pattern,omitempty"`
-	TotalRules    int       `json:"totalRules"`
-	FilteredRules int       `json:"filteredRules"`
-	Timestamp     time.Time `json:"timestamp"`
+	Pattern       string `json:"pattern,omitempty"`
+	TotalRules    int    `json:"totalRules"`
+	FilteredRules int    `json:"filteredRules"`
+}
+
+// AddMetadata contains contextual information for rules add commands
+type AddMetadata struct {
+	RulesAdded []string `json:"rulesAdded"`
+}
+
+// RemoveMetadata contains contextual information for rules remove commands
+type RemoveMetadata struct {
+	RulesRemoved []string `json:"rulesRemoved"`
+}
+
+// UpdateMetadata contains contextual information for rules update commands
+type UpdateMetadata struct {
+	RulesUpdated  []string `json:"rulesUpdated"`
+	RulesUpToDate []string `json:"rulesUpToDate,omitempty"`
+	RulesFailed   []string `json:"rulesFailed,omitempty"`
 }
 
 // Manager handles output format selection and writing
@@ -61,6 +76,21 @@ func NewManager(format Format) (*Manager, error) {
 // WriteRulesList writes the rules list using the configured format
 func (m *Manager) WriteRulesList(rules []*domain.Rule, metadata ListMetadata) error {
 	return m.writer.WriteRulesList(rules, metadata)
+}
+
+// WriteRulesAdd writes the rules add result using the configured format
+func (m *Manager) WriteRulesAdd(metadata AddMetadata) error {
+	return m.writer.WriteRulesAdd(metadata)
+}
+
+// WriteRulesRemove writes the rules remove result using the configured format
+func (m *Manager) WriteRulesRemove(metadata RemoveMetadata) error {
+	return m.writer.WriteRulesRemove(metadata)
+}
+
+// WriteRulesUpdate writes the rules update result using the configured format
+func (m *Manager) WriteRulesUpdate(metadata UpdateMetadata) error {
+	return m.writer.WriteRulesUpdate(metadata)
 }
 
 // UnsupportedFormatError represents an error for unsupported output formats

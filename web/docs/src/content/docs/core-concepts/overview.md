@@ -135,7 +135,7 @@ sequenceDiagram
 
 A typical workflow is:
 1.  **Initialize**: `contexture init` creates a project configuration file.
-2.  **Add Rules**: `contexture rules add` to browse and add rules from a repository.
+2.  **Add Rules**: `contexture rules add` to add rules from a repository.
 3.  **Build**: `contexture build` generates the platform-specific output files.
 
 ## Next Steps

@@ -14,7 +14,7 @@ Contexture is a Go CLI tool for managing AI assistant rules across multiple plat
 
 ### Application Commands
 - `contexture init` - Initialize project with `.contexture.yaml`
-- `contexture rules add` - Interactive rule browser or add by ID
+- `contexture rules add` - Add rules by ID
 - `contexture rules list/remove/update` - Manage rules
 - `contexture config` - View/modify configuration
 - `contexture build` - Generate platform-specific files
@@ -116,6 +116,20 @@ Go 1.25+ required. Binary name: `contexture`. CI runs on Ubuntu with matrix buil
 
 # Rules
 
+# Thought Process
+
+Thought process when working on the project
+
+**Applies:** Always active
+
+
+**Tags:** process
+Think carefully and only action the specific task that I have given you, with the most concise and elegant solution that changes as little code as possible.
+
+<!-- id: [contexture(local):think] -->
+
+---
+
 # Preferred Tools
 
 Preferred tools for the project
@@ -137,17 +151,3 @@ If you need to select from multiple results, pipe to 'fzf'
 Do you need to interact with JSON? use 'jq' -- or 'yq' for YAML
 
 <!-- id: [contexture(local):tools] -->
-
----
-
-# Thought Process
-
-Thought process when working on the project
-
-**Applies:** Always active
-
-
-**Tags:** process
-Think carefully and only action the specific task that I have given you, with the most concise and elegant solution that changes as little code as possible.
-
-<!-- id: [contexture(local):think] -->

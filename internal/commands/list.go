@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
@@ -127,11 +126,10 @@ func (c *ListCommand) showRuleList(ruleList []*domain.Rule, cmd *cli.Command) er
 	// happens inside the writers. This will be refined when we extract
 	// the filtering logic for better JSON metadata
 	metadata := output.ListMetadata{
-		Command:       "rules list",
 		Pattern:       pattern,
 		TotalRules:    totalRules,
 		FilteredRules: totalRules, // This will be corrected by the writers
-		Timestamp:     time.Now(),
+
 	}
 
 	// Write output in requested format

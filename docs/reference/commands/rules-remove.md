@@ -16,7 +16,7 @@ contexture rules remove [rule-id...] [flags]
 
 ## Description
 
-The `rules remove` command removes rule references from the project configuration. When run without arguments, it opens an interactive browser to select from currently configured rules.
+The `rules remove` command removes rule references from the project configuration. Rule IDs must be specified as arguments.
 
 Removing a rule only affects the configuration file. The generated output files are not automatically updated. Run `contexture build` after removing rules to apply the changes to the generated formats.
 
@@ -34,14 +34,6 @@ Removing a rule only affects the configuration file. The generated output files 
 | `--formats`    | Only remove the rule from the specified output formats.                        |
 
 ## Usage
-
-### Interactive Mode
-
-To interactively select which configured rules to remove, run the command without arguments.
-
-```bash
-contexture rules remove
-```
 
 ### Removing Specific Rules
 

@@ -14,6 +14,7 @@ import (
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
@@ -52,6 +53,17 @@ func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 
 // Execute runs the add command
 func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
+	// Check if JSON output mode - if so, suppress all terminal output
+	outputFormat := output.Format(cmd.String("output"))
+	isJSONMode := outputFormat == output.FormatJSON
+
+	if !isJSONMode {
+		// Show header like list command
+		headerStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+		fmt.Printf("%s\n\n", headerStyle.Render("Add Rule"))
+	}
 	// Parse custom data if provided
 	var customData map[string]any
 	if dataStr := cmd.String("data"); dataStr != "" {
@@ -102,7 +114,8 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	}
 	var validRuleRefs []ruleRefWithOriginal
 
-	err = ui.WithProgressTiming("Validated rules", func() error {
+	// Validate rules
+	validateFunc := func() error {
 		for _, ruleID := range ruleIDs {
 			// Construct proper rule ID format if --source flag is provided
 			processedRuleID := ruleID
@@ -225,7 +238,14 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 			})
 		}
 		return nil
-	})
+	}
+
+	// Execute validation with or without progress indicator
+	if isJSONMode {
+		err = validateFunc()
+	} else {
+		err = ui.WithProgress("Validated rules", validateFunc)
+	}
 	if err != nil {
 		return err
 	}
@@ -250,58 +270,92 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
-	// Auto-generate rules after adding them
-	if err := c.generateRules(ctx, config, currentDir); err != nil {
-		log.Warn("Failed to auto-generate rules", "error", err)
-		fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
+	// Auto-generate rules after adding them (skip in JSON mode for clean output)
+	if !isJSONMode {
+		if err := c.generateRules(ctx, config, currentDir); err != nil {
+			log.Warn("Failed to auto-generate rules", "error", err)
+			fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
+		}
 	}
 
-	// Success message
-	theme := ui.DefaultTheme()
-	successStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(theme.Success)
+	// Handle output format
+	outputManager, err := output.NewManager(outputFormat)
+	if err != nil {
+		return fmt.Errorf("failed to create output manager: %w", err)
+	}
 
-	fmt.Println()
-	fmt.Println(successStyle.Render("Rules added successfully!"))
-
+	// Collect added rule IDs for output
+	var addedRuleIDs []string
 	for _, ruleRefWithOrig := range validRuleRefs {
 		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
 		displayRuleID := ruleRefWithOrig.originalID
-		var variables map[string]any
-		var parsed *domain.ParsedRuleID
-
 		if strings.HasPrefix(ruleRefWithOrig.originalID, "[contexture:") {
 			// Parse to extract just the path component
-			var err error
-			parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID)
-			if err == nil && parsed.RulePath != "" {
+			if parsed, err := c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID); err == nil && parsed.RulePath != "" {
 				displayRuleID = parsed.RulePath
-				variables = parsed.Variables
-			}
-		} else {
-			// Parse the full rule ID from ruleRef to get source info
-			var err error
-			parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.ruleRef.ID)
-			if err == nil && parsed.RulePath != "" {
-				displayRuleID = parsed.RulePath
-				variables = parsed.Variables
 			}
 		}
+		addedRuleIDs = append(addedRuleIDs, displayRuleID)
+	}
 
-		fmt.Printf("  %s\n", displayRuleID)
+	// Write output using the appropriate format
+	metadata := output.AddMetadata{
+		RulesAdded: addedRuleIDs,
+	}
 
-		// Show source information for custom source rules (like in remove command)
-		if parsed != nil && parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
-			darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-			sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
-			fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
-		}
+	err = outputManager.WriteRulesAdd(metadata)
+	if err != nil {
+		return fmt.Errorf("failed to write add output: %w", err)
+	}
 
-		// Show variables only if they differ from defaults
-		if rule.ShouldDisplayVariables(variables, ruleRefWithOrig.defaultVars) {
-			if variablesJSON, err := json.Marshal(variables); err == nil {
-				fmt.Printf("    Variables: %s\n", string(variablesJSON))
+	// For default format, also display the detailed information
+	if outputFormat == output.FormatDefault {
+		theme := ui.DefaultTheme()
+		successStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(theme.Success)
+
+		fmt.Println()
+		fmt.Println(successStyle.Render("Rules added successfully!"))
+
+		for _, ruleRefWithOrig := range validRuleRefs {
+			// Extract simple rule ID for display (remove [contexture:] wrapper if present)
+			displayRuleID := ruleRefWithOrig.originalID
+			var variables map[string]any
+			var parsed *domain.ParsedRuleID
+
+			if strings.HasPrefix(ruleRefWithOrig.originalID, "[contexture:") {
+				// Parse to extract just the path component
+				var err error
+				parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID)
+				if err == nil && parsed.RulePath != "" {
+					displayRuleID = parsed.RulePath
+					variables = parsed.Variables
+				}
+			} else {
+				// Parse the full rule ID from ruleRef to get source info
+				var err error
+				parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.ruleRef.ID)
+				if err == nil && parsed.RulePath != "" {
+					displayRuleID = parsed.RulePath
+					variables = parsed.Variables
+				}
+			}
+
+			fmt.Printf("  %s\n", displayRuleID)
+
+			// Show source information for custom source rules (like in remove command)
+			if parsed != nil && parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
+				darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+				sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
+				fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
+			}
+
+			// Show variables only if they differ from defaults
+			if rule.ShouldDisplayVariables(variables, ruleRefWithOrig.defaultVars) {
+				if variablesJSON, err := json.Marshal(variables); err == nil {
+					fmt.Printf("    Variables: %s\n", string(variablesJSON))
+				}
 			}
 		}
 	}

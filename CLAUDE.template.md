@@ -14,7 +14,7 @@ Contexture is a Go CLI tool for managing AI assistant rules across multiple plat
 
 ### Application Commands
 - `contexture init` - Initialize project with `.contexture.yaml`
-- `contexture rules add` - Interactive rule browser or add by ID
+- `contexture rules add` - Add rules by ID
 - `contexture rules list/remove/update` - Manage rules
 - `contexture config` - View/modify configuration
 - `contexture build` - Generate platform-specific files

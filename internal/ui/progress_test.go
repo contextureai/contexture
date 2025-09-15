@@ -323,7 +323,7 @@ func TestWithProgress(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, called)
 		assert.Contains(t, outputStr, "Testing")
-		assert.Contains(t, outputStr, "Testing completed")
+		assert.Contains(t, outputStr, "✓ Testing")
 		assert.Contains(t, outputStr, "✓")
 	})
 

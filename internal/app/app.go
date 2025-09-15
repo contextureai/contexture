@@ -173,21 +173,20 @@ func (a *Application) buildRulesAddCommand() *cli.Command {
 		Usage:     "Add rules to the project",
 		ArgsUsage: "[rule-id...]",
 		Description: `Add one or more rules to the current project.
-Rules are specified using the format: [contexture:path/to/rule]
-or with custom sources: [contexture(source):path/to/rule,branch]
 
-Rule IDs are required. Use --help for examples and available options.`,
+Rule IDs can be specified in multiple ways:
+• Short format: path/to/rule
+• Full format: [contexture:path/to/rule]  
+• Custom sources: [contexture(source):path/to/rule,branch]
+• With flags: path/to/rule --source https://github.com/user/repo --ref branch
+
+Examples:
+  contexture rules add languages/go/testing
+  contexture rules add [contexture:languages/go/testing]
+  contexture rules add [contexture(git@github.com:user/rules):custom/rule,main]
+  contexture rules add my/rule --source https://github.com/user/repo --ref v1.0`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "force",
-				Aliases: []string{"f"},
-				Usage:   "Update existing rules if they already exist",
-			},
-			&cli.StringSliceFlag{
-				Name:  "formats",
-				Usage: "Specific formats to target (claude, cursor, windsurf)",
-			},
 			&cli.StringFlag{
 				Name:  "data",
 				Usage: "Additional rule data or variables (JSON format)",
@@ -205,6 +204,12 @@ Rule IDs are required. Use --help for examples and available options.`,
 				Name:  "ref",
 				Usage: "Git branch or tag reference",
 			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
+			},
 		},
 		Action: a.actions.AddAction,
 	}
@@ -215,20 +220,17 @@ func (a *Application) buildRulesRemoveCommand() *cli.Command {
 		Name:      "remove",
 		Aliases:   []string{"rm"},
 		Usage:     "Remove rules from the project",
-		ArgsUsage: "[rule-id...] (if no args provided, shows installed rules)",
+		ArgsUsage: "[rule-id...]",
 		Description: `Remove one or more rules from the current project.
-This will update the configuration and optionally clean generated files.
-
-When run without arguments, shows an interactive list of installed rules.`,
+This will update the configuration and clean generated files.
+Rule IDs are required as arguments.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "keep-outputs",
-				Usage: "Keep rules in generated format files (default: false)",
-			},
-			&cli.StringSliceFlag{
-				Name:  "formats",
-				Usage: "Specific formats to target (claude, cursor, windsurf)",
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
 			},
 		},
 		Action: a.actions.RemoveAction,
@@ -267,7 +269,7 @@ func (a *Application) buildRulesListCommand() *cli.Command {
 		Aliases: []string{"ls"},
 		Usage:   "List rules",
 		Description: `List rules configured in the current project.
-To browse and add available rules, use 'contexture rules add' with no arguments.`,
+To add rules, use 'contexture rules add' with rule IDs.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -302,6 +304,12 @@ This will check for updates and optionally apply them.`,
 				Name:    "yes",
 				Aliases: []string{"y"},
 				Usage:   "Skip confirmation prompts",
+			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
 			},
 		},
 		Action: a.actions.UpdateAction,
