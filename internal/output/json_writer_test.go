@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
+
 
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/stretchr/testify/assert"
@@ -56,11 +56,9 @@ func captureStdout(t *testing.T, fn func()) string {
 func TestJSONWriter_WriteRulesList_EmptyRules(t *testing.T) {
 	writer := NewJSONWriter()
 	metadata := ListMetadata{
-		Command:       "rules list",
 		Pattern:       "",
 		TotalRules:    0,
 		FilteredRules: 0,
-		Timestamp:     time.Date(2025, 9, 14, 19, 0, 0, 0, time.UTC),
 	}
 
 	output := captureStdout(t, func() {
@@ -73,8 +71,6 @@ func TestJSONWriter_WriteRulesList_EmptyRules(t *testing.T) {
 	err := json.Unmarshal([]byte(output), &result)
 	require.NoError(t, err)
 
-	assert.Equal(t, "rules list", result.Command)
-	assert.Equal(t, "1.0", result.Version)
 	assert.Empty(t, result.Metadata.Pattern)
 	assert.Equal(t, 0, result.Metadata.TotalRules)
 	assert.Equal(t, 0, result.Metadata.FilteredRules)
@@ -98,11 +94,9 @@ func TestJSONWriter_WriteRulesList_SingleRule(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-		Command:       "rules list",
 		Pattern:       "testing",
 		TotalRules:    1,
 		FilteredRules: 1,
-		Timestamp:     time.Date(2025, 9, 14, 19, 0, 0, 0, time.UTC),
 	}
 
 	output := captureStdout(t, func() {
@@ -116,8 +110,6 @@ func TestJSONWriter_WriteRulesList_SingleRule(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify structure
-	assert.Equal(t, "rules list", result.Command)
-	assert.Equal(t, "1.0", result.Version)
 	assert.Equal(t, "testing", result.Metadata.Pattern)
 	assert.Equal(t, 1, result.Metadata.TotalRules)
 	assert.Equal(t, 1, result.Metadata.FilteredRules)
@@ -156,10 +148,8 @@ func TestJSONWriter_WriteRulesList_MultipleRules(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-		Command:       "rules list",
 		TotalRules:    2,
 		FilteredRules: 2,
-		Timestamp:     time.Date(2025, 9, 14, 19, 0, 0, 0, time.UTC),
 	}
 
 	output := captureStdout(t, func() {
@@ -188,10 +178,8 @@ func TestJSONWriter_WriteRulesList_ValidJSONFormat(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-		Command:       "rules list",
 		TotalRules:    1,
 		FilteredRules: 1,
-		Timestamp:     time.Date(2025, 9, 14, 19, 0, 0, 0, time.UTC),
 	}
 
 	output := captureStdout(t, func() {
@@ -205,36 +193,10 @@ func TestJSONWriter_WriteRulesList_ValidJSONFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify it's properly formatted (indented)
-	assert.Contains(t, output, "  \"command\":")
-	assert.Contains(t, output, "  \"version\":")
 	assert.Contains(t, output, "  \"metadata\":")
 	assert.Contains(t, output, "  \"rules\":")
 }
 
-func TestJSONWriter_WriteRulesList_TimestampFormat(t *testing.T) {
-	writer := NewJSONWriter()
-
-	testTime := time.Date(2025, 9, 14, 19, 30, 45, 123456789, time.UTC)
-	metadata := ListMetadata{
-		Command:       "rules list",
-		TotalRules:    0,
-		FilteredRules: 0,
-		Timestamp:     testTime,
-	}
-
-	output := captureStdout(t, func() {
-		err := writer.WriteRulesList([]*domain.Rule{}, metadata)
-		require.NoError(t, err)
-	})
-
-	// Parse and verify timestamp format
-	var result JSONRulesListOutput
-	err := json.Unmarshal([]byte(output), &result)
-	require.NoError(t, err)
-
-	// Should preserve the exact timestamp
-	assert.Equal(t, testTime, result.Metadata.Timestamp)
-}
 
 func TestNewJSONWriter(t *testing.T) {
 	writer := NewJSONWriter()

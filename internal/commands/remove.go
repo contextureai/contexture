@@ -14,6 +14,7 @@ import (
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
@@ -41,11 +42,17 @@ func NewRemoveCommand(deps *dependencies.Dependencies) *RemoveCommand {
 
 // Execute runs the remove command
 func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
-	// Show header like other commands
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
-	fmt.Printf("%s\n\n", headerStyle.Render("Remove Rules"))
+	// Check if JSON output mode - if so, suppress all terminal output
+	outputFormat := output.Format(cmd.String("output"))
+	isJSONMode := outputFormat == output.FormatJSON
+
+	if !isJSONMode {
+		// Show header like other commands
+		headerStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+		fmt.Printf("%s\n\n", headerStyle.Render("Remove Rules"))
+	}
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -75,12 +82,33 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	}
 
 	// Report not found rules
-	if len(notFound) > 0 {
+	if len(notFound) > 0 && !isJSONMode {
 		log.Warn("Rules not found in configuration", "rules", notFound)
 	}
 
 	if len(rulesToRemove) == 0 {
-		log.Info("No rules to remove")
+		// Handle output format when no rules to remove
+		outputFormat := output.Format(cmd.String("output"))
+		outputManager, err := output.NewManager(outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to create output manager: %w", err)
+		}
+
+		// Write empty output
+		metadata := output.RemoveMetadata{
+			RulesRemoved: []string{},
+		}
+
+		err = outputManager.WriteRulesRemove(metadata)
+		if err != nil {
+			return fmt.Errorf("failed to write remove output: %w", err)
+		}
+
+		// For default format, also show the log message
+		if !isJSONMode {
+			log.Info("No rules to remove")
+		}
+
 		return nil
 	}
 
@@ -137,60 +165,89 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
-	// Success message
-	theme := ui.DefaultTheme()
-	successStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(theme.Success)
-
-	// Show proper singular/plural success message
-	var successMessage string
-	if len(removedRules) == 1 {
-		successMessage = "Rule removed successfully!"
-	} else {
-		successMessage = "Rules removed successfully!"
+	// Handle output format
+	outputManager, err := output.NewManager(outputFormat)
+	if err != nil {
+		return fmt.Errorf("failed to create output manager: %w", err)
 	}
 
-	fmt.Println(successStyle.Render(successMessage))
-
-	// List the removed rules like in add command
+	// Collect removed rule IDs for output
+	var removedRuleIDs []string
 	for _, ruleID := range removedRules {
 		// Extract display-friendly rule ID using domain package logic
 		displayRuleID := domain.ExtractRulePath(ruleID)
 		if displayRuleID == "" {
 			displayRuleID = ruleID
 		}
+		removedRuleIDs = append(removedRuleIDs, displayRuleID)
+	}
 
-		var variables map[string]any
-		var defaultVars map[string]any
+	// Write output using the appropriate format
+	metadata := output.RemoveMetadata{
+		RulesRemoved: removedRuleIDs,
+	}
 
-		// Parse rule to extract source information and get variables
-		if parsed, err := c.ruleFetcher.ParseRuleID(ruleID); err == nil {
-			// Get the configured variables we captured before removal
-			variables = ruleVariablesMap[ruleID]
+	err = outputManager.WriteRulesRemove(metadata)
+	if err != nil {
+		return fmt.Errorf("failed to write remove output: %w", err)
+	}
 
-			// Fetch the full rule to get default variables
-			if fetchedRule, fetchErr := c.ruleFetcher.FetchRule(context.Background(), ruleID); fetchErr == nil {
-				defaultVars = fetchedRule.DefaultVariables
-			}
+	// For default format, also display the detailed information
+	if outputFormat == output.FormatDefault {
+		theme := ui.DefaultTheme()
+		successStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(theme.Success)
 
-			// Display the short rule ID
-			fmt.Printf("  %s\n", displayRuleID)
-
-			// Show source information for custom source rules (like in ls command)
-			if parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
-				darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-				sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
-				fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
-			}
+		// Show proper singular/plural success message
+		var successMessage string
+		if len(removedRules) == 1 {
+			successMessage = "Rule removed successfully!"
 		} else {
-			fmt.Printf("  %s\n", displayRuleID)
+			successMessage = "Rules removed successfully!"
 		}
 
-		// Show variables only if they differ from defaults
-		if rule.ShouldDisplayVariables(variables, defaultVars) {
-			if variablesJSON, err := json.Marshal(variables); err == nil {
-				fmt.Printf("    Variables: %s\n", string(variablesJSON))
+		fmt.Println(successStyle.Render(successMessage))
+
+		// List the removed rules like in add command
+		for _, ruleID := range removedRules {
+			// Extract display-friendly rule ID using domain package logic
+			displayRuleID := domain.ExtractRulePath(ruleID)
+			if displayRuleID == "" {
+				displayRuleID = ruleID
+			}
+
+			var variables map[string]any
+			var defaultVars map[string]any
+
+			// Parse rule to extract source information and get variables
+			if parsed, err := c.ruleFetcher.ParseRuleID(ruleID); err == nil {
+				// Get the configured variables we captured before removal
+				variables = ruleVariablesMap[ruleID]
+
+				// Fetch the full rule to get default variables
+				if fetchedRule, fetchErr := c.ruleFetcher.FetchRule(context.Background(), ruleID); fetchErr == nil {
+					defaultVars = fetchedRule.DefaultVariables
+				}
+
+				// Display the short rule ID
+				fmt.Printf("  %s\n", displayRuleID)
+
+				// Show source information for custom source rules (like in ls command)
+				if parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
+					darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+					sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
+					fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
+				}
+			} else {
+				fmt.Printf("  %s\n", displayRuleID)
+			}
+
+			// Show variables only if they differ from defaults
+			if rule.ShouldDisplayVariables(variables, defaultVars) {
+				if variablesJSON, err := json.Marshal(variables); err == nil {
+					fmt.Printf("    Variables: %s\n", string(variablesJSON))
+				}
 			}
 		}
 	}

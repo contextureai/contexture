@@ -26,3 +26,21 @@ func (w *TerminalWriter) WriteRulesList(rulesSlice []*domain.Rule, metadata List
 	// Delegate to existing display logic
 	return rules.DisplayRuleList(rulesSlice, options)
 }
+
+// WriteRulesAdd writes rules add result in terminal format (no output - already handled by command)
+func (w *TerminalWriter) WriteRulesAdd(metadata AddMetadata) error {
+	// Terminal format doesn't output anything for add - the command already shows output
+	return nil
+}
+
+// WriteRulesRemove writes rules remove result in terminal format (no output - already handled by command)
+func (w *TerminalWriter) WriteRulesRemove(metadata RemoveMetadata) error {
+	// Terminal format doesn't output anything for remove - the command already shows output
+	return nil
+}
+
+// WriteRulesUpdate writes rules update result in terminal format (no output - already handled by command)
+func (w *TerminalWriter) WriteRulesUpdate(metadata UpdateMetadata) error {
+	// Terminal format doesn't output anything for update - the command already shows output
+	return nil
+}

@@ -2,7 +2,7 @@ package output
 
 import (
 	"testing"
-	"time"
+
 
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/stretchr/testify/assert"
@@ -17,10 +17,8 @@ func TestNewTerminalWriter(t *testing.T) {
 func TestTerminalWriter_WriteRulesList_EmptyRules(t *testing.T) {
 	writer := NewTerminalWriter()
 	metadata := ListMetadata{
-		Command:       "rules list",
 		TotalRules:    0,
 		FilteredRules: 0,
-		Timestamp:     time.Now(),
 	}
 
 	// Test with empty rules - should not error
@@ -42,10 +40,9 @@ func TestTerminalWriter_WriteRulesList_WithRules(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-		Command:       "rules list",
+
 		TotalRules:    1,
 		FilteredRules: 1,
-		Timestamp:     time.Now(),
 	}
 
 	// Should delegate to existing display logic without error
@@ -66,11 +63,10 @@ func TestTerminalWriter_WriteRulesList_WithPattern(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-		Command:       "rules list",
+
 		Pattern:       "testing",
 		TotalRules:    1,
 		FilteredRules: 1,
-		Timestamp:     time.Now(),
 	}
 
 	// Should pass pattern to display options
@@ -97,10 +93,9 @@ func TestTerminalWriter_WriteRulesList_MultipleRules(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-		Command:       "rules list",
+
 		TotalRules:    2,
 		FilteredRules: 2,
-		Timestamp:     time.Now(),
 	}
 
 	// Should handle multiple rules without error

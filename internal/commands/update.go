@@ -14,6 +14,7 @@ import (
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/tui"
@@ -101,11 +102,17 @@ func NewUpdateCommandWithDependencies(
 
 // Execute runs the update command
 func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
-	// Show header like add and list commands
-	commandHeaderStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
-	fmt.Printf("%s\n\n", commandHeaderStyle.Render("Update Rules"))
+	// Check if JSON output mode - if so, suppress all terminal output
+	outputFormat := output.Format(cmd.String("output"))
+	isJSONMode := outputFormat == output.FormatJSON
+
+	if !isJSONMode {
+		// Show header like add and list commands
+		commandHeaderStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
+		fmt.Printf("%s\n\n", commandHeaderStyle.Render("Update Rules"))
+	}
 	dryRun := cmd.Bool("dry-run")
 	skipConfirmation := cmd.Bool("yes")
 
@@ -128,21 +135,48 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(updatableRules) == 0 {
-		theme := ui.DefaultTheme()
-		mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
-		fmt.Println("No rules configured to update")
-		fmt.Println(mutedStyle.Render("Add rules with: contexture add <rule-id>"))
+		// Handle output format when no rules to update
+		// outputFormat already declared
+		outputManager, err := output.NewManager(outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to create output manager: %w", err)
+		}
+
+		// Write empty output
+		metadata := output.UpdateMetadata{
+			RulesUpdated:  []string{},
+			RulesUpToDate: []string{},
+			RulesFailed:   []string{},
+		}
+
+		err = outputManager.WriteRulesUpdate(metadata)
+		if err != nil {
+			return fmt.Errorf("failed to write update output: %w", err)
+		}
+
+		// For default format, also show the messages
+		if outputFormat == output.FormatDefault {
+			theme := ui.DefaultTheme()
+			mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+			fmt.Println("No rules configured to update")
+			fmt.Println(mutedStyle.Render("Add rules with: contexture add <rule-id>"))
+		}
+
 		return nil
 	}
 
 	// Check for updates with real-time progress
 	theme := ui.DefaultTheme()
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.Primary)
-	fmt.Println(headerStyle.Render("Checking for updates..."))
-	fmt.Println()
+	if !isJSONMode {
+		headerStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.Primary)
+		fmt.Println(headerStyle.Render("Checking for updates..."))
+		fmt.Println()
+	}
 
-	updateResults := c.checkForUpdatesWithProgress(ctx, updatableRules)
-	fmt.Println()
+	updateResults := c.checkForUpdatesWithProgress(ctx, updatableRules, isJSONMode)
+	if !isJSONMode {
+		fmt.Println()
+	}
 
 	// Count available updates and up-to-date rules
 	updatesAvailable := 0
@@ -164,38 +198,111 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Display results with integrated counts
-	if updatesAvailable > 0 {
-		updateStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(theme.Update)
-		fmt.Println(updateStyle.Render(fmt.Sprintf("↑ %d update(s) available", updatesAvailable)))
-	}
+	if !isJSONMode {
+		if updatesAvailable > 0 {
+			updateStyle := lipgloss.NewStyle().
+				Bold(true).
+				Foreground(theme.Update)
+			fmt.Println(updateStyle.Render(fmt.Sprintf("↑ %d update(s) available", updatesAvailable)))
+		}
 
-	if upToDate > 0 {
-		successStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(theme.Success)
-		if updatesAvailable == 0 {
-			fmt.Println(successStyle.Render("All rules are up to date!"))
-		} else {
-			fmt.Println(successStyle.Render(fmt.Sprintf("%d rule(s) up to date", upToDate)))
+		if upToDate > 0 {
+			successStyle := lipgloss.NewStyle().
+				Bold(true).
+				Foreground(theme.Success)
+			if updatesAvailable == 0 {
+				fmt.Println(successStyle.Render("All rules are up to date!"))
+			} else {
+				fmt.Println(successStyle.Render(fmt.Sprintf("%d rule(s) up to date", upToDate)))
+			}
+		}
+
+		if errors > 0 {
+			errorStyle := lipgloss.NewStyle().
+				Bold(true).
+				Foreground(theme.Error)
+			fmt.Println(errorStyle.Render(fmt.Sprintf("✗ %d error(s) occurred", errors)))
 		}
 	}
 
-	if errors > 0 {
-		errorStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(theme.Error)
-		fmt.Println(errorStyle.Render(fmt.Sprintf("✗ %d error(s) occurred", errors)))
-	}
-
 	if updatesAvailable == 0 {
-		return nil
+		// Handle output format for no updates available
+		// outputFormat already declared
+		outputManager, err := output.NewManager(outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to create output manager: %w", err)
+		}
+
+		// Collect results when no updates are available
+		var rulesUpdated []string // Empty since no updates
+		var rulesUpToDate []string
+		var rulesFailed []string
+
+		for _, result := range updateResults {
+			switch result.Status {
+			case StatusUpToDate:
+				rulesUpToDate = append(rulesUpToDate, result.DisplayName)
+			case StatusError:
+				rulesFailed = append(rulesFailed, result.DisplayName)
+			}
+		}
+
+		// Write output using the appropriate format
+		metadata := output.UpdateMetadata{
+			RulesUpdated:  rulesUpdated,
+			RulesUpToDate: rulesUpToDate,
+			RulesFailed:   rulesFailed,
+		}
+
+		return outputManager.WriteRulesUpdate(metadata)
 	}
 
 	if dryRun {
-		mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
-		fmt.Println(mutedStyle.Render("Run 'contexture update' without --dry-run to apply updates"))
+		// Handle output format for dry runs
+		// outputFormat already declared
+		outputManager, err := output.NewManager(outputFormat)
+		if err != nil {
+			return fmt.Errorf("failed to create output manager: %w", err)
+		}
+
+		// Collect results for dry run output
+		var rulesUpdated []string // Would be updated if not dry run
+		var rulesUpToDate []string
+		var rulesFailed []string
+
+		for _, result := range updateResults {
+			switch result.Status {
+			case StatusUpdateAvailable:
+				if result.Error == nil {
+					rulesUpdated = append(rulesUpdated, result.DisplayName)
+				} else {
+					rulesFailed = append(rulesFailed, result.DisplayName)
+				}
+			case StatusUpToDate:
+				rulesUpToDate = append(rulesUpToDate, result.DisplayName)
+			case StatusError:
+				rulesFailed = append(rulesFailed, result.DisplayName)
+			}
+		}
+
+		// Write output using the appropriate format
+		metadata := output.UpdateMetadata{
+			RulesUpdated:  rulesUpdated,
+			RulesUpToDate: rulesUpToDate,
+			RulesFailed:   rulesFailed,
+		}
+
+		err = outputManager.WriteRulesUpdate(metadata)
+		if err != nil {
+			return fmt.Errorf("failed to write update output: %w", err)
+		}
+
+		// For default format, show the dry run message
+		if !isJSONMode {
+			mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+			fmt.Println(mutedStyle.Render("Run 'contexture update' without --dry-run to apply updates"))
+		}
+
 		return nil
 	}
 
@@ -218,21 +325,59 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if !confirmed {
-			theme := ui.DefaultTheme()
-			mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
-			fmt.Println(mutedStyle.Render("Update cancelled"))
+			if !isJSONMode {
+				theme := ui.DefaultTheme()
+				mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+				fmt.Println(mutedStyle.Render("Update cancelled"))
+			}
 			return nil
 		}
 	}
 
 	// Apply updates
-	return c.applyUpdates(ctx, updateResults, configLoad)
+	err = c.applyUpdates(ctx, updateResults, configLoad)
+	if err != nil {
+		return err
+	}
+
+	// Handle output format
+	// outputFormat already declared
+	outputManager, err := output.NewManager(outputFormat)
+	if err != nil {
+		return fmt.Errorf("failed to create output manager: %w", err)
+	}
+
+	// Collect results for output
+	var rulesUpdated []string
+	var rulesUpToDate []string
+	var rulesFailed []string
+
+	for _, result := range updateResults {
+		switch result.Status {
+		case StatusApplied:
+			rulesUpdated = append(rulesUpdated, result.DisplayName)
+		case StatusUpToDate:
+			rulesUpToDate = append(rulesUpToDate, result.DisplayName)
+		case StatusError:
+			rulesFailed = append(rulesFailed, result.DisplayName)
+		}
+	}
+
+	// Write output using the appropriate format
+	metadata := output.UpdateMetadata{
+		RulesUpdated:  rulesUpdated,
+		RulesUpToDate: rulesUpToDate,
+		RulesFailed:   rulesFailed,
+	}
+
+	return outputManager.WriteRulesUpdate(metadata)
 }
 
 // checkForUpdatesWithProgress checks all rules for available updates with real-time progress display
 func (c *UpdateCommand) checkForUpdatesWithProgress(
 	ctx context.Context,
 	rules []domain.RuleRef,
+	isJSONMode bool,
 ) []UpdateResult {
 	results := make([]UpdateResult, len(rules))
 	theme := ui.DefaultTheme()
@@ -294,11 +439,13 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			}
 
 			// Clear line and show pinned status
-			fmt.Printf("\r") // Clear the line first
-			pinnedLine := c.formatRuleDisplay(result,
-				lipgloss.NewStyle().Foreground(theme.Info).Render("~"),
-				lipgloss.NewStyle().Foreground(theme.Muted).Render("pinned"))
-			fmt.Printf("%s\n", pinnedLine)
+			if !isJSONMode {
+				fmt.Printf("\r") // Clear the line first
+				pinnedLine := c.formatRuleDisplay(result,
+					lipgloss.NewStyle().Foreground(theme.Info).Render("~"),
+					lipgloss.NewStyle().Foreground(theme.Muted).Render("pinned"))
+				fmt.Printf("%s\n", pinnedLine)
+			}
 			results[i] = result
 			continue
 		}
@@ -319,7 +466,9 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			mutedStyle.Render("checking..."),
 		)
 		// Show checking status with simple carriage return
-		fmt.Printf("\r%s", checkingLine+strings.Repeat(" ", 20)) // Add padding to clear any leftover text
+		if !isJSONMode {
+			fmt.Printf("\r%s", checkingLine+strings.Repeat(" ", 20)) // Add padding to clear any leftover text
+		}
 
 		// Fetch latest rule content and get latest commit info
 		currentCommit, latestCommit, hasUpdate, err := c.checkRuleForUpdate(
@@ -331,11 +480,13 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			result.Error = fmt.Errorf("failed to check rule for updates: %w", err)
 			result.Status = StatusError
 			// Clear line and show error with proper formatting
-			fmt.Printf("\r") // Clear the line first
-			errorLine := c.formatRuleDisplay(result,
-				lipgloss.NewStyle().Foreground(theme.Error).Render("✗"),
-				lipgloss.NewStyle().Foreground(theme.Error).Render("error"))
-			fmt.Printf("%s\n", errorLine)
+			if !isJSONMode {
+				fmt.Printf("\r") // Clear the line first
+				errorLine := c.formatRuleDisplay(result,
+					lipgloss.NewStyle().Foreground(theme.Error).Render("✗"),
+					lipgloss.NewStyle().Foreground(theme.Error).Render("error"))
+				fmt.Printf("%s\n", errorLine)
+			}
 		} else {
 			// Set current and latest commit info (both now have real dates)
 			result.CurrentCommit = GitCommitInfo{
@@ -355,11 +506,13 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 				result.LatestVersion = latestCommit.Hash
 
 				// Clear line and show update available with commit info
-				fmt.Printf("\r") // Clear the line first
-				updateLine := c.formatRuleDisplay(result,
-					lipgloss.NewStyle().Foreground(theme.Update).Render("↑"),
-					lipgloss.NewStyle().Foreground(theme.Update).Render("update available"))
-				fmt.Printf("%s\n", updateLine)
+				if !isJSONMode {
+					fmt.Printf("\r") // Clear the line first
+					updateLine := c.formatRuleDisplay(result,
+						lipgloss.NewStyle().Foreground(theme.Update).Render("↑"),
+						lipgloss.NewStyle().Foreground(theme.Update).Render("update available"))
+					fmt.Printf("%s\n", updateLine)
+				}
 			} else {
 				result.HasUpdate = false
 				result.Status = StatusUpToDate
@@ -367,11 +520,13 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 				result.LatestVersion = latestCommit.Hash
 
 				// Clear line and show up to date with commit info
-				fmt.Printf("\r") // Clear the line first
-				upToDateLine := c.formatRuleDisplay(result,
-					lipgloss.NewStyle().Foreground(theme.Success).Render("✓"),
-					lipgloss.NewStyle().Foreground(theme.Muted).Render("up to date"))
-				fmt.Printf("%s\n", upToDateLine)
+				if !isJSONMode {
+					fmt.Printf("\r") // Clear the line first
+					upToDateLine := c.formatRuleDisplay(result,
+						lipgloss.NewStyle().Foreground(theme.Success).Render("✓"),
+						lipgloss.NewStyle().Foreground(theme.Muted).Render("up to date"))
+					fmt.Printf("%s\n", upToDateLine)
+				}
 			}
 		}
 
@@ -537,6 +692,14 @@ func (c *UpdateCommand) applyUpdates(
 		// Update the commit hash in the config
 		c.updateRuleCommitHash(config, result.RuleID, result.LatestCommit.Hash)
 
+		// Update status to applied
+		for i := range results {
+			if results[i].RuleID == result.RuleID {
+				results[i].Status = StatusApplied
+				break
+			}
+		}
+
 		// Clear line and show success
 		fmt.Printf("\r\033[K") // Clear the line first
 		successLine := fmt.Sprintf("  %s %s %s",
@@ -588,8 +751,6 @@ func (c *UpdateCommand) applyUpdates(
 			log.Warn("Failed to regenerate files after update", "error", err)
 		}
 	}
-
-	// Debug logging removed to clean up output
 
 	return nil
 }

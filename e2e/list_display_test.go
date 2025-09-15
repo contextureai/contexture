@@ -208,8 +208,6 @@ func TestListCommand_JSONOutput(t *testing.T) {
 	result := project.Run(t, "rules", "list", "--output", "json").ExpectSuccess(t)
 
 	// Should contain JSON structure
-	result.ExpectStdout(t, `"command": "rules list"`)
-	result.ExpectStdout(t, `"version": "1.0"`)
 	result.ExpectStdout(t, `"metadata":`)
 	result.ExpectStdout(t, `"rules":`)
 	result.ExpectStdout(t, `"totalRules": 1`)
@@ -236,8 +234,7 @@ func TestListCommand_JSONOutputShortFlag(t *testing.T) {
 	result := project.Run(t, "rules", "list", "-o", "json").ExpectSuccess(t)
 
 	// Should contain JSON structure
-	result.ExpectStdout(t, `"command": "rules list"`)
-	result.ExpectStdout(t, `"version": "1.0"`)
+	result.ExpectStdout(t, `"metadata":`)
 }
 
 func TestListCommand_JSONOutputWithPattern(t *testing.T) {
@@ -257,7 +254,7 @@ func TestListCommand_JSONOutputWithPattern(t *testing.T) {
 
 	// Should contain pattern in metadata
 	result.ExpectStdout(t, `"pattern": "testing"`)
-	result.ExpectStdout(t, `"command": "rules list"`)
+	result.ExpectStdout(t, `"metadata":`)
 }
 
 func TestListCommand_JSONOutputEmptyRules(t *testing.T) {

@@ -204,6 +204,12 @@ Examples:
 				Name:  "ref",
 				Usage: "Git branch or tag reference",
 			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
+			},
 		},
 		Action: a.actions.AddAction,
 	}
@@ -219,8 +225,15 @@ func (a *Application) buildRulesRemoveCommand() *cli.Command {
 This will update the configuration and clean generated files.
 Rule IDs are required as arguments.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
-		Flags:              []cli.Flag{},
-		Action:             a.actions.RemoveAction,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
+			},
+		},
+		Action: a.actions.RemoveAction,
 	}
 }
 
@@ -291,6 +304,12 @@ This will check for updates and optionally apply them.`,
 				Name:    "yes",
 				Aliases: []string{"y"},
 				Usage:   "Skip confirmation prompts",
+			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
 			},
 		},
 		Action: a.actions.UpdateAction,
