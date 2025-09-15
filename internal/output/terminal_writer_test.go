@@ -3,7 +3,6 @@ package output
 import (
 	"testing"
 
-
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +39,6 @@ func TestTerminalWriter_WriteRulesList_WithRules(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-
 		TotalRules:    1,
 		FilteredRules: 1,
 	}
@@ -63,7 +61,6 @@ func TestTerminalWriter_WriteRulesList_WithPattern(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-
 		Pattern:       "testing",
 		TotalRules:    1,
 		FilteredRules: 1,
@@ -93,7 +90,6 @@ func TestTerminalWriter_WriteRulesList_MultipleRules(t *testing.T) {
 	}
 
 	metadata := ListMetadata{
-
 		TotalRules:    2,
 		FilteredRules: 2,
 	}

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -196,7 +195,6 @@ func TestJSONWriter_WriteRulesList_ValidJSONFormat(t *testing.T) {
 	assert.Contains(t, output, "  \"metadata\":")
 	assert.Contains(t, output, "  \"rules\":")
 }
-
 
 func TestNewJSONWriter(t *testing.T) {
 	writer := NewJSONWriter()
