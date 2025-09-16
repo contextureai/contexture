@@ -21,7 +21,7 @@ This command should be run whenever rules are added, removed, or updated in the 
 | Flag          | Description                                                              |
 | :------------ | :----------------------------------------------------------------------- |
 | `--verbose`, `-v` | Show detailed logs during the build process.                             |
-| `--force`     | Force regeneration of all files, ignoring the cache.                   |
+| `--force`     | Reserved for future cache control; currently has no additional effect. |
 | `--formats`   | Build only for the specified output formats (can be used multiple times). |
 
 ## Usage
@@ -42,13 +42,9 @@ To see detailed step-by-step logging of the build process, use the `--verbose` f
 contexture build --verbose
 ```
 
-### Forcing a Rebuild
+### Force Flag
 
-To ignore any cached rule content and force a complete regeneration of all output files, use `--force`.
-
-```bash
-contexture build --force
-```
+The `--force` flag is accepted for compatibility but currently behaves the same as the default build. The command always fetches the latest rule content and rewrites the output files.
 
 ### Building Specific Formats
 

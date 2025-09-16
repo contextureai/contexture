@@ -157,7 +157,7 @@ The Contexture CLI uses Go's `text/template` engine with custom functions for dy
 ```go
 {{.variableName}}
 {{.nested.field}}
-{{.arrayIndex 0}}
+{{index .items 0}}
 ```
 
 #### Conditional Logic
@@ -224,7 +224,6 @@ These variables are automatically available in all templates:
 {{.time}}       # Current time (15:04:05)
 {{.datetime}}   # Full datetime (2006-01-02 15:04:05)
 {{.timestamp}}  # Unix timestamp
-{{.year}}       # Current year
 ```
 
 #### Rule Metadata (when processing rules)
@@ -241,7 +240,6 @@ These variables are automatically available in all templates:
 {{.rule.filepath}}    # File path
 {{.rule.trigger.type}}       # Trigger type
 {{.rule.trigger.globs}}      # Glob patterns (if applicable)
-{{.rule.trigger.description}}# Trigger description
 ```
 
 ### Custom Template Functions
@@ -791,7 +789,6 @@ This rule was created by: {{.}}
 - Current Time: {{.time}}
 - Full DateTime: {{.datetime}}
 - Unix Timestamp: {{.timestamp}}
-- Year: {{.year}}
 
 ## Indentation Example
 

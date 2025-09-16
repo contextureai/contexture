@@ -59,7 +59,7 @@ The content is standard markdown that contains the instructions for the AI assis
 Rules can include template variables for customization, using Go's `text/template` syntax.
 
 ```markdown
-- Maximum line length: {{.maxLineLength | default "80"}}
+- Maximum line length: {{default_if_empty .maxLineLength "80"}}
 
 {{if .useTypeScript}}
 - Always use explicit types for function parameters.
@@ -95,7 +95,7 @@ Rules can be sourced from custom Git repositories using the `--source` (or `--sr
 
 ```bash
 # Add rules from a custom repository
-contexture rules add --src https://github.com/mycompany/rules.git
+contexture rules add "productivity/checks" --src https://github.com/mycompany/rules.git
 
 # Add specific rules from custom sources
 contexture rules add "security/auth" --src "git@github.com:company/rules.git" --ref "v2.0"

@@ -24,7 +24,7 @@ This command installs the binary to your `$GOPATH/bin` directory.
 
 1.  **Install Go**
 
-    Go 1.21 or later is required. It can be downloaded from [golang.org](https://golang.org/dl/).
+    Go 1.25 or later is required. It can be downloaded from [golang.org](https://golang.org/dl/).
 
 2.  **Clone the Repository**
     ```bash

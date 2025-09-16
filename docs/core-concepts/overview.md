@@ -120,9 +120,9 @@ sequenceDiagram
     CTX->>Dev: Creates .contexture.yaml
 
     Dev->>CTX: contexture rules add
-    CTX->>Remote: Fetch available rules
-    Remote-->>CTX: Rule catalog
-    CTX->>Dev: Interactive rule selection
+    CTX->>Remote: Fetch referenced rules
+    Remote-->>CTX: Rule content
+    CTX->>Dev: Update configuration & outputs
 
     Dev->>CTX: contexture build
     CTX->>Remote: Fetch selected rules

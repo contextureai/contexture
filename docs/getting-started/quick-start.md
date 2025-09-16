@@ -26,11 +26,13 @@ The `init` command opens an interactive prompt to select output formats:
 ```
 ? Select output formats to enable:
   ✓ claude (CLAUDE.md)
-  ✓ cursor (.cursor/rules/)
-  ✓ windsurf (.windsurf/rules/)
+    cursor (.cursor/rules/)
+    windsurf (.windsurf/rules/)
 ```
 
-This creates a `.contexture.yaml` file with the initial configuration:
+Claude is preselected; use the space bar to enable Cursor and Windsurf before pressing enter if you want them generated.
+
+When all formats are enabled, the resulting `.contexture.yaml` file looks like:
 
 ```yaml
 version: 1
@@ -75,7 +77,7 @@ version: 1
 formats:
   - type: claude
     enabled: true
-  - type: cursor 
+  - type: cursor
     enabled: true
   - type: windsurf
     enabled: true
@@ -190,7 +192,7 @@ ls -la CLAUDE.md .cursor/rules/ .windsurf/rules/
 # Common commands
 contexture init                                      # Initialize a new project
 contexture rules add code/clean-code              # Add specific rules
-contexture rules add --src https://github.com/...  # Add rules from custom source
+contexture rules add security/auth --src https://github.com/...  # Add rules from a custom source
 contexture rules list                               # Show configured rules
 contexture rules list -o json                      # Show rules as JSON
 contexture build                                    # Generate output files

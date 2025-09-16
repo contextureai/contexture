@@ -9,8 +9,8 @@ description: Overview of the different output formats supported by contexture.
 | Format     | Output             | Structure      | Limits                |
 | :--------- | :----------------- | :------------- | :-------------------- |
 | **Claude** | `CLAUDE.md`        | Single file    | None                  |
-| **Cursor** | `.cursor/rules/`   | Multiple files | Per-file              |
-| **Windsurf** | `.windsurf/rules/` | Multiple files | 6k per file, 12k total |
+| **Cursor** | `.cursor/rules/`   | Multiple files | IDE-managed           |
+| **Windsurf** | `.windsurf/rules/` | Multiple files | 12k characters per file |
 
 ## Claude Format
 
@@ -152,14 +152,13 @@ project-root/
 
 ### Content Format
 
-The content format is similar to the `cursor` format, but with strict size limitations. `windsurf` also supports a single-file mode, which combines all rules into one file.
+The content format is similar to the `cursor` format, but with a strict size limit per generated file. `windsurf` also supports a single-file mode that combines all rules, though the CLI currently defaults to multi-file output.
 
 ### Character Limits
 
--   **Per File**: 6,000 characters
--   **Total**: 12,000 characters across all rule files
+-   **Per File**: 12,000 characters (enforced by the build step)
 
-`contexture` automatically truncates rules that exceed these limits and warns the user.
+`contexture` fails the build when a Windsurf file would exceed the limit so you can trim the source rule or split it across additional files.
 
 ### Configuration
 
@@ -195,8 +194,7 @@ sequenceDiagram
     and
         Engine->>Windsurf: Generate size-limited files
         Windsurf->>Windsurf: Check size limits
-        Windsurf->>Windsurf: Truncate if needed
-        Windsurf-->>Engine: .windsurf/rules/*.md
+        Windsurf-->>Engine: .windsurf/rules/*.md or build error
     end
 
     Engine-->>Rules: Generation complete

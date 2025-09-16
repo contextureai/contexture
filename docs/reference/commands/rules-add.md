@@ -25,11 +25,11 @@ The `rules add` command adds new rules to the project. Rules must be specified b
 | Flag        | Description                                                                    |
 | :---------- | :----------------------------------------------------------------------------- |
 | `--force`, `-f` | Update a rule's configuration if it already exists in `.contexture.yaml`.      |
-| `--formats` | Specify which output formats a rule should apply to (can be used multiple times). |
 | `--data`    | Provide rule variables as a JSON string.                                       |
 | `--var`     | Set an individual variable (`key=value`) (can be used multiple times).           |
 | `--source`, `--src` | Specify a custom Git repository URL to pull a rule from.                       |
 | `--ref`     | Specify a Git branch, tag, or commit hash for a remote rule.                   |
+| `--output`, `-o` | Choose the output format: `default` (terminal) or `json`.                  |
 
 ## Usage
 
@@ -78,3 +78,5 @@ contexture rules add "api/validation" "api/rate-limiting" \
   --src "https://github.com/myteam/api-rules.git" \
   --ref "v2.0"
 ```
+
+After the rules are added, `contexture` immediately regenerates the enabled formats so the new guidance is written to `CLAUDE.md`, `.cursor/rules/`, and `.windsurf/rules/` without an additional `build` step.
