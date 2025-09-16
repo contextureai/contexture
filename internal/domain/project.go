@@ -83,9 +83,9 @@ func (p *Project) GetEnabledSources() []Source {
 
 // GetSourceByName returns a source by name
 func (p *Project) GetSourceByName(name string) *Source {
-	for _, source := range p.Sources {
-		if source.Name == name {
-			return &source
+	for i := range p.Sources {
+		if p.Sources[i].Name == name {
+			return &p.Sources[i]
 		}
 	}
 	return nil

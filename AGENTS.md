@@ -12,6 +12,10 @@ Contexture is a Go CLI tool for managing AI assistant rules across multiple plat
 - `make deps` - Download and tidy dependencies
 - `make generate` - Generate mocks with mockery
 
+### Working Locally
+- Run `go test ./...`, then `make fmt`, and finally `make lint` before returning changes.
+- Prefer the in-memory filesystem helpers (`internal/commands/test_helpers.go:12`, `internal/dependencies/deps.go:31`) for new tests to avoid touching the host filesystem.
+
 ### Application Commands
 - `contexture init` - Initialize project with `.contexture.yaml`
 - `contexture rules add` - Add rules by ID
@@ -60,6 +64,11 @@ web/                   # Web assets
 - **git**: Git operations for remote rule repositories
 - **tui**: Interactive rule selection and file browsing
 
+### Extension Hooks
+
+- Register new CLI commands in `internal/app/app.go:95` so they are wired into the binary and help output.
+- Register new output formats through `internal/format/registry.go:48` to expose them in prompts and builds.
+
 ## Domain Concepts
 
 ### Rules
@@ -97,6 +106,7 @@ generation: [build settings]
 - **Integration**: Git operations with real repositories
 - **E2E**: Full CLI workflow testing with fixtures
 - **Coverage**: Generates `coverage.out` for analysis
+- **Tips**: Reuse the test dependency helpers (`internal/commands/test_helpers.go:12`, `internal/dependencies/deps.go:31`) to keep tests hermetic.
 
 ## Dependencies
 

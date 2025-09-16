@@ -26,9 +26,9 @@ func (f *formatConfigContainer) GetEnabledFormats() []FormatConfig {
 
 // GetFormatByType returns a format configuration by type
 func (f *formatConfigContainer) GetFormatByType(formatType FormatType) *FormatConfig {
-	for _, format := range f.formats {
-		if format.Type == formatType {
-			return &format
+	for i := range f.formats {
+		if f.formats[i].Type == formatType {
+			return &f.formats[i]
 		}
 	}
 	return nil

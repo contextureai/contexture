@@ -21,6 +21,7 @@ type RuleGenerator struct {
 	ruleValidator rule.Validator
 	ruleProcessor rule.Processor
 	registry      *format.Registry
+	fs            afero.Fs
 }
 
 // NewRuleGenerator creates a new rule generator
@@ -29,12 +30,17 @@ func NewRuleGenerator(
 	validator rule.Validator,
 	processor rule.Processor,
 	registry *format.Registry,
+	fs afero.Fs,
 ) *RuleGenerator {
+	if fs == nil {
+		fs = afero.NewOsFs()
+	}
 	return &RuleGenerator{
 		ruleFetcher:   fetcher,
 		ruleValidator: validator,
 		ruleProcessor: processor,
 		registry:      registry,
+		fs:            fs,
 	}
 }
 
@@ -146,7 +152,7 @@ func (g *RuleGenerator) generateFormat(
 	formatConfig domain.FormatConfig,
 ) error {
 	// Create format instance
-	format, err := g.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+	format, err := g.registry.CreateFormat(formatConfig.Type, g.fs, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create format: %w", err)
 	}

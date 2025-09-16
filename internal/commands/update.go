@@ -13,7 +13,6 @@ import (
 	"github.com/contextureai/contexture/internal/cache"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
-	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
@@ -73,7 +72,7 @@ const (
 
 // NewUpdateCommand creates a new update command with default dependencies
 func NewUpdateCommand(deps *dependencies.Dependencies) *UpdateCommand {
-	gitRepo := git.NewRepository(deps.FS)
+	gitRepo := newOpenRepository(deps.FS)
 	return &UpdateCommand{
 		projectManager: project.NewManager(deps.FS),
 		ruleFetcher:    rule.NewFetcher(deps.FS, gitRepo, rule.FetcherConfig{}),
@@ -425,7 +424,7 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 				if parseErr == nil {
 					repoDir, repoErr := c.cache.GetRepositoryWithUpdate(ctx, parsed.Source, parsed.Ref)
 					if repoErr == nil {
-						gitRepo := git.NewRepository(c.fs)
+						gitRepo := newOpenRepository(c.fs)
 						if commitInfo, commitErr := gitRepo.GetCommitInfoByHash(repoDir, currentCommitHash); commitErr == nil {
 							result.CurrentCommit = GitCommitInfo{
 								Hash: commitInfo.Hash,
@@ -568,7 +567,7 @@ func (c *UpdateCommand) checkRuleForUpdate(
 	ruleFilePath := parsed.RulePath + ".md"
 
 	// Create git repository instance for the cached directory
-	gitRepo := git.NewRepository(c.fs)
+	gitRepo := newOpenRepository(c.fs)
 
 	// Get the latest commit information for this specific file
 	latestCommitInfo, err := gitRepo.GetFileCommitInfo(repoDir, ruleFilePath, parsed.Ref)

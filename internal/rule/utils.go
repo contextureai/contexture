@@ -47,17 +47,18 @@ func FetchRulesParallel(
 			var err error
 
 			if ref.CommitHash != "" {
-				// Try to fetch at specific commit if the fetcher supports it
-				if compositeFetcher, ok := fetcher.(*CompositeFetcher); ok {
-					rule, err = compositeFetcher.FetchRuleAtCommitWithSource(ctx, ref.ID, ref.CommitHash, ref.Source)
+				if commitSourceFetcher, ok := fetcher.(CommitAwareFetcher); ok {
+					rule, err = commitSourceFetcher.FetchRuleAtCommitWithSource(ctx, ref.ID, ref.CommitHash, ref.Source)
+				} else if commitFetcher, ok := fetcher.(CommitFetcher); ok {
+					rule, err = commitFetcher.FetchRuleAtCommit(ctx, ref.ID, ref.CommitHash)
 				} else {
 					// Fallback to regular fetch for other fetcher types
 					rule, err = fetcher.FetchRule(ctx, ref.ID)
 				}
 			} else {
 				// Regular fetch without commit hash, use source-aware method if available
-				if compositeFetcher, ok := fetcher.(*CompositeFetcher); ok {
-					rule, err = compositeFetcher.FetchRuleWithSource(ctx, ref.ID, ref.Source)
+				if sourceFetcher, ok := fetcher.(SourceAwareFetcher); ok {
+					rule, err = sourceFetcher.FetchRuleWithSource(ctx, ref.ID, ref.Source)
 				} else {
 					// Fallback to regular fetch for other fetcher types
 					rule, err = fetcher.FetchRule(ctx, ref.ID)

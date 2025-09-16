@@ -65,16 +65,16 @@ In addition to configured sources in `.contexture.yaml`, you can specify custom 
 
 The `--source` (or its shorthand `--src`) and `--ref` flags allow you to add rules from repositories that aren't configured in your project.
 
-```bash
-# Interactive browsing from custom source
-contexture rules add --src https://github.com/company/rules.git
 
-# Adding specific rules from custom source  
+```bash
+# Adding a rule from a custom source
 contexture rules add "security/auth" --src "git@github.com:company/rules.git" --ref "v2.0"
 
-# Multiple rules from same custom source
+# Multiple rules from the same custom source
 contexture rules add "api/validation" "api/errors" --src "https://github.com/team/api-rules.git"
 ```
+
+Every invocation still requires at least one rule ID; the `--src`/`--ref` flags only change where the rule is fetched from.
 
 ### Differences from Configured Sources
 

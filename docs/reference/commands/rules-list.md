@@ -71,15 +71,10 @@ contexture rules list --pattern "go" --output json
 **JSON Structure:**
 ```json
 {
-  "command": "rules list",
-  "version": "1.0",
   "metadata": {
-    "command": "rules list",
-    "version": "1.0", 
     "pattern": "go",
     "totalRules": 5,
-    "filteredRules": 2,
-    "timestamp": "2025-09-14T19:30:45Z"
+    "filteredRules": 2
   },
   "rules": [
     {
@@ -87,20 +82,18 @@ contexture rules list --pattern "go" --output json
       "title": "Go Testing Best Practices",
       "description": "Write idiomatic table-driven tests...",
       "tags": ["go", "testing", "best-practices"],
-      "languages": ["go"],
-      "frameworks": [],
       "trigger": {
         "type": "glob",
         "globs": ["**/*_test.go"]
       },
+      "languages": ["go"],
+      "frameworks": [],
       "content": "Rule content...",
       "variables": {},
       "defaultVariables": {},
       "filePath": "languages/go/testing",
       "source": "https://github.com/contextureai/rules.git",
-      "ref": "main",
-      "createdAt": "2025-01-01T00:00:00Z",
-      "updatedAt": "2025-01-01T00:00:00Z"
+      "ref": "main"
     }
   ]
 }
@@ -120,9 +113,9 @@ When using a pattern filter, the active pattern is shown in the header for clari
 ### JSON Output Format  
 
 JSON output provides structured data suitable for programmatic processing:
-- **Metadata**: Command information, pattern filter, rule counts, timestamp
-- **Rules Array**: Complete rule objects with all fields
-- **Consistent Schema**: Version-tagged structure for reliable parsing
+- **Metadata**: Pattern filter (if used) and rule counts
+- **Rules Array**: Complete rule objects with IDs, metadata, variables, and content
+- **Consistent Schema**: Stable field names that match the CLI structs
 
 The JSON format is ideal for:
 - Integration with CI/CD pipelines  

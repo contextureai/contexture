@@ -58,8 +58,7 @@ func (c *InitCommand) initProjectConfig(force, noInteractive bool) error {
 	}
 
 	// Show command header
-	fmt.Println(ui.CommandHeader("init"))
-	fmt.Println()
+	fmt.Printf("%s\n\n", ui.CommandHeader("init"))
 
 	// Show welcome message
 	theme := ui.DefaultTheme()

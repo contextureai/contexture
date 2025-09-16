@@ -34,7 +34,7 @@ type AddCommand struct {
 // NewAddCommand creates a new add command
 func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 	registry := format.GetDefaultRegistry(deps.FS)
-	ruleFetcher := rule.NewFetcher(deps.FS, git.NewRepository(deps.FS), rule.FetcherConfig{})
+	ruleFetcher := rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{})
 	ruleValidator := rule.NewValidator()
 
 	return &AddCommand{
@@ -46,6 +46,7 @@ func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 			ruleValidator,
 			rule.NewProcessor(),
 			registry,
+			deps.FS,
 		),
 		registry: registry,
 	}
@@ -405,7 +406,7 @@ func (c *AddCommand) fetchLatestCommitHash(
 	ruleFilePath := parsedID.RulePath + ".md"
 
 	// Create git repository instance for the cloned directory
-	gitRepo := git.NewRepository(afero.NewOsFs())
+	gitRepo := newOpenRepository(afero.NewOsFs())
 
 	// Get the latest commit information for this specific file
 	commitInfo, err := gitRepo.GetFileCommitInfo(tempDir, ruleFilePath, parsedID.Ref)
@@ -435,7 +436,7 @@ func (c *AddCommand) cloneRepositoryToTemp(
 	}
 
 	// Create git repository instance
-	gitRepo := git.NewRepository(afero.NewOsFs())
+	gitRepo := newOpenRepository(afero.NewOsFs())
 
 	// Clone repository with the specified branch
 	err = gitRepo.Clone(ctx, repoURL, tempDir, git.WithBranch(branch))
