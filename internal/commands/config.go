@@ -74,7 +74,7 @@ func (c *MainConfigCommand) Execute(_ context.Context, _ *cli.Command) error {
 	darkMutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
 	// Display project configuration
-	fmt.Println(ui.CommandHeader("project configuration"))
+	fmt.Printf("%s\n\n", ui.CommandHeader("project configuration"))
 
 	// Display formats configuration
 	fmt.Println(sectionStyle.Render("Output Formats"))

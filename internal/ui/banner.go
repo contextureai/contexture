@@ -105,14 +105,9 @@ func CommandHeader(commandName string) string {
 		headerText = strings.Join(words, " ")
 	}
 
-	theme := DefaultTheme()
 	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(theme.Primary).
-		Foreground(theme.Primary).
 		Bold(true).
-		Padding(0, 2).
-		Align(lipgloss.Center)
+		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
 
 	return style.Render(headerText)
 }
