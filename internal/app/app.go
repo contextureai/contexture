@@ -250,10 +250,6 @@ This will fetch all rules, process templates, and write format-specific files.`,
 				Aliases: []string{"v"},
 				Usage:   "Show detailed progress information",
 			},
-			&cli.BoolFlag{
-				Name:  "force",
-				Usage: "Force regenerate all format files",
-			},
 			&cli.StringSliceFlag{
 				Name:  "formats",
 				Usage: "Build for specific formats only (claude, cursor, windsurf)",
