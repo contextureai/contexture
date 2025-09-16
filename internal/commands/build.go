@@ -11,7 +11,6 @@ import (
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
-	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/spf13/afero"
@@ -23,6 +22,7 @@ type BuildCommand struct {
 	projectManager *project.Manager
 	ruleGenerator  *RuleGenerator
 	registry       *format.Registry
+	fs             afero.Fs
 }
 
 // NewBuildCommand creates a new build command
@@ -31,12 +31,14 @@ func NewBuildCommand(deps *dependencies.Dependencies) *BuildCommand {
 	return &BuildCommand{
 		projectManager: project.NewManager(deps.FS),
 		ruleGenerator: NewRuleGenerator(
-			rule.NewFetcher(deps.FS, git.NewRepository(deps.FS), rule.FetcherConfig{}),
+			rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}),
 			rule.NewValidator(),
 			rule.NewProcessor(),
 			registry,
+			deps.FS,
 		),
 		registry: registry,
+		fs:       deps.FS,
 	}
 }
 
@@ -56,12 +58,12 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		// Clean up empty directories for all enabled formats even when no rules exist
 		targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
 		for _, formatConfig := range targetFormats {
-			format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+			format, err := c.registry.CreateFormat(formatConfig.Type, c.fs, nil)
 			if err != nil {
 				log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
 				continue
 			}
-			c.cleanupEmptyFormatDirectory(format, &formatConfig)
+			c.ruleGenerator.cleanupEmptyFormatDirectory(format, &formatConfig)
 		}
 
 		return nil
@@ -147,14 +149,6 @@ func (c *BuildCommand) getTargetFormats(
 	}
 
 	return targetFormats
-}
-
-// cleanupEmptyFormatDirectory removes empty output directories for formats that support it
-func (c *BuildCommand) cleanupEmptyFormatDirectory(format domain.Format, config *domain.FormatConfig) {
-	// Use the format's own cleanup method - no need for format-specific logic here
-	if err := format.CleanupEmptyDirectories(config); err != nil {
-		log.Warn("Failed to cleanup empty directories", "format", config.Type, "error", err)
-	}
 }
 
 // BuildAction is the CLI action handler for the build command

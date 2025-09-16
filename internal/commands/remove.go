@@ -13,7 +13,6 @@ import (
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
-	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
@@ -36,7 +35,7 @@ func NewRemoveCommand(deps *dependencies.Dependencies) *RemoveCommand {
 	return &RemoveCommand{
 		projectManager: project.NewManager(deps.FS),
 		registry:       format.GetDefaultRegistry(deps.FS),
-		ruleFetcher:    rule.NewFetcher(deps.FS, git.NewRepository(deps.FS), rule.FetcherConfig{}),
+		ruleFetcher:    rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}),
 	}
 }
 

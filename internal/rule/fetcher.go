@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/cache"
@@ -23,6 +24,7 @@ type CompositeFetcher struct {
 	gitFetcher   *GitRuleFetcher
 	localFetcher Fetcher
 	idParser     IDParser
+	maxWorkers   int
 }
 
 // NewFetcher creates a new fetcher with separated components
@@ -30,18 +32,22 @@ func NewFetcher(fs afero.Fs, repository git.Repository, config FetcherConfig) Fe
 	if config.DefaultURL == "" {
 		config.DefaultURL = defaultRulesRepo
 	}
+	if config.MaxWorkers <= 0 {
+		config.MaxWorkers = domain.DefaultMaxWorkers
+	}
 
 	parser := NewParser()
 	idParser := NewRuleIDParser(config.DefaultURL)
 	simpleCache := cache.NewSimpleCache(fs, repository)
 
-	gitFetcher := NewGitRuleFetcher(fs, parser, simpleCache, idParser)
+	gitFetcher := NewGitRuleFetcher(fs, parser, simpleCache, repository, idParser)
 	localFetcher := NewLocalFetcher(fs, ".")
 
 	return &CompositeFetcher{
 		gitFetcher:   gitFetcher,
 		localFetcher: localFetcher,
 		idParser:     idParser,
+		maxWorkers:   config.MaxWorkers,
 	}
 }
 
@@ -100,34 +106,61 @@ func (f *CompositeFetcher) FetchRules(
 
 	log.Debug("Fetching multiple rules", "count", len(ruleIDs))
 
-	// Use a worker pool for concurrent fetching
+	// Use a worker pool for concurrent fetching with bounded concurrency
 	type result struct {
 		rule *domain.Rule
 		err  error
 		id   string
 	}
 
-	resultChan := make(chan result, len(ruleIDs))
+	maxWorkers := f.maxWorkers
+	if maxWorkers <= 0 {
+		maxWorkers = domain.DefaultMaxWorkers
+	}
 
-	// Start workers
+	semaphore := make(chan struct{}, maxWorkers)
+	resultChan := make(chan result, len(ruleIDs))
+	var wg sync.WaitGroup
+
 	for _, ruleID := range ruleIDs {
+		wg.Add(1)
 		go func(id string) {
+			defer wg.Done()
+
+			select {
+			case semaphore <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
+			defer func() { <-semaphore }()
+
 			rule, err := f.FetchRule(ctx, id)
+
 			select {
 			case resultChan <- result{rule: rule, err: err, id: id}:
 			case <-ctx.Done():
-				// Context cancelled, exit without sending result
 			}
 		}(ruleID)
 	}
 
-	// Collect results
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
 	var rules []*domain.Rule
 	var errors []error
 
-	for range ruleIDs {
+	for {
 		select {
-		case res := <-resultChan:
+		case res, ok := <-resultChan:
+			if !ok {
+				if len(errors) > 0 {
+					return nil, fmt.Errorf("failed to fetch %d rules: %w", len(errors), combineErrors(errors))
+				}
+				log.Debug("Successfully fetched all rules", "count", len(rules))
+				return rules, nil
+			}
 			if res.err != nil {
 				errors = append(errors, fmt.Errorf("failed to fetch rule %s: %w", res.id, res.err))
 			} else {
@@ -137,14 +170,6 @@ func (f *CompositeFetcher) FetchRules(
 			return nil, fmt.Errorf("context cancelled while fetching rules: %w", ctx.Err())
 		}
 	}
-
-	// Return errors if any occurred
-	if len(errors) > 0 {
-		return nil, fmt.Errorf("failed to fetch %d rules: %w", len(errors), combineErrors(errors))
-	}
-
-	log.Debug("Successfully fetched all rules", "count", len(rules))
-	return rules, nil
 }
 
 // ParseRuleID delegates to the ID parser

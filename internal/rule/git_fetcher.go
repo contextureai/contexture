@@ -20,6 +20,7 @@ type GitRuleFetcher struct {
 	fs       afero.Fs
 	parser   Parser
 	cache    *cache.SimpleCache
+	repo     git.Repository
 	idParser IDParser
 }
 
@@ -28,12 +29,14 @@ func NewGitRuleFetcher(
 	fs afero.Fs,
 	parser Parser,
 	cache *cache.SimpleCache,
+	repo git.Repository,
 	idParser IDParser,
 ) *GitRuleFetcher {
 	return &GitRuleFetcher{
 		fs:       fs,
 		parser:   parser,
 		cache:    cache,
+		repo:     repo,
 		idParser: idParser,
 	}
 }
@@ -120,10 +123,13 @@ func (f *GitRuleFetcher) FetchRuleAtCommit(ctx context.Context, ruleID, commitHa
 		return nil, fmt.Errorf("failed to get repository: %w", err)
 	}
 
-	// Read the rule file at the specific commit
-	gitRepo := git.NewRepository(afero.NewOsFs())
+	// Read the rule file at the specific commit using the injected repository implementation
+	repo := f.repo
+	if repo == nil {
+		repo = git.NewRepository(f.fs)
+	}
 	ruleFilePath := parsed.RulePath + ".md"
-	data, err := gitRepo.GetFileAtCommit(repoDir, ruleFilePath, commitHash)
+	data, err := repo.GetFileAtCommit(repoDir, ruleFilePath, commitHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read rule file at commit %s: %w", commitHash, err)
 	}

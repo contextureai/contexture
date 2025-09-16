@@ -16,6 +16,21 @@ type Fetcher interface {
 	ListAvailableRulesWithStructure(ctx context.Context, source, ref string) (*domain.RuleNode, error)
 }
 
+// SourceAwareFetcher can fetch a rule while honoring an explicit source hint.
+type SourceAwareFetcher interface {
+	FetchRuleWithSource(ctx context.Context, ruleID, source string) (*domain.Rule, error)
+}
+
+// CommitAwareFetcher can fetch a rule pinned to a specific commit with source awareness.
+type CommitAwareFetcher interface {
+	FetchRuleAtCommitWithSource(ctx context.Context, ruleID, commitHash, source string) (*domain.Rule, error)
+}
+
+// CommitFetcher can fetch a rule pinned to a specific commit without source hints.
+type CommitFetcher interface {
+	FetchRuleAtCommit(ctx context.Context, ruleID, commitHash string) (*domain.Rule, error)
+}
+
 // Parser interface for rule parsing operations
 type Parser interface {
 	ParseRule(content string, metadata Metadata) (*domain.Rule, error)
@@ -39,6 +54,7 @@ type Processor interface {
 // FetcherConfig configures the rule fetcher
 type FetcherConfig struct {
 	DefaultURL string
+	MaxWorkers int
 }
 
 // Metadata contains metadata about a rule file

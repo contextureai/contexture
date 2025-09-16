@@ -24,13 +24,14 @@ func TestNewRuleGenerator(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	registry := format.NewRegistry(fs)
 
-	generator := NewRuleGenerator(fetcher, validator, processor, registry)
+	generator := NewRuleGenerator(fetcher, validator, processor, registry, fs)
 
 	assert.NotNil(t, generator)
 	assert.Equal(t, fetcher, generator.ruleFetcher)
 	assert.Equal(t, validator, generator.ruleValidator)
 	assert.Equal(t, processor, generator.ruleProcessor)
 	assert.Equal(t, registry, generator.registry)
+	assert.Equal(t, fs, generator.fs)
 }
 
 func TestRuleGenerator_GenerateRules_NoRules(t *testing.T) {
@@ -41,7 +42,7 @@ func TestRuleGenerator_GenerateRules_NoRules(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	registry := format.NewRegistry(fs)
 
-	generator := NewRuleGenerator(fetcher, validator, processor, registry)
+	generator := NewRuleGenerator(fetcher, validator, processor, registry, fs)
 
 	config := &domain.Project{
 		Rules: []domain.RuleRef{}, // Empty rules
@@ -70,7 +71,7 @@ func TestRuleGenerator_GenerateRules_NoFormats(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	registry := format.NewRegistry(fs)
 
-	generator := NewRuleGenerator(fetcher, validator, processor, registry)
+	generator := NewRuleGenerator(fetcher, validator, processor, registry, fs)
 
 	config := &domain.Project{
 		Rules: []domain.RuleRef{{ID: "test/rule1"}},

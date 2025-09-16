@@ -9,7 +9,6 @@ import (
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format"
-	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
@@ -27,7 +26,7 @@ type ListCommand struct {
 func NewListCommand(deps *dependencies.Dependencies) *ListCommand {
 	return &ListCommand{
 		projectManager: project.NewManager(deps.FS),
-		ruleFetcher:    rule.NewFetcher(deps.FS, git.NewRepository(deps.FS), rule.FetcherConfig{}),
+		ruleFetcher:    rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}),
 		registry:       format.GetDefaultRegistry(deps.FS),
 	}
 }
