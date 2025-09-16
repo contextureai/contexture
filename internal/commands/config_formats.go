@@ -150,7 +150,7 @@ func (fm *FormatManager) interactiveAddFormat(_ context.Context, _ *cli.Command)
 	theme := ui.DefaultTheme()
 
 	// Show current formats
-	fmt.Println(ui.CommandHeader("add formats"))
+	fmt.Printf("%s\n\n", ui.CommandHeader("add formats"))
 
 	if len(config.Formats) > 0 {
 		headerStyle := lipgloss.NewStyle().
@@ -322,7 +322,7 @@ func (fm *FormatManager) interactiveRemoveFormat(_ context.Context, _ *cli.Comma
 	}
 
 	// Show header
-	fmt.Println(ui.CommandHeader("remove formats"))
+	fmt.Printf("%s\n\n", ui.CommandHeader("remove formats"))
 
 	// Show current formats
 	theme := ui.DefaultTheme()
@@ -489,7 +489,7 @@ func (fm *FormatManager) interactiveEnableFormat(_ context.Context, _ *cli.Comma
 	}
 
 	// Show header
-	fmt.Println(ui.CommandHeader("enable format"))
+	fmt.Printf("%s\n\n", ui.CommandHeader("enable format"))
 
 	// Show current formats
 	theme := ui.DefaultTheme()
@@ -609,7 +609,7 @@ func (fm *FormatManager) interactiveDisableFormat(_ context.Context, _ *cli.Comm
 	}
 
 	// Show header
-	fmt.Println(ui.CommandHeader("disable format"))
+	fmt.Printf("%s\n\n", ui.CommandHeader("disable format"))
 
 	// Show current formats
 	theme := ui.DefaultTheme()
