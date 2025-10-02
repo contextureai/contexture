@@ -60,18 +60,12 @@ func (f *GitRuleFetcher) FetchRule(ctx context.Context, ruleID string) (*domain.
 	// Construct the full path to the rule file
 	rulePath := filepath.Join(repoDir, parsed.RulePath+".md")
 
-	// Check if the rule file exists
-	exists, err := afero.Exists(f.fs, rulePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check rule file: %w", err)
-	}
-	if !exists {
-		return nil, contextureerrors.WithOp("FetchRule", contextureerrors.ErrRuleNotFound)
-	}
-
-	// Read and parse the rule file
+	// Read the rule file (EAFP - Easier to Ask Forgiveness than Permission)
 	data, err := afero.ReadFile(f.fs, rulePath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, contextureerrors.WithOp("FetchRule", contextureerrors.ErrRuleNotFound)
+		}
 		return nil, fmt.Errorf("failed to read rule file: %w", err)
 	}
 

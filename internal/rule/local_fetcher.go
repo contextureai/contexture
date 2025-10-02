@@ -103,10 +103,26 @@ func (f *LocalFetcher) FetchRule(_ context.Context, ruleID string) (*domain.Rule
 		return nil, fmt.Errorf("failed to find rules directory: %w", err)
 	}
 
-	// Construct full path
+	// Construct full path with validation to prevent path traversal
 	rulePath := filepath.Join(rulesDir, parsed.RulePath)
 	if !strings.HasSuffix(rulePath, ".md") {
 		rulePath += ".md"
+	}
+
+	// Validate path is within rules directory
+	cleanPath, err := filepath.Abs(rulePath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rule path: %w", err)
+	}
+
+	cleanBase, err := filepath.Abs(rulesDir)
+	if err != nil {
+		return nil, fmt.Errorf("invalid rules directory: %w", err)
+	}
+
+	// Ensure rule path is within rules directory
+	if !strings.HasPrefix(cleanPath, cleanBase+string(filepath.Separator)) && cleanPath != cleanBase {
+		return nil, fmt.Errorf("rule path %q is outside rules directory", parsed.RulePath)
 	}
 
 	// Read the file

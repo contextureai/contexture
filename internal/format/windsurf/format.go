@@ -283,12 +283,26 @@ func (f *Format) GetMetadata() *domain.FormatMetadata {
 	}
 }
 
+// estimateWindsurfContentSize estimates the total size needed for the Windsurf single file
+func (f *Format) estimateWindsurfContentSize(rules []*domain.TransformedRule) int {
+	// Start with header + footer overhead
+	size := 1024
+
+	// Add space for each rule's content plus separators
+	for _, rule := range rules {
+		size += len(rule.Content) + 200 // Content + tracking comment + separator overhead
+	}
+
+	return size
+}
+
 // writeSingleFile writes all rules to a single file
 func (f *Format) writeSingleFile(rules []*domain.TransformedRule, outputDir string) error {
 	filename := f.GetSingleFileFilename()
 	filePath := filepath.Join(outputDir, filename)
 
 	var content strings.Builder
+	content.Grow(f.estimateWindsurfContentSize(rules))
 
 	// Write header
 	content.WriteString(f.getSingleFileHeader(len(rules)))
@@ -356,19 +370,13 @@ func (f *Format) removeSingleFile(ruleID string, outputDir string) error {
 	filename := f.GetSingleFileFilename()
 	filePath := filepath.Join(outputDir, filename)
 
-	// Check if file exists using BaseFormat
-	exists, err := f.FileExists(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to check if file exists: %w", err)
-	}
-	if !exists {
-		f.LogDebug("Windsurf single file does not exist", "path", filePath)
-		return nil
-	}
-
-	// Read current content
+	// Read current content (EAFP - will fail if file doesn't exist)
 	content, err := f.ReadFile(filePath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			f.LogDebug("Windsurf single file does not exist", "path", filePath)
+			return nil
+		}
 		return fmt.Errorf("failed to read Windsurf single file: %w", err)
 	}
 

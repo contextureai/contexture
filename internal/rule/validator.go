@@ -24,18 +24,13 @@ type DefaultValidator struct {
 	v validation.Validator
 }
 
-// FailsafeValidator is a fallback validator that fails gracefully
-type FailsafeValidator struct {
-	err error
-}
-
 // NewValidator creates a new rule validator
+// Panics if validator creation fails, as this indicates a programming error
+// that should be caught during development/testing
 func NewValidator() Validator {
 	v, err := validation.NewValidator()
 	if err != nil {
-		// Log the error and return a validator that always fails gracefully
-		log.Error("Failed to create validator, using fallback", "error", err)
-		return &FailsafeValidator{err: err}
+		panic(fmt.Sprintf("failed to create validator: %v", err))
 	}
 	return &DefaultValidator{v: v}
 }
@@ -75,47 +70,4 @@ func (d *DefaultValidator) ValidateRuleID(ruleID string) error {
 // ValidateGitURL validates a git repository URL
 func (d *DefaultValidator) ValidateGitURL(gitURL string) error {
 	return d.v.ValidateGitURL(gitURL)
-}
-
-// FailsafeValidator methods - all return validation errors due to initialization failure
-
-// ValidateRule returns a validation error for FailsafeValidator
-func (f *FailsafeValidator) ValidateRule(_ *domain.Rule) *domain.ValidationResult {
-	result := &domain.ValidationResult{
-		Valid:    false,
-		Errors:   []error{fmt.Errorf("validator initialization failed: %w", f.err)},
-		Warnings: make([]domain.ValidationWarning, 0),
-	}
-	return result
-}
-
-// ValidateRules returns a validation error for FailsafeValidator
-func (f *FailsafeValidator) ValidateRules(rules []*domain.Rule) *validation.BatchResult {
-	return &validation.BatchResult{
-		TotalRules:  len(rules),
-		ValidRules:  0,
-		Results:     []*validation.Result{},
-		AllValid:    false,
-		HasWarnings: false,
-	}
-}
-
-// ValidateRuleContent returns a validation error for FailsafeValidator
-func (f *FailsafeValidator) ValidateRuleContent(_ string) *domain.ValidationResult {
-	result := &domain.ValidationResult{
-		Valid:    false,
-		Errors:   []error{fmt.Errorf("validator initialization failed: %w", f.err)},
-		Warnings: make([]domain.ValidationWarning, 0),
-	}
-	return result
-}
-
-// ValidateRuleID returns a validation error for FailsafeValidator
-func (f *FailsafeValidator) ValidateRuleID(_ string) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
-}
-
-// ValidateGitURL returns a validation error for FailsafeValidator
-func (f *FailsafeValidator) ValidateGitURL(_ string) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
 }

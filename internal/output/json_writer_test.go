@@ -31,7 +31,7 @@ func captureStdout(t *testing.T, fn func()) string {
 	os.Stdout = w
 
 	// Run the function in a goroutine
-	done := make(chan bool)
+	done := make(chan bool, 1)
 	var output string
 	go func() {
 		defer close(done)

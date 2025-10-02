@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"context"
 	"testing"
 
 	"github.com/contextureai/contexture/internal/domain"
@@ -91,6 +92,7 @@ func TestTemplateProcessor_ProcessRule(t *testing.T) {
 func TestTemplateProcessor_ProcessRules(t *testing.T) {
 	t.Parallel()
 	processor := NewProcessor()
+	ctx := context.Background()
 
 	rules := []*domain.Rule{
 		{
@@ -105,14 +107,14 @@ func TestTemplateProcessor_ProcessRules(t *testing.T) {
 		},
 	}
 
-	context := &domain.RuleContext{
+	ruleContext := &domain.RuleContext{
 		Variables: map[string]any{
 			"test": true,
 		},
 	}
 
 	t.Run("process multiple rules", func(t *testing.T) {
-		processed, err := processor.ProcessRules(rules, context)
+		processed, err := processor.ProcessRulesWithContext(ctx, rules, ruleContext)
 
 		require.NoError(t, err)
 		assert.Len(t, processed, 2)
@@ -136,7 +138,7 @@ func TestTemplateProcessor_ProcessRules(t *testing.T) {
 	})
 
 	t.Run("empty rules slice", func(t *testing.T) {
-		processed, err := processor.ProcessRules([]*domain.Rule{}, context)
+		processed, err := processor.ProcessRulesWithContext(ctx, []*domain.Rule{}, ruleContext)
 
 		require.NoError(t, err)
 		assert.Empty(t, processed)

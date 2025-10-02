@@ -2,6 +2,7 @@ package cursor
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -156,19 +157,13 @@ func (f *Format) List(config *domain.FormatConfig) ([]*domain.InstalledRule, err
 
 	outputDir := f.getOutputDir(config)
 
-	// Check if directory exists using BaseFormat
-	exists, err := f.DirExists(outputDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if directory exists: %w", err)
-	}
-	if !exists {
-		f.LogDebug("Cursor format directory does not exist", "path", outputDir)
-		return []*domain.InstalledRule{}, nil
-	}
-
-	// Read directory contents using BaseFormat
+	// Read directory contents (EAFP - will fail if directory doesn't exist)
 	files, err := f.ListDirectory(outputDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			f.LogDebug("Cursor format directory does not exist", "path", outputDir)
+			return []*domain.InstalledRule{}, nil
+		}
 		return nil, fmt.Errorf("failed to read directory: %w", err)
 	}
 

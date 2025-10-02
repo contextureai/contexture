@@ -159,10 +159,10 @@ func (bf *Base) ProcessTemplateWithVars(
 		for key, value := range rule.Variables {
 			// Convert string booleans to actual booleans for proper template logic
 			if strVal, ok := value.(string); ok {
-				switch strVal {
-				case "true":
+				switch strings.ToLower(strVal) {
+				case "true", "1", "yes":
 					variables[key] = true
-				case "false":
+				case "false", "0", "no":
 					variables[key] = false
 				default:
 					variables[key] = value

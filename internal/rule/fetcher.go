@@ -129,16 +129,17 @@ func (f *CompositeFetcher) FetchRules(
 
 			select {
 			case semaphore <- struct{}{}:
+				defer func() { <-semaphore }()
 			case <-ctx.Done():
 				return
 			}
-			defer func() { <-semaphore }()
 
 			rule, err := f.FetchRule(ctx, id)
 
 			select {
 			case resultChan <- result{rule: rule, err: err, id: id}:
 			case <-ctx.Done():
+				return
 			}
 		}(ruleID)
 	}

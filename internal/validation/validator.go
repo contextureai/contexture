@@ -166,18 +166,7 @@ func (v *defaultValidator) ValidateRule(rule *domain.Rule) *domain.ValidationRes
 	// Additional trigger validation (avoid duplicating struct validation errors)
 	if rule.Trigger != nil {
 		// Only do custom validation if struct validation passed for the trigger
-		hasStructErrors := false
-		for _, err := range result.Errors {
-			var validationErr *contextureerrors.Error
-			if errors.As(err, &validationErr) {
-				if validationErr.Field == "globs" || validationErr.Field == "type" {
-					hasStructErrors = true
-					break
-				}
-			}
-		}
-
-		if !hasStructErrors {
+		if !v.hasStructErrors(result, "globs", "type") {
 			if err := v.validateTrigger(rule.Trigger); err != nil {
 				result.AddError("trigger", err.Error(), "INVALID_TRIGGER")
 			}
@@ -382,6 +371,21 @@ func (v *defaultValidator) ValidateWithContext(
 }
 
 // Helper methods
+
+// hasStructErrors checks if result contains validation errors for any of the specified fields
+func (v *defaultValidator) hasStructErrors(result *domain.ValidationResult, fields ...string) bool {
+	for _, err := range result.Errors {
+		var validationErr *contextureerrors.Error
+		if errors.As(err, &validationErr) {
+			for _, field := range fields {
+				if validationErr.Field == field {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
 
 func (v *defaultValidator) validateRuleRef(fl validator.FieldLevel) bool {
 	ref, ok := fl.Field().Interface().(domain.RuleRef)

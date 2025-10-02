@@ -156,25 +156,23 @@ func (f *Format) List(config *domain.FormatConfig) ([]*domain.InstalledRule, err
 
 	outputPath := f.getOutputPath(config)
 
-	// Check if file exists
-	exists, err := f.FileExists(outputPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if file exists: %w", err)
-	}
-	if !exists {
-		f.LogDebug("Claude format file does not exist", "path", outputPath)
-		return []*domain.InstalledRule{}, nil
-	}
-
-	// Get file info
+	// Get file info (EAFP - will fail if file doesn't exist)
 	fileInfo, err := f.GetFileInfo(outputPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			f.LogDebug("Claude format file does not exist", "path", outputPath)
+			return []*domain.InstalledRule{}, nil
+		}
 		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
 
 	// Read content to parse individual rules
 	content, err := f.ReadFile(outputPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			f.LogDebug("Claude format file was deleted", "path", outputPath)
+			return []*domain.InstalledRule{}, nil
+		}
 		return nil, fmt.Errorf("failed to read file content: %w", err)
 	}
 
@@ -366,10 +364,28 @@ func (f *Format) extractRuleFromSection(section string) (string, string) {
 func (f *Format) writeWithTemplate(rules []*domain.TransformedRule, config *domain.FormatConfig, outputPath string) error {
 	f.LogDebug("Using custom template for Claude format", "template", config.Template)
 
-	// Get template path - relative to project directory
-	templatePath := config.Template
+	// Get template path - relative to project directory with validation
+	var templatePath string
 	if config.BaseDir != "" {
 		templatePath = filepath.Join(config.BaseDir, config.Template)
+
+		// Validate path is within base directory to prevent path traversal
+		cleanPath, err := filepath.Abs(templatePath)
+		if err != nil {
+			return fmt.Errorf("invalid template path: %w", err)
+		}
+
+		cleanBase, err := filepath.Abs(config.BaseDir)
+		if err != nil {
+			return fmt.Errorf("invalid base directory: %w", err)
+		}
+
+		// Ensure template path is within base directory
+		if !strings.HasPrefix(cleanPath, cleanBase+string(filepath.Separator)) && cleanPath != cleanBase {
+			return fmt.Errorf("template path %q is outside base directory %q", config.Template, config.BaseDir)
+		}
+	} else {
+		templatePath = config.Template
 	}
 
 	// Check if template file exists
@@ -413,10 +429,24 @@ func (f *Format) writeWithTemplate(rules []*domain.TransformedRule, config *doma
 	return nil
 }
 
+// estimateClaudeContentSize estimates the total size needed for the Claude format file
+func (f *Format) estimateClaudeContentSize(rules []*domain.TransformedRule) int {
+	// Start with header + footer overhead
+	size := 1024
+
+	// Add space for each rule's content plus separators
+	for _, rule := range rules {
+		size += len(rule.Content) + 200 // Content + tracking comment + separator overhead
+	}
+
+	return size
+}
+
 // writeWithoutTemplate is the default write behavior (extracted for reuse)
 func (f *Format) writeWithoutTemplate(rules []*domain.TransformedRule, _ *domain.FormatConfig, outputPath string) error {
 	// Combine all rules into a single document
 	var content strings.Builder
+	content.Grow(f.estimateClaudeContentSize(rules))
 
 	// Write header
 	content.WriteString(f.getFileHeader(len(rules)))

@@ -15,6 +15,11 @@ import (
 	"github.com/spf13/afero"
 )
 
+const (
+	// DefaultCacheDirName is the default directory name for contexture cache
+	DefaultCacheDirName = "contexture"
+)
+
 // SimpleCache provides cross-session repository caching with human-readable names
 type SimpleCache struct {
 	fs         afero.Fs
@@ -24,7 +29,7 @@ type SimpleCache struct {
 
 // NewSimpleCache creates a new simple cache
 func NewSimpleCache(fs afero.Fs, repository git.Repository) *SimpleCache {
-	baseDir := filepath.Join(os.TempDir(), "contexture")
+	baseDir := filepath.Join(os.TempDir(), DefaultCacheDirName)
 	return &SimpleCache{
 		fs:         fs,
 		repository: repository,

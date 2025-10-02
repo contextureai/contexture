@@ -41,7 +41,6 @@ type Parser interface {
 // Processor interface for rule processing operations
 type Processor interface {
 	ProcessRule(rule *domain.Rule, context *domain.RuleContext) (*domain.ProcessedRule, error)
-	ProcessRules(rules []*domain.Rule, context *domain.RuleContext) ([]*domain.ProcessedRule, error)
 	ProcessRulesWithContext(
 		ctx context.Context,
 		rules []*domain.Rule,

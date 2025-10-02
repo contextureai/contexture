@@ -3,6 +3,7 @@ package rule
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
@@ -49,14 +50,6 @@ func (p *TemplateProcessor) ProcessRule(
 	return processed, nil
 }
 
-// ProcessRules processes multiple rules concurrently
-func (p *TemplateProcessor) ProcessRules(
-	rules []*domain.Rule,
-	ruleContext *domain.RuleContext,
-) ([]*domain.ProcessedRule, error) {
-	return p.ProcessRulesWithContext(context.Background(), rules, ruleContext)
-}
-
 // ProcessRulesWithContext processes multiple rules concurrently with context cancellation
 func (p *TemplateProcessor) ProcessRulesWithContext(
 	ctx context.Context,
@@ -78,9 +71,12 @@ func (p *TemplateProcessor) ProcessRulesWithContext(
 
 	resultChan := make(chan result, len(rules))
 
-	// Start workers
+	// Start workers with WaitGroup for proper cleanup
+	var wg sync.WaitGroup
 	for i, rule := range rules {
+		wg.Add(1)
 		go func(idx int, r *domain.Rule) {
+			defer wg.Done()
 			processed, err := p.ProcessRule(r, ruleContext)
 			select {
 			case resultChan <- result{processed: processed, err: err, index: idx}:
@@ -89,6 +85,12 @@ func (p *TemplateProcessor) ProcessRulesWithContext(
 			}
 		}(i, rule)
 	}
+
+	// Close channel after all workers complete
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
 	// Collect results in order
 	results := make([]*domain.ProcessedRule, len(rules))

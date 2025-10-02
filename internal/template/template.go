@@ -72,13 +72,23 @@ func (e *templateEngine) Render(templateStr string, variables map[string]any) (s
 	tmpl := template.New("render").Funcs(e.funcMap)
 	tmpl, err := tmpl.Parse(templateStr)
 	if err != nil {
-		return "", fmt.Errorf("template parsing failed: %w", err)
+		// Add template preview for better debugging
+		preview := templateStr
+		if len(preview) > 100 {
+			preview = preview[:100] + "..."
+		}
+		return "", fmt.Errorf("template parsing failed for content %q: %w", preview, err)
 	}
 
 	// Execute template
 	var result strings.Builder
 	if err := tmpl.Execute(&result, variables); err != nil {
-		return "", fmt.Errorf("template rendering failed: %w", err)
+		// Add template preview for better debugging
+		preview := templateStr
+		if len(preview) > 100 {
+			preview = preview[:100] + "..."
+		}
+		return "", fmt.Errorf("template execution failed for content %q: %w", preview, err)
 	}
 
 	log.Debug("Successfully rendered template")
@@ -90,7 +100,12 @@ func (e *templateEngine) ParseAndValidate(templateStr string) error {
 	tmpl := template.New("validate").Funcs(e.funcMap)
 	_, err := tmpl.Parse(templateStr)
 	if err != nil {
-		return fmt.Errorf("template validation failed: %w", err)
+		// Add template preview for better debugging
+		preview := templateStr
+		if len(preview) > 100 {
+			preview = preview[:100] + "..."
+		}
+		return fmt.Errorf("template validation failed for content %q: %w", preview, err)
 	}
 	return nil
 }

@@ -28,8 +28,6 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -555,30 +553,13 @@ func (c *Client) GetCommitInfoByHash(localPath, commitHash string) (*CommitInfo,
 		return nil, fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	// Parse the commit hash - handle both full and short hashes
-	hash := plumbing.NewHash(commitHash)
-	if len(commitHash) == 7 {
-		// If it's a short hash, we need to resolve it to a full hash
-		// For now, we'll assume it's a valid short hash and try to find the commit
-		iter, err := repo.CommitObjects()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get commit objects: %w", err)
-		}
-		defer iter.Close()
-
-		err = iter.ForEach(func(commit *object.Commit) error {
-			if strings.HasPrefix(commit.Hash.String(), commitHash) {
-				hash = commit.Hash
-				return storer.ErrStop // Stop iteration
-			}
-			return nil
-		})
-		if err != nil && !errors.Is(err, storer.ErrStop) {
-			return nil, fmt.Errorf("failed to find commit with hash %s: %w", commitHash, err)
-		}
+	// Resolve commit hash (handles both full and short hashes efficiently)
+	hash, err := repo.ResolveRevision(plumbing.Revision(commitHash))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve commit hash %s: %w", commitHash, err)
 	}
 
-	commit, err := repo.CommitObject(hash)
+	commit, err := repo.CommitObject(*hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get commit object for hash %s: %w", commitHash, err)
 	}
@@ -596,30 +577,14 @@ func (c *Client) GetFileAtCommit(localPath, filePath, commitHash string) ([]byte
 		return nil, fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	// Parse the commit hash - handle both full and short hashes
-	hash := plumbing.NewHash(commitHash)
-	if len(commitHash) == 7 {
-		// If it's a short hash, we need to resolve it to a full hash
-		iter, err := repo.CommitObjects()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get commit objects: %w", err)
-		}
-		defer iter.Close()
-
-		err = iter.ForEach(func(commit *object.Commit) error {
-			if strings.HasPrefix(commit.Hash.String(), commitHash) {
-				hash = commit.Hash
-				return storer.ErrStop // Stop iteration
-			}
-			return nil
-		})
-		if err != nil && !errors.Is(err, storer.ErrStop) {
-			return nil, fmt.Errorf("failed to find commit with hash %s: %w", commitHash, err)
-		}
+	// Resolve commit hash (handles both full and short hashes efficiently)
+	hash, err := repo.ResolveRevision(plumbing.Revision(commitHash))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve commit hash %s: %w", commitHash, err)
 	}
 
 	// Get the commit object
-	commit, err := repo.CommitObject(hash)
+	commit, err := repo.CommitObject(*hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get commit object for hash %s: %w", commitHash, err)
 	}
@@ -702,21 +667,10 @@ func (c *Client) GetRemoteURL(localPath string) (string, error) {
 		return "", fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	// Try to get the remote with retries for transient issues
-	var remote *git.Remote
-	for attempts := range 3 {
-		remote, err = repo.Remote("origin")
-		if err == nil {
-			break
-		}
-		if attempts < 2 {
-			// Small delay between retries
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-
+	// Get the remote configuration
+	remote, err := repo.Remote("origin")
 	if err != nil {
-		return "", fmt.Errorf("failed to get origin remote after retries: %w", err)
+		return "", fmt.Errorf("failed to get origin remote: %w", err)
 	}
 
 	config := remote.Config()

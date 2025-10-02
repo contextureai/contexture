@@ -15,6 +15,18 @@ import (
 	"golang.org/x/term"
 )
 
+const (
+	// DefaultTerminalWidth is the default terminal width for clearing lines
+	DefaultTerminalWidth = 80
+	// DefaultProgressBarWidth is the default width for progress bars
+	DefaultProgressBarWidth = 40
+)
+
+// isTerminal checks if stdout is a terminal (TTY)
+func isTerminal() bool {
+	return term.IsTerminal(int(os.Stdout.Fd()))
+}
+
 // ProgressIndicator provides simple progress feedback for CLI operations.
 type ProgressIndicator struct {
 	spinner  spinner.Model
@@ -33,7 +45,7 @@ func NewProgressIndicator(message string) *ProgressIndicator {
 	s.Style = lipgloss.NewStyle().Foreground(theme.Primary)
 
 	p := progress.New(progress.WithDefaultGradient())
-	p.Width = 40
+	p.Width = DefaultProgressBarWidth
 
 	return &ProgressIndicator{
 		spinner:  s,
@@ -49,6 +61,12 @@ func (pi *ProgressIndicator) Start() {
 	defer pi.mu.Unlock()
 
 	if pi.done {
+		return
+	}
+
+	// Only show interactive spinner in TTY
+	if !isTerminal() {
+		fmt.Printf("%s\n", pi.message)
 		return
 	}
 
@@ -68,8 +86,15 @@ func (pi *ProgressIndicator) Update(percent float64, message string) {
 		pi.message = message
 	}
 
+	// Only show interactive progress bar in TTY
+	if !isTerminal() {
+		// Simple log output for non-TTY (CI/CD, files, etc.)
+		fmt.Printf("%s (%.0f%%)\n", pi.message, percent*100)
+		return
+	}
+
 	// Clear the line and show progress bar
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
+	fmt.Printf("\r%s", strings.Repeat(" ", DefaultTerminalWidth))
 	fmt.Printf("\r%s %s", pi.progress.ViewAs(percent), pi.message)
 }
 
@@ -86,8 +111,15 @@ func (pi *ProgressIndicator) UpdateSpinner(message string) {
 		pi.message = message
 	}
 
+	// Only show interactive spinner in TTY
+	if !isTerminal() {
+		// Simple log output for non-TTY
+		fmt.Printf("%s\n", pi.message)
+		return
+	}
+
 	// Clear the line and show spinner
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
+	fmt.Printf("\r%s", strings.Repeat(" ", DefaultTerminalWidth))
 	fmt.Printf("\r%s %s", pi.spinner.View(), pi.message)
 }
 
@@ -103,8 +135,14 @@ func (pi *ProgressIndicator) Finish(message string) {
 	pi.done = true
 
 	successStyle := lipgloss.NewStyle().Foreground(pi.theme.Success)
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
-	fmt.Printf("\r%s %s\n", successStyle.Render("✓"), message)
+
+	// Only clear line in TTY
+	if isTerminal() {
+		fmt.Printf("\r%s", strings.Repeat(" ", DefaultTerminalWidth))
+		fmt.Printf("\r%s %s\n", successStyle.Render("✓"), message)
+	} else {
+		fmt.Printf("✓ %s\n", message)
+	}
 }
 
 // FinishWithError completes the progress indicator with an error
@@ -119,8 +157,14 @@ func (pi *ProgressIndicator) FinishWithError(message string) {
 	pi.done = true
 
 	errorStyle := lipgloss.NewStyle().Foreground(pi.theme.Error)
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
-	fmt.Printf("\r%s %s\n", errorStyle.Render("✗"), message)
+
+	// Only clear line in TTY
+	if isTerminal() {
+		fmt.Printf("\r%s", strings.Repeat(" ", DefaultTerminalWidth))
+		fmt.Printf("\r%s %s\n", errorStyle.Render("✗"), message)
+	} else {
+		fmt.Printf("✗ %s\n", message)
+	}
 }
 
 // BubblesSpinner provides a spinner using bubbles components (no manual goroutines).
@@ -184,7 +228,7 @@ func (s *BubblesSpinner) Stop(finalMessage string) {
 	s.done = true
 
 	// Clear line and show final message
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
+	fmt.Printf("\r%s", strings.Repeat(" ", DefaultTerminalWidth))
 	if finalMessage != "" {
 		successStyle := lipgloss.NewStyle().Foreground(s.theme.Success)
 		fmt.Printf("\r%s %s\n", successStyle.Render("✓"), finalMessage)
@@ -205,7 +249,7 @@ func (s *BubblesSpinner) StopWithError(errorMessage string) {
 	s.done = true
 
 	// Clear line and show error message
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
+	fmt.Printf("\r%s", strings.Repeat(" ", DefaultTerminalWidth))
 	if errorMessage != "" {
 		errorStyle := lipgloss.NewStyle().Foreground(s.theme.Error)
 		fmt.Printf("\r%s %s\n", errorStyle.Render("✗"), errorMessage)
@@ -221,7 +265,7 @@ func ProgressBar(current, total int, message string) {
 	}
 
 	percent := float64(current) / float64(total)
-	width := 40
+	width := DefaultProgressBarWidth
 	filled := int(percent * float64(width))
 
 	// Ensure filled doesn't exceed width to avoid negative repeat counts

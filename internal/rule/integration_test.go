@@ -208,7 +208,7 @@ Third rule content.`
 			},
 		}
 
-		processedRules, err := processor.ProcessRules(rules, ruleContext)
+		processedRules, err := processor.ProcessRulesWithContext(ctx, rules, ruleContext)
 		require.NoError(t, err)
 		assert.Len(t, processedRules, 3)
 

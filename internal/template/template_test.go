@@ -113,7 +113,7 @@ func TestTemplateEngine_Render(t *testing.T) {
 				"func": func() {},
 			},
 			wantErr: true,
-			errMsg:  "template rendering failed",
+			errMsg:  "template execution failed",
 		},
 		{
 			name:      "empty template",
@@ -684,7 +684,7 @@ func TestErrorHandling(t *testing.T) {
 
 		_, err := engine.Render(template, vars)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "template rendering failed")
+		assert.Contains(t, err.Error(), "template execution failed")
 	})
 
 	// Test with function that returns error
