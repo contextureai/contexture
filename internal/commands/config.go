@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/ui"
@@ -45,7 +46,7 @@ func (c *MainConfigCommand) Execute(_ context.Context, _ *cli.Command) error {
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get current directory")
 	}
 
 	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)

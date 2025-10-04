@@ -1,8 +1,9 @@
 package rule
 
 import (
-	"fmt"
 	"time"
+
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/go-playground/validator/v10"
@@ -41,16 +42,16 @@ func DefaultConfig() *Config {
 func (c *Config) Validate() error {
 	validate := validator.New()
 	if err := validate.Struct(c); err != nil {
-		return fmt.Errorf("configuration validation failed: %w", err)
+		return contextureerrors.Wrap(err, "configuration validation failed")
 	}
 
 	// Additional business logic validation
 	if c.CacheEnabled && c.CacheTTL == 0 {
-		return fmt.Errorf("cache TTL must be greater than 0 when cache is enabled")
+		return contextureerrors.ValidationErrorf("CacheTTL", "cache TTL must be greater than 0 when cache is enabled")
 	}
 
 	if c.EnableConcurrency && c.MaxWorkers < 1 {
-		return fmt.Errorf("max workers must be at least 1 when concurrency is enabled")
+		return contextureerrors.ValidationErrorf("MaxWorkers", "max workers must be at least 1 when concurrency is enabled")
 	}
 
 	return nil

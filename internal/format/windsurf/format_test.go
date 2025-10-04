@@ -27,12 +27,12 @@ func TestNewFormatWithMode(t *testing.T) {
 
 	t.Run("single file mode", func(t *testing.T) {
 		f := NewFormatWithMode(fs, ModeSingleFile)
-		assert.Equal(t, ModeSingleFile, f.mode)
+		assert.Equal(t, ModeSingleFile, f.GetMode())
 	})
 
 	t.Run("multi file mode", func(t *testing.T) {
 		f := NewFormatWithMode(fs, ModeMultiFile)
-		assert.Equal(t, ModeMultiFile, f.mode)
+		assert.Equal(t, ModeMultiFile, f.GetMode())
 	})
 }
 

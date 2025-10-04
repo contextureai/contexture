@@ -33,18 +33,12 @@ func TestRemoveAction(t *testing.T) {
 		Context: context.Background(),
 	}
 
-	// Create a context with empty arguments to simulate CLI with no args
-	ctx := context.Background()
-
 	// Test with no arguments (should show usage information)
-	app := &cli.Command{
-		Name: "test",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return RemoveAction(ctx, cmd, deps)
-		},
-	}
+	app := createTestApp(func(ctx context.Context, cmd *cli.Command) error {
+		return RemoveAction(ctx, cmd, deps)
+	})
 
-	err := app.Run(ctx, []string{"test"})
+	err := runTestApp(app)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no rule IDs provided")
 }
@@ -67,7 +61,7 @@ func TestRemoveCommand_Execute_NoConfig(t *testing.T) {
 	// Test with no project configuration (should fail)
 	err := cmd.Execute(context.Background(), cliCmd, []string{"[contexture:test/rule]"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no project configuration found")
+	assert.Contains(t, err.Error(), "no configuration file found")
 }
 
 func TestRemoveCommand_CustomSourceRules(t *testing.T) {

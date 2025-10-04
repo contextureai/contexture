@@ -1,12 +1,12 @@
 package rule
 
 import (
-	"fmt"
 	"maps"
 	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/validation"
 	"gopkg.in/yaml.v3"
 )
@@ -39,7 +39,7 @@ func (p *YAMLParser) ParseRule(content string, metadata Metadata) (*domain.Rule,
 	// Parse frontmatter and body
 	frontmatter, body, err := p.ParseContent(content)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse content: %w", err)
+		return nil, contextureerrors.Wrap(err, "parse rule content")
 	}
 
 	// Create rule with metadata
@@ -55,7 +55,7 @@ func (p *YAMLParser) ParseRule(content string, metadata Metadata) (*domain.Rule,
 	// Use struct-based frontmatter parsing
 	fm := &ruleFrontmatter{}
 	if err := p.unmarshalFrontmatter(frontmatter, fm); err != nil {
-		return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
+		return nil, contextureerrors.Wrap(err, "parse frontmatter")
 	}
 
 	// Map frontmatter to rule
@@ -96,13 +96,13 @@ func (p *YAMLParser) ParseContent(content string) (map[string]any, string, error
 	// Find end of frontmatter
 	parts := strings.SplitN(content, "\n---\n", 2)
 	if len(parts) != 2 {
-		return nil, "", fmt.Errorf("invalid frontmatter format: missing closing ---")
+		return nil, "", contextureerrors.WithOpf("parse content", "invalid frontmatter format: missing closing ---")
 	}
 
 	// Parse YAML frontmatter
 	var frontmatter map[string]any
 	if err := yaml.Unmarshal([]byte(parts[0]), &frontmatter); err != nil {
-		return nil, "", fmt.Errorf("failed to parse YAML frontmatter: %w", err)
+		return nil, "", contextureerrors.Wrap(err, "parse YAML frontmatter")
 	}
 
 	// Return frontmatter and body
@@ -118,7 +118,7 @@ func (p *YAMLParser) ValidateRule(rule *domain.Rule) error {
 		for _, err := range result.Errors {
 			errMsgs = append(errMsgs, err.Error())
 		}
-		return fmt.Errorf("validation errors: %s", strings.Join(errMsgs, ", "))
+		return contextureerrors.WithOpf("validate rule", "validation errors: %s", strings.Join(errMsgs, ", "))
 	}
 	return nil
 }
@@ -127,17 +127,17 @@ func (p *YAMLParser) ValidateRule(rule *domain.Rule) error {
 
 // ParseRule returns an error for FailsafeParser
 func (f *FailsafeParser) ParseRule(_ string, _ Metadata) (*domain.Rule, error) {
-	return nil, fmt.Errorf("parser initialization failed: %w", f.err)
+	return nil, contextureerrors.Wrap(f.err, "parser initialization failed")
 }
 
 // ParseContent returns an error for FailsafeParser
 func (f *FailsafeParser) ParseContent(_ string) (map[string]any, string, error) {
-	return nil, "", fmt.Errorf("parser initialization failed: %w", f.err)
+	return nil, "", contextureerrors.Wrap(f.err, "parser initialization failed")
 }
 
 // ValidateRule returns an error for FailsafeParser
 func (f *FailsafeParser) ValidateRule(_ *domain.Rule) error {
-	return fmt.Errorf("parser initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "parser initialization failed")
 }
 
 // unmarshalFrontmatter unmarshals frontmatter into a struct
@@ -148,11 +148,11 @@ func (p *YAMLParser) unmarshalFrontmatter(
 	// Convert map to YAML bytes then unmarshal to struct
 	yamlBytes, err := yaml.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to marshal frontmatter: %w", err)
+		return contextureerrors.Wrap(err, "marshal frontmatter")
 	}
 
 	if err := yaml.Unmarshal(yamlBytes, fm); err != nil {
-		return fmt.Errorf("failed to unmarshal frontmatter: %w", err)
+		return contextureerrors.Wrap(err, "unmarshal frontmatter")
 	}
 
 	return nil
@@ -202,7 +202,7 @@ func (p *YAMLParser) parseTrigger(trigger any) (*domain.RuleTrigger, error) {
 		case "model":
 			ruleTrigger.Type = domain.TriggerModel
 		default:
-			return nil, fmt.Errorf("invalid trigger type: %s", triggerStr)
+			return nil, contextureerrors.WithOpf("parse trigger", "invalid trigger type: %s", triggerStr)
 		}
 		return ruleTrigger, nil
 	}
@@ -210,7 +210,7 @@ func (p *YAMLParser) parseTrigger(trigger any) (*domain.RuleTrigger, error) {
 	// Handle object format
 	triggerMap, ok := trigger.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("trigger must be string or object")
+		return nil, contextureerrors.WithOpf("parse trigger", "trigger must be string or object")
 	}
 
 	ruleTrigger := &domain.RuleTrigger{}
@@ -227,10 +227,10 @@ func (p *YAMLParser) parseTrigger(trigger any) (*domain.RuleTrigger, error) {
 		case "model":
 			ruleTrigger.Type = domain.TriggerModel
 		default:
-			return nil, fmt.Errorf("invalid trigger type: %s", triggerType)
+			return nil, contextureerrors.WithOpf("parse trigger", "invalid trigger type: %s", triggerType)
 		}
 	} else {
-		return nil, fmt.Errorf("trigger type is required")
+		return nil, contextureerrors.WithOpf("parse trigger", "trigger type is required")
 	}
 
 	// Parse globs for glob trigger
@@ -242,7 +242,7 @@ func (p *YAMLParser) parseTrigger(trigger any) (*domain.RuleTrigger, error) {
 			}
 			ruleTrigger.Globs = globList
 		} else {
-			return nil, fmt.Errorf("glob trigger requires globs field")
+			return nil, contextureerrors.WithOpf("parse trigger", "glob trigger requires globs field")
 		}
 	}
 
@@ -258,7 +258,7 @@ func (p *YAMLParser) parseStringSlice(value any, fieldName string) ([]string, er
 			if s, ok := item.(string); ok {
 				result[i] = s
 			} else {
-				return nil, fmt.Errorf("%s[%d] must be string", fieldName, i)
+				return nil, contextureerrors.WithOpf("parse string slice", "%s[%d] must be string", fieldName, i)
 			}
 		}
 		return result, nil
@@ -268,6 +268,6 @@ func (p *YAMLParser) parseStringSlice(value any, fieldName string) ([]string, er
 		// Single string -> slice with one element
 		return []string{v}, nil
 	default:
-		return nil, fmt.Errorf("%s must be string or array of strings", fieldName)
+		return nil, contextureerrors.WithOpf("parse string slice", "%s must be string or array of strings", fieldName)
 	}
 }

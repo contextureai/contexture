@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/template"
 	"github.com/spf13/afero"
@@ -80,59 +81,14 @@ func (bf *Base) ValidateRule(rule *domain.Rule) *domain.ValidationResult {
 	return result
 }
 
-// ProcessTemplate processes template content with common variables
-func (bf *Base) ProcessTemplate(rule *domain.Rule, templateContent string) (string, error) {
-	// Create template variables
-	variables := map[string]any{
-		"rule":        rule,
-		"id":          rule.ID,
-		"title":       rule.Title,
-		"description": rule.Description,
-		"tags":        rule.Tags,
-		"content":     rule.Content,
-		"source":      rule.Source,
-		"ref":         rule.Ref,
-		"languages":   rule.Languages,
-		"frameworks":  rule.Frameworks,
-	}
-
-	// Add variables from the parsed rule ID if they exist
-	if rule.Variables != nil {
-		for key, value := range rule.Variables {
-			variables[key] = value
-		}
-	}
-
-	log.Debug("Template variables", "id", rule.ID, "title", rule.Title, "id_length", len(rule.ID))
-
-	// Process the template
-	content, err := bf.templateEngine.Render(templateContent, variables)
-	if err != nil {
-		return "", fmt.Errorf("failed to render template: %w", err)
-	}
-
-	// Get safe slice for debugging (last 200 chars or full content if shorter)
-	var lastChars string
-	if len(content) > 200 {
-		lastChars = content[len(content)-200:]
-	} else {
-		lastChars = content
-	}
-
-	log.Debug("Template rendered",
-		"content_length", len(content),
-		"last_200_chars", lastChars)
-
-	return content, nil
-}
-
-// ProcessTemplateWithVars processes template content with common variables plus additional ones
-func (bf *Base) ProcessTemplateWithVars(
+// ProcessTemplate processes template content with common variables and optional additional variables
+// This is the unified template processing method that consolidates all template rendering logic.
+func (bf *Base) ProcessTemplate(
 	rule *domain.Rule,
 	templateContent string,
-	additionalVars map[string]any,
+	additionalVars ...map[string]any,
 ) (string, error) {
-	// Create template variables
+	// Create base template variables
 	variables := map[string]any{
 		"rule":        rule,
 		"id":          rule.ID,
@@ -159,10 +115,10 @@ func (bf *Base) ProcessTemplateWithVars(
 		for key, value := range rule.Variables {
 			// Convert string booleans to actual booleans for proper template logic
 			if strVal, ok := value.(string); ok {
-				switch strVal {
-				case "true":
+				switch strings.ToLower(strVal) {
+				case "true", "1", "yes":
 					variables[key] = true
-				case "false":
+				case "false", "0", "no":
 					variables[key] = false
 				default:
 					variables[key] = value
@@ -173,91 +129,17 @@ func (bf *Base) ProcessTemplateWithVars(
 		}
 	}
 
-	// Add additional variables (they can override base ones if needed)
-	for key, value := range additionalVars {
-		variables[key] = value
-	}
-
-	// Process the template
-	content, err := bf.templateEngine.Render(templateContent, variables)
-	if err != nil {
-		return "", fmt.Errorf("failed to render template: %w", err)
-	}
-
-	return content, nil
-}
-
-// ProcessTextTemplate processes a template using text/template only (no HTML escaping)
-func (bf *Base) ProcessTextTemplate(
-	rule *domain.Rule,
-	templateContent string,
-) (string, error) {
-	// Create template variables
-	variables := map[string]any{
-		"rule":        rule,
-		"id":          rule.ID,
-		"title":       rule.Title,
-		"description": rule.Description,
-		"tags":        rule.Tags,
-		"content":     rule.Content,
-		"source":      rule.Source,
-		"ref":         rule.Ref,
-		"languages":   rule.Languages,
-		"frameworks":  rule.Frameworks,
-	}
-
-	// Add variables from the parsed rule ID if they exist
-	if rule.Variables != nil {
-		for key, value := range rule.Variables {
+	// Add additional variables if provided (they can override base ones if needed)
+	if len(additionalVars) > 0 && additionalVars[0] != nil {
+		for key, value := range additionalVars[0] {
 			variables[key] = value
 		}
 	}
 
-	// Render template (all rendering is text-based, no HTML escaping)
+	// Process the template (all rendering is text-based, no HTML escaping)
 	content, err := bf.templateEngine.Render(templateContent, variables)
 	if err != nil {
-		return "", fmt.Errorf("failed to render text template: %w", err)
-	}
-
-	return content, nil
-}
-
-// ProcessTextTemplateWithVars processes a template with additional variables using text/template only
-func (bf *Base) ProcessTextTemplateWithVars(
-	rule *domain.Rule,
-	templateContent string,
-	additionalVars map[string]any,
-) (string, error) {
-	// Create template variables
-	variables := map[string]any{
-		"rule":        rule,
-		"id":          rule.ID,
-		"title":       rule.Title,
-		"description": rule.Description,
-		"tags":        rule.Tags,
-		"content":     rule.Content,
-		"source":      rule.Source,
-		"ref":         rule.Ref,
-		"languages":   rule.Languages,
-		"frameworks":  rule.Frameworks,
-	}
-
-	// Add variables from the parsed rule ID if they exist
-	if rule.Variables != nil {
-		for key, value := range rule.Variables {
-			variables[key] = value
-		}
-	}
-
-	// Add additional variables (they can override base ones if needed)
-	for key, value := range additionalVars {
-		variables[key] = value
-	}
-
-	// Render template (all rendering is text-based, no HTML escaping)
-	content, err := bf.templateEngine.Render(templateContent, variables)
-	if err != nil {
-		return "", fmt.Errorf("failed to render text template: %w", err)
+		return "", contextureerrors.Wrap(err, "base.ProcessTemplate")
 	}
 
 	return content, nil
@@ -352,7 +234,7 @@ func (bf *Base) EnsureDirectory(dir string) error {
 func (bf *Base) WriteFile(path string, content []byte) error {
 	dir := filepath.Dir(path)
 	if err := bf.EnsureDirectory(dir); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+		return contextureerrors.Wrap(err, "base.WriteFile")
 	}
 
 	return afero.WriteFile(bf.fs, path, content, domain.FilePermission)
@@ -522,7 +404,11 @@ func (bf *Base) ParseTrackingComment(content string) (string, error) {
 	matches := domain.TrackingCommentRegex.FindStringSubmatch(content)
 
 	if len(matches) != 2 {
-		return "", fmt.Errorf("invalid tracking comment format")
+		return "", &contextureerrors.Error{
+			Op:      "base.ParseTrackingComment",
+			Kind:    contextureerrors.KindFormat,
+			Message: "invalid tracking comment format",
+		}
 	}
 
 	return strings.TrimSpace(matches[1]), nil

@@ -17,7 +17,6 @@ package git
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -26,10 +25,9 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -278,7 +276,7 @@ func (p *DefaultAuthProvider) GetAuth(repoURL string) (transport.AuthMethod, err
 			}
 		}
 
-		return nil, fmt.Errorf("%w: SSH agent authentication failed and no usable SSH keys found", ErrAuthFailed)
+		return nil, contextureerrors.Wrap(ErrAuthFailed, "ssh_auth")
 	}
 
 	// HTTPS authentication with domain restrictions
@@ -287,7 +285,7 @@ func (p *DefaultAuthProvider) GetAuth(repoURL string) (transport.AuthMethod, err
 		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 			parsed, err := url.Parse(repoURL)
 			if err != nil {
-				return nil, fmt.Errorf("%w: failed to parse URL: %w", ErrInvalidURL, err)
+				return nil, contextureerrors.Wrap(err, "parse_url")
 			}
 			// Strict host checking - prevent subdomain attacks
 			if parsed.Host == "github.com" {
@@ -320,9 +318,9 @@ func (p *DefaultAuthProvider) trySSHKeyFile(keyPath string) (transport.AuthMetho
 	// Check if key file exists using afero filesystem
 	if _, err := p.fs.Stat(keyPath); err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("SSH key file not found: %s", keyPath)
+			return nil, contextureerrors.ValidationErrorf("ssh_key", "file not found: %s", keyPath)
 		}
-		return nil, fmt.Errorf("error checking SSH key file %s: %w", keyPath, err)
+		return nil, contextureerrors.Wrap(err, "check_ssh_key")
 	}
 
 	// Try to load the key without a passphrase first
@@ -335,7 +333,7 @@ func (p *DefaultAuthProvider) trySSHKeyFile(keyPath string) (transport.AuthMetho
 	// For now, we don't support encrypted keys in the fallback mechanism
 	// to avoid prompting for passphrases in non-interactive contexts
 	log.Debug("Failed to load SSH key (may be encrypted)", "path", keyPath, "error", err)
-	return nil, fmt.Errorf("failed to load SSH key from %s: %w", keyPath, err)
+	return nil, contextureerrors.Wrap(err, "load_ssh_key")
 }
 
 // extractHostnameFromSSHURL extracts the hostname from an SSH URL like "git@github.com:user/repo.git"
@@ -396,7 +394,7 @@ func (c *Client) Clone(
 
 	// Validate URL with security checks
 	if err := c.ValidateURL(repoURL); err != nil {
-		return fmt.Errorf("clone failed: %w", err)
+		return contextureerrors.Wrap(err, "clone")
 	}
 
 	// Set up timeout context
@@ -405,13 +403,13 @@ func (c *Client) Clone(
 
 	// Ensure parent directory exists
 	if err := c.createParentDir(localPath); err != nil {
-		return fmt.Errorf("clone failed: %w", err)
+		return contextureerrors.Wrap(err, "clone")
 	}
 
 	// Set up authentication
 	auth, err := c.config.AuthProvider.GetAuth(repoURL)
 	if err != nil {
-		return fmt.Errorf("clone failed: %w", err)
+		return contextureerrors.Wrap(err, "clone")
 	}
 
 	// Build clone options
@@ -448,31 +446,31 @@ func (c *Client) Pull(ctx context.Context, localPath string, opts ...PullOption)
 	// Open repository
 	repo, err := git.PlainOpen(localPath)
 	if err != nil {
-		return fmt.Errorf("pull failed: %w: %w", ErrNotARepository, err)
+		return contextureerrors.Wrap(err, "pull")
 	}
 
 	// Get remote URL for authentication
 	remoteURL, err := c.GetRemoteURL(localPath)
 	if err != nil {
-		return fmt.Errorf("pull failed: failed to get remote URL: %w", err)
+		return contextureerrors.Wrap(err, "pull")
 	}
 
 	// Set up authentication
 	auth, err := c.config.AuthProvider.GetAuth(remoteURL)
 	if err != nil {
-		return fmt.Errorf("pull failed: %w", err)
+		return contextureerrors.Wrap(err, "pull")
 	}
 
 	// Get working tree
 	worktree, err := repo.Worktree()
 	if err != nil {
-		return fmt.Errorf("pull failed: failed to get worktree: %w", err)
+		return contextureerrors.Wrap(err, "pull")
 	}
 
 	// Checkout branch if specified
 	if config.Branch != "" {
 		if err := c.checkoutBranch(localPath, config.Branch); err != nil {
-			return fmt.Errorf("pull failed: failed to checkout branch %s: %w", config.Branch, err)
+			return contextureerrors.Wrap(err, "pull")
 		}
 	}
 
@@ -487,7 +485,7 @@ func (c *Client) Pull(ctx context.Context, localPath string, opts ...PullOption)
 	// Perform pull
 	err = worktree.PullContext(ctx, pullOptions)
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return fmt.Errorf("pull failed: %w", err)
+		return contextureerrors.Wrap(err, "pull")
 	}
 
 	return nil
@@ -497,12 +495,12 @@ func (c *Client) Pull(ctx context.Context, localPath string, opts ...PullOption)
 func (c *Client) GetLatestCommitHash(localPath, branch string) (string, error) {
 	repo, err := git.PlainOpen(localPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open repository: %w", err)
+		return "", contextureerrors.Wrap(err, "open_repository")
 	}
 
 	ref, err := c.resolveReference(repo, branch)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve reference: %w", err)
+		return "", contextureerrors.Wrap(err, "resolve_reference")
 	}
 
 	return ref.Hash().String(), nil
@@ -512,17 +510,17 @@ func (c *Client) GetLatestCommitHash(localPath, branch string) (string, error) {
 func (c *Client) GetFileCommitInfo(localPath, filePath, branch string) (*CommitInfo, error) {
 	repo, err := git.PlainOpen(localPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open repository: %w", err)
+		return nil, contextureerrors.Wrap(err, "open_repository")
 	}
 
 	ref, err := c.resolveReference(repo, branch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve reference: %w", err)
+		return nil, contextureerrors.Wrap(err, "resolve_reference")
 	}
 
 	commit, err := repo.CommitObject(ref.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get commit object: %w", err)
+		return nil, contextureerrors.Wrap(err, "get_commit")
 	}
 
 	// Use log to find the latest commit that touches this file
@@ -531,7 +529,7 @@ func (c *Client) GetFileCommitInfo(localPath, filePath, branch string) (*CommitI
 		FileName: &filePath,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file history: %w", err)
+		return nil, contextureerrors.Wrap(err, "get_file_history")
 	}
 	defer iter.Close()
 
@@ -552,35 +550,18 @@ func (c *Client) GetFileCommitInfo(localPath, filePath, branch string) (*CommitI
 func (c *Client) GetCommitInfoByHash(localPath, commitHash string) (*CommitInfo, error) {
 	repo, err := git.PlainOpen(localPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open repository: %w", err)
+		return nil, contextureerrors.Wrap(err, "open_repository")
 	}
 
-	// Parse the commit hash - handle both full and short hashes
-	hash := plumbing.NewHash(commitHash)
-	if len(commitHash) == 7 {
-		// If it's a short hash, we need to resolve it to a full hash
-		// For now, we'll assume it's a valid short hash and try to find the commit
-		iter, err := repo.CommitObjects()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get commit objects: %w", err)
-		}
-		defer iter.Close()
-
-		err = iter.ForEach(func(commit *object.Commit) error {
-			if strings.HasPrefix(commit.Hash.String(), commitHash) {
-				hash = commit.Hash
-				return storer.ErrStop // Stop iteration
-			}
-			return nil
-		})
-		if err != nil && !errors.Is(err, storer.ErrStop) {
-			return nil, fmt.Errorf("failed to find commit with hash %s: %w", commitHash, err)
-		}
-	}
-
-	commit, err := repo.CommitObject(hash)
+	// Resolve commit hash (handles both full and short hashes efficiently)
+	hash, err := repo.ResolveRevision(plumbing.Revision(commitHash))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get commit object for hash %s: %w", commitHash, err)
+		return nil, contextureerrors.Wrap(err, "resolve_commit")
+	}
+
+	commit, err := repo.CommitObject(*hash)
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "get_commit")
 	}
 
 	return &CommitInfo{
@@ -593,53 +574,37 @@ func (c *Client) GetCommitInfoByHash(localPath, commitHash string) (*CommitInfo,
 func (c *Client) GetFileAtCommit(localPath, filePath, commitHash string) ([]byte, error) {
 	repo, err := git.PlainOpen(localPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open repository: %w", err)
+		return nil, contextureerrors.Wrap(err, "open_repository")
 	}
 
-	// Parse the commit hash - handle both full and short hashes
-	hash := plumbing.NewHash(commitHash)
-	if len(commitHash) == 7 {
-		// If it's a short hash, we need to resolve it to a full hash
-		iter, err := repo.CommitObjects()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get commit objects: %w", err)
-		}
-		defer iter.Close()
-
-		err = iter.ForEach(func(commit *object.Commit) error {
-			if strings.HasPrefix(commit.Hash.String(), commitHash) {
-				hash = commit.Hash
-				return storer.ErrStop // Stop iteration
-			}
-			return nil
-		})
-		if err != nil && !errors.Is(err, storer.ErrStop) {
-			return nil, fmt.Errorf("failed to find commit with hash %s: %w", commitHash, err)
-		}
+	// Resolve commit hash (handles both full and short hashes efficiently)
+	hash, err := repo.ResolveRevision(plumbing.Revision(commitHash))
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "resolve_commit")
 	}
 
 	// Get the commit object
-	commit, err := repo.CommitObject(hash)
+	commit, err := repo.CommitObject(*hash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get commit object for hash %s: %w", commitHash, err)
+		return nil, contextureerrors.Wrap(err, "get_commit")
 	}
 
 	// Get the file tree for this commit
 	tree, err := commit.Tree()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tree for commit %s: %w", commitHash, err)
+		return nil, contextureerrors.Wrap(err, "get_tree")
 	}
 
 	// Get the file from the tree
 	file, err := tree.File(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file %s at commit %s: %w", filePath, commitHash, err)
+		return nil, contextureerrors.Wrap(err, "get_file")
 	}
 
 	// Read the file contents
 	reader, err := file.Reader()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file reader for %s: %w", filePath, err)
+		return nil, contextureerrors.Wrap(err, "read_file")
 	}
 	defer func() {
 		_ = reader.Close() // Ignore error since content was already read successfully
@@ -649,7 +614,7 @@ func (c *Client) GetFileAtCommit(localPath, filePath, commitHash string) ([]byte
 	content := make([]byte, file.Size)
 	_, err = reader.Read(content)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file content: %w", err)
+		return nil, contextureerrors.Wrap(err, "read_content")
 	}
 
 	return content, nil
@@ -658,14 +623,14 @@ func (c *Client) GetFileAtCommit(localPath, filePath, commitHash string) ([]byte
 // ValidateURL validates a git repository URL with comprehensive security checks
 func (c *Client) ValidateURL(repoURL string) error {
 	if repoURL == "" {
-		return fmt.Errorf("%w: empty repository URL", ErrInvalidURL)
+		return contextureerrors.Wrap(ErrInvalidURL, "validate_url")
 	}
 
 	// Handle SSH URLs with regex validation
 	if strings.HasPrefix(repoURL, "git@") {
 		matches := c.sshURLRegex.FindStringSubmatch(repoURL)
 		if len(matches) != 3 {
-			return fmt.Errorf("%w: invalid SSH URL format", ErrInvalidURL)
+			return contextureerrors.Wrap(ErrInvalidURL, "validate_url")
 		}
 		host := matches[1]
 		return c.validateHost(host, "ssh")
@@ -675,7 +640,8 @@ func (c *Client) ValidateURL(repoURL string) error {
 	if strings.HasPrefix(repoURL, "http://") || strings.HasPrefix(repoURL, "https://") {
 		parsed, err := url.Parse(repoURL)
 		if err != nil {
-			return fmt.Errorf("%w: invalid HTTP URL: %w", ErrInvalidURL, err)
+			// Wrap with ErrInvalidURL to preserve the sentinel error type
+			return contextureerrors.Wrap(ErrInvalidURL, "validate_url")
 		}
 
 		scheme := "https"
@@ -686,7 +652,7 @@ func (c *Client) ValidateURL(repoURL string) error {
 		return c.validateHost(parsed.Host, scheme)
 	}
 
-	return fmt.Errorf("%w: supported schemes are %v", ErrUnsupportedScheme, c.config.AllowedSchemes)
+	return contextureerrors.Wrap(ErrUnsupportedScheme, "validate_url")
 }
 
 // IsValidRepository checks if the path contains a valid git repository
@@ -699,29 +665,18 @@ func (c *Client) IsValidRepository(localPath string) bool {
 func (c *Client) GetRemoteURL(localPath string) (string, error) {
 	repo, err := git.PlainOpen(localPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open repository: %w", err)
+		return "", contextureerrors.Wrap(err, "open_repository")
 	}
 
-	// Try to get the remote with retries for transient issues
-	var remote *git.Remote
-	for attempts := range 3 {
-		remote, err = repo.Remote("origin")
-		if err == nil {
-			break
-		}
-		if attempts < 2 {
-			// Small delay between retries
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-
+	// Get the remote configuration
+	remote, err := repo.Remote("origin")
 	if err != nil {
-		return "", fmt.Errorf("failed to get origin remote after retries: %w", err)
+		return "", contextureerrors.Wrap(err, "get_remote")
 	}
 
 	config := remote.Config()
 	if len(config.URLs) == 0 {
-		return "", fmt.Errorf("no URLs configured for origin remote")
+		return "", contextureerrors.ValidationErrorf("remote", "no URLs configured for origin")
 	}
 
 	return config.URLs[0], nil
@@ -744,7 +699,7 @@ func (c *Client) setupTimeout(
 func (c *Client) createParentDir(localPath string) error {
 	parentDir := filepath.Dir(localPath)
 	if err := c.fs.MkdirAll(parentDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create parent directory %s: %w", parentDir, err)
+		return contextureerrors.Wrap(err, "create_dir")
 	}
 	return nil
 }
@@ -760,12 +715,7 @@ func (c *Client) validateHost(host, scheme string) error {
 		}
 	}
 	if !schemeAllowed {
-		return fmt.Errorf(
-			"%w: scheme %q not in allowlist %v",
-			ErrUnsupportedScheme,
-			scheme,
-			c.config.AllowedSchemes,
-		)
+		return contextureerrors.Wrap(ErrUnsupportedScheme, "validate_host")
 	}
 
 	// Check host allowlist if configured
@@ -778,12 +728,7 @@ func (c *Client) validateHost(host, scheme string) error {
 			}
 		}
 		if !hostAllowed {
-			return fmt.Errorf(
-				"%w: host %q not in allowlist %v",
-				ErrUnauthorizedHost,
-				host,
-				c.config.AllowedHosts,
-			)
+			return contextureerrors.Wrap(ErrUnauthorizedHost, "validate_host")
 		}
 	}
 
@@ -839,23 +784,23 @@ func (c *Client) handleCloneError(localPath string, err error, repoURL string) e
 
 	// Translate common git errors to user-friendly messages
 	if errors.Is(err, transport.ErrEmptyRemoteRepository) {
-		return fmt.Errorf("repository is empty")
+		return contextureerrors.ValidationErrorf("repository", "repository is empty")
 	}
 	if errors.Is(err, transport.ErrRepositoryNotFound) {
 		// For SSH URLs, repository not found might be an authentication issue
 		if strings.HasPrefix(repoURL, "git@") {
-			return fmt.Errorf("repository not found (may be due to authentication issues)")
+			return contextureerrors.ValidationErrorf("repository", "repository not found (may be due to authentication issues)")
 		}
-		return fmt.Errorf("repository not found")
+		return contextureerrors.ValidationErrorf("repository", "repository not found")
 	}
 	if errors.Is(err, transport.ErrAuthenticationRequired) {
-		return fmt.Errorf("%w: authentication required", ErrAuthFailed)
+		return contextureerrors.Wrap(ErrAuthFailed, "clone")
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return fmt.Errorf("clone operation timed out")
+		return contextureerrors.Wrap(contextureerrors.ErrTimeout, "clone")
 	}
 
-	return fmt.Errorf("clone failed: %w", err)
+	return contextureerrors.Wrap(err, "clone")
 }
 
 // handlePostCloneBranch handles branch checkout after clone if needed
@@ -890,7 +835,7 @@ func (c *Client) resolveReference(
 			// Try as a tag
 			ref, err = repo.Reference(plumbing.ReferenceName("refs/tags/"+branch), true)
 			if err != nil {
-				return nil, fmt.Errorf("failed to find branch or tag %s: %w", branch, err)
+				return nil, contextureerrors.Wrap(err, "resolve_reference")
 			}
 		}
 		return ref, nil
@@ -899,7 +844,7 @@ func (c *Client) resolveReference(
 	// Get HEAD
 	ref, err := repo.Head()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+		return nil, contextureerrors.Wrap(err, "get_head")
 	}
 	return ref, nil
 }

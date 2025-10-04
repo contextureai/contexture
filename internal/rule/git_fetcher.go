@@ -2,7 +2,6 @@ package rule
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,25 +53,19 @@ func (f *GitRuleFetcher) FetchRule(ctx context.Context, ruleID string) (*domain.
 	// Get repository from cache (clones if needed)
 	repoDir, err := f.cache.GetRepository(ctx, parsed.Source, parsed.Ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repository: %w", err)
+		return nil, contextureerrors.WithOp("FetchRule.GetRepository", err)
 	}
 
 	// Construct the full path to the rule file
 	rulePath := filepath.Join(repoDir, parsed.RulePath+".md")
 
-	// Check if the rule file exists
-	exists, err := afero.Exists(f.fs, rulePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check rule file: %w", err)
-	}
-	if !exists {
-		return nil, contextureerrors.WithOp("FetchRule", contextureerrors.ErrRuleNotFound)
-	}
-
-	// Read and parse the rule file
+	// Read the rule file (EAFP - Easier to Ask Forgiveness than Permission)
 	data, err := afero.ReadFile(f.fs, rulePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read rule file: %w", err)
+		if os.IsNotExist(err) {
+			return nil, contextureerrors.WithOp("FetchRule", contextureerrors.ErrRuleNotFound)
+		}
+		return nil, contextureerrors.WithOp("FetchRule.ReadFile", err)
 	}
 
 	metadata := Metadata{
@@ -84,7 +77,7 @@ func (f *GitRuleFetcher) FetchRule(ctx context.Context, ruleID string) (*domain.
 	}
 	rule, err := f.parser.ParseRule(string(data), metadata)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse rule: %w", err)
+		return nil, contextureerrors.WithOp("FetchRule.ParseRule", err)
 	}
 
 	// Add source information
@@ -120,7 +113,7 @@ func (f *GitRuleFetcher) FetchRuleAtCommit(ctx context.Context, ruleID, commitHa
 	// Get repository from cache (clones if needed)
 	repoDir, err := f.cache.GetRepository(ctx, parsed.Source, parsed.Ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repository: %w", err)
+		return nil, contextureerrors.WithOp("FetchRuleAtCommit.GetRepository", err)
 	}
 
 	// Read the rule file at the specific commit using the injected repository implementation
@@ -131,7 +124,7 @@ func (f *GitRuleFetcher) FetchRuleAtCommit(ctx context.Context, ruleID, commitHa
 	ruleFilePath := parsed.RulePath + ".md"
 	data, err := repo.GetFileAtCommit(repoDir, ruleFilePath, commitHash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read rule file at commit %s: %w", commitHash, err)
+		return nil, contextureerrors.WithOp("FetchRuleAtCommit.GetFileAtCommit", err)
 	}
 
 	metadata := Metadata{
@@ -143,7 +136,7 @@ func (f *GitRuleFetcher) FetchRuleAtCommit(ctx context.Context, ruleID, commitHa
 	}
 	rule, err := f.parser.ParseRule(string(data), metadata)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse rule: %w", err)
+		return nil, contextureerrors.WithOp("FetchRuleAtCommit.ParseRule", err)
 	}
 
 	// Add source information
@@ -176,7 +169,7 @@ func (f *GitRuleFetcher) ListAvailableRules(
 	// Get repository from cache
 	repoDir, err := f.cache.GetRepository(ctx, source, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repository: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRules.GetRepository", err)
 	}
 
 	// Walk the repository directory to find rule files
@@ -212,7 +205,7 @@ func (f *GitRuleFetcher) ListAvailableRules(
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk repository directory: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRules.Walk", err)
 	}
 
 	log.Debug("Found rules in Git repository", "count", len(ruleFiles))
@@ -229,7 +222,7 @@ func (f *GitRuleFetcher) ListAvailableRulesWithStructure(
 	// Get the flat list of rules first
 	ruleFiles, err := f.ListAvailableRules(ctx, source, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list available rules: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRulesWithStructure.ListAvailableRules", err)
 	}
 
 	// Build the tree structure

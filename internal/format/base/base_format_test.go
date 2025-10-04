@@ -120,7 +120,7 @@ func TestBaseFormat_ProcessTemplateWithVars(t *testing.T) {
 		"custom": "custom value",
 	}
 
-	result, err := base.ProcessTemplateWithVars(rule, template, additionalVars)
+	result, err := base.ProcessTemplate(rule, template, additionalVars)
 
 	require.NoError(t, err)
 	assert.Contains(t, result, "# Test Rule")
@@ -441,7 +441,7 @@ func TestBaseFormat_ProcessTemplateWithVars_BooleanConversion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := base.ProcessTemplateWithVars(tt.rule, tt.template, map[string]any{})
+			result, err := base.ProcessTemplate(tt.rule, tt.template, map[string]any{})
 
 			if tt.shouldFail {
 				require.Error(t, err)
@@ -510,7 +510,7 @@ func TestBaseFormat_ProcessTemplateWithVars_RuleIDVariables(t *testing.T) {
 				Variables: parsedID.Variables,
 			}
 
-			result, err := base.ProcessTemplateWithVars(rule, tt.template, map[string]any{})
+			result, err := base.ProcessTemplate(rule, tt.template, map[string]any{})
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		})

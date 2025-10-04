@@ -22,9 +22,9 @@ func createTestDependencies() *dependencies.Dependencies {
 }
 
 // createTestApp creates a test CLI app that executes the given action
-func createTestApp(name string, action func(context.Context, *cli.Command) error) *cli.Command {
+func createTestApp(action func(context.Context, *cli.Command) error) *cli.Command {
 	return &cli.Command{
-		Name:   name,
+		Name:   "test",
 		Action: action,
 	}
 }
@@ -32,13 +32,45 @@ func createTestApp(name string, action func(context.Context, *cli.Command) error
 // runTestApp runs a test app and returns the error
 func runTestApp(app *cli.Command) error {
 	ctx := context.Background()
-	return app.Run(ctx, []string{app.Name})
+
+	// Capture error from ExitErrHandler
+	var capturedErr error
+
+	// Save original handlers
+	originalOsExiter := cli.OsExiter
+	originalExitErrHandler := app.ExitErrHandler
+
+	// Prevent os.Exit in tests
+	cli.OsExiter = func(_ int) {
+		// Don't exit, just track that exit was called
+	}
+
+	// Capture errors before exit
+	app.ExitErrHandler = func(_ context.Context, _ *cli.Command, err error) {
+		capturedErr = err
+	}
+
+	// Restore handlers after test
+	defer func() {
+		cli.OsExiter = originalOsExiter
+		app.ExitErrHandler = originalExitErrHandler
+	}()
+
+	// Run the app
+	err := app.Run(ctx, []string{app.Name})
+	// Return error from action or captured error from exit handler
+	if err != nil {
+		return err
+	}
+	return capturedErr
 }
 
 // assertNoProjectConfigError asserts that the error indicates no project configuration
 func assertNoProjectConfigError(t *testing.T, err error) {
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no project configuration found")
+	// Error message format: "load project configuration: config locate failed for <path>: no configuration file found"
+	assert.Contains(t, err.Error(), "load project configuration")
+	assert.Contains(t, err.Error(), "no configuration file found")
 }
 
 // testCommandExecuteNoConfig tests a command's Execute method with no project configuration

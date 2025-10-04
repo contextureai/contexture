@@ -11,8 +11,14 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/spf13/afero"
+)
+
+const (
+	// DefaultCacheDirName is the default directory name for contexture cache
+	DefaultCacheDirName = "contexture"
 )
 
 // SimpleCache provides cross-session repository caching with human-readable names
@@ -24,7 +30,7 @@ type SimpleCache struct {
 
 // NewSimpleCache creates a new simple cache
 func NewSimpleCache(fs afero.Fs, repository git.Repository) *SimpleCache {
-	baseDir := filepath.Join(os.TempDir(), "contexture")
+	baseDir := filepath.Join(os.TempDir(), DefaultCacheDirName)
 	return &SimpleCache{
 		fs:         fs,
 		repository: repository,
@@ -32,12 +38,31 @@ func NewSimpleCache(fs afero.Fs, repository git.Repository) *SimpleCache {
 	}
 }
 
-// GetRepository returns cached repository or clones if not cached
+// GetRepository retrieves a repository from the cache or clones it if not present.
+// It returns the local path to the cached repository without pulling updates.
+// Use GetRepositoryWithUpdate if you need to ensure the latest changes are pulled.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - repoURL: The repository URL (supports SSH and HTTPS)
+//   - gitRef: The git reference (branch, tag, or commit)
+//
+// Returns the local filesystem path to the cached repository.
 func (c *SimpleCache) GetRepository(ctx context.Context, repoURL, gitRef string) (string, error) {
 	return c.getRepository(ctx, repoURL, gitRef, false)
 }
 
-// GetRepositoryWithUpdate returns repository with latest changes, pulling updates if cached
+// GetRepositoryWithUpdate retrieves a repository and ensures it has the latest changes.
+// If the repository is already cached, it pulls the latest updates before returning.
+// If the pull fails, it continues with the cached version (logged as a warning).
+// Use GetRepository if you only need to access the cached version without updates.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - repoURL: The repository URL (supports SSH and HTTPS)
+//   - gitRef: The git reference (branch, tag, or commit)
+//
+// Returns the local filesystem path to the updated cached repository.
 func (c *SimpleCache) GetRepositoryWithUpdate(
 	ctx context.Context,
 	repoURL, gitRef string,
@@ -85,7 +110,7 @@ func (c *SimpleCache) cloneRepository(
 ) (string, error) {
 	// Ensure base directory exists
 	if err := c.fs.MkdirAll(c.baseDir, 0o755); err != nil {
-		return "", fmt.Errorf("failed to create cache base directory: %w", err)
+		return "", contextureerrors.Wrap(err, "create cache base directory")
 	}
 
 	// Clone repository to cache
@@ -93,7 +118,7 @@ func (c *SimpleCache) cloneRepository(
 	if err := c.repository.Clone(ctx, repoURL, cachePath, git.WithBranch(gitRef)); err != nil {
 		// Clean up failed clone
 		_ = c.fs.RemoveAll(cachePath)
-		return "", fmt.Errorf("failed to clone repository: %w", err)
+		return "", contextureerrors.Wrap(err, "clone repository")
 	}
 
 	return cachePath, nil

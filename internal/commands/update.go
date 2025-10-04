@@ -13,6 +13,7 @@ import (
 	"github.com/contextureai/contexture/internal/cache"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
@@ -138,7 +139,7 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		// outputFormat already declared
 		outputManager, err := output.NewManager(outputFormat)
 		if err != nil {
-			return fmt.Errorf("failed to create output manager: %w", err)
+			return contextureerrors.Wrap(err, "create output manager")
 		}
 
 		// Write empty output
@@ -150,7 +151,7 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 
 		err = outputManager.WriteRulesUpdate(metadata)
 		if err != nil {
-			return fmt.Errorf("failed to write update output: %w", err)
+			return contextureerrors.Wrap(err, "write update output")
 		}
 
 		// For default format, also show the messages
@@ -229,7 +230,7 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		// outputFormat already declared
 		outputManager, err := output.NewManager(outputFormat)
 		if err != nil {
-			return fmt.Errorf("failed to create output manager: %w", err)
+			return contextureerrors.Wrap(err, "create output manager")
 		}
 
 		// Collect results when no updates are available
@@ -263,7 +264,7 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		// outputFormat already declared
 		outputManager, err := output.NewManager(outputFormat)
 		if err != nil {
-			return fmt.Errorf("failed to create output manager: %w", err)
+			return contextureerrors.Wrap(err, "create output manager")
 		}
 
 		// Collect results for dry run output
@@ -297,7 +298,7 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 
 		err = outputManager.WriteRulesUpdate(metadata)
 		if err != nil {
-			return fmt.Errorf("failed to write update output: %w", err)
+			return contextureerrors.Wrap(err, "write update output")
 		}
 
 		// For default format, show the dry run message
@@ -347,7 +348,7 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	// outputFormat already declared
 	outputManager, err := output.NewManager(outputFormat)
 	if err != nil {
-		return fmt.Errorf("failed to create output manager: %w", err)
+		return contextureerrors.Wrap(err, "create output manager")
 	}
 
 	// Collect results for output
@@ -482,7 +483,7 @@ func (c *UpdateCommand) checkForUpdatesWithProgress(
 			currentCommitHash,
 		)
 		if err != nil {
-			result.Error = fmt.Errorf("failed to check rule for updates: %w", err)
+			result.Error = contextureerrors.Wrap(err, "check rule for updates")
 			result.Status = StatusError
 			// Clear line and show error with proper formatting
 			if !isJSONMode {
@@ -554,13 +555,13 @@ func (c *UpdateCommand) checkRuleForUpdate(
 	// Parse the rule ID to get the rule path and source information
 	parsed, err := c.ruleFetcher.ParseRuleID(ruleRef.ID)
 	if err != nil {
-		return nil, nil, false, fmt.Errorf("failed to parse rule ID: %w", err)
+		return nil, nil, false, contextureerrors.Wrap(err, "parse rule ID")
 	}
 
 	// Get repository with updates using cache
 	repoDir, err := c.cache.GetRepositoryWithUpdate(ctx, parsed.Source, parsed.Ref)
 	if err != nil {
-		return nil, nil, false, fmt.Errorf("failed to get repository: %w", err)
+		return nil, nil, false, contextureerrors.Wrap(err, "get repository")
 	}
 
 	// Get the rule file path within the repository
@@ -572,7 +573,7 @@ func (c *UpdateCommand) checkRuleForUpdate(
 	// Get the latest commit information for this specific file
 	latestCommitInfo, err := gitRepo.GetFileCommitInfo(repoDir, ruleFilePath, parsed.Ref)
 	if err != nil {
-		return nil, nil, false, fmt.Errorf("failed to get file commit info: %w", err)
+		return nil, nil, false, contextureerrors.Wrap(err, "get file commit info")
 	}
 
 	latestCommit := &GitCommitInfo{
@@ -717,7 +718,7 @@ func (c *UpdateCommand) applyUpdates(
 
 	// Save configuration using shared utility
 	if err := configLoad.SaveConfig(c.projectManager); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save configuration")
 	}
 
 	// Display final results

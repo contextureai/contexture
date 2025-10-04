@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/rule"
@@ -78,7 +79,7 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	// Get target formats (either user-specified or all enabled)
 	targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))
 	if len(targetFormats) == 0 {
-		return fmt.Errorf("no target formats available")
+		return contextureerrors.ValidationErrorf("formats", "no target formats available")
 	}
 
 	log.Debug("Starting build",
@@ -102,7 +103,7 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	// Use shared rule generator with consistent UI styling
 	err = c.ruleGenerator.GenerateRules(ctx, config, targetFormats)
 	if err != nil {
-		return fmt.Errorf("failed to generate rules: %w", err)
+		return contextureerrors.Wrap(err, "generate rules")
 	}
 
 	log.Debug("Build completed successfully")

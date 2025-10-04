@@ -2,7 +2,6 @@ package rule
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/cache"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/spf13/afero"
 )
@@ -129,16 +129,17 @@ func (f *CompositeFetcher) FetchRules(
 
 			select {
 			case semaphore <- struct{}{}:
+				defer func() { <-semaphore }()
 			case <-ctx.Done():
 				return
 			}
-			defer func() { <-semaphore }()
 
 			rule, err := f.FetchRule(ctx, id)
 
 			select {
 			case resultChan <- result{rule: rule, err: err, id: id}:
 			case <-ctx.Done():
+				return
 			}
 		}(ruleID)
 	}
@@ -156,18 +157,18 @@ func (f *CompositeFetcher) FetchRules(
 		case res, ok := <-resultChan:
 			if !ok {
 				if len(errors) > 0 {
-					return nil, fmt.Errorf("failed to fetch %d rules: %w", len(errors), combineErrors(errors))
+					return nil, contextureerrors.Wrap(combineErrors(errors), "fetch rules")
 				}
 				log.Debug("Successfully fetched all rules", "count", len(rules))
 				return rules, nil
 			}
 			if res.err != nil {
-				errors = append(errors, fmt.Errorf("failed to fetch rule %s: %w", res.id, res.err))
+				errors = append(errors, contextureerrors.Wrap(res.err, "fetch rule"))
 			} else {
 				rules = append(rules, res.rule)
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("context cancelled while fetching rules: %w", ctx.Err())
+			return nil, contextureerrors.Wrap(ctx.Err(), "fetch rules")
 		}
 	}
 }

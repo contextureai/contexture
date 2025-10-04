@@ -2,10 +2,11 @@ package rule
 
 import (
 	"context"
-	"fmt"
+	"sync"
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 )
 
 // TemplateProcessor implements rule processing with separated concerns
@@ -49,14 +50,6 @@ func (p *TemplateProcessor) ProcessRule(
 	return processed, nil
 }
 
-// ProcessRules processes multiple rules concurrently
-func (p *TemplateProcessor) ProcessRules(
-	rules []*domain.Rule,
-	ruleContext *domain.RuleContext,
-) ([]*domain.ProcessedRule, error) {
-	return p.ProcessRulesWithContext(context.Background(), rules, ruleContext)
-}
-
 // ProcessRulesWithContext processes multiple rules concurrently with context cancellation
 func (p *TemplateProcessor) ProcessRulesWithContext(
 	ctx context.Context,
@@ -78,9 +71,12 @@ func (p *TemplateProcessor) ProcessRulesWithContext(
 
 	resultChan := make(chan result, len(rules))
 
-	// Start workers
+	// Start workers with WaitGroup for proper cleanup
+	var wg sync.WaitGroup
 	for i, rule := range rules {
+		wg.Add(1)
 		go func(idx int, r *domain.Rule) {
+			defer wg.Done()
 			processed, err := p.ProcessRule(r, ruleContext)
 			select {
 			case resultChan <- result{processed: processed, err: err, index: idx}:
@@ -89,6 +85,12 @@ func (p *TemplateProcessor) ProcessRulesWithContext(
 			}
 		}(i, rule)
 	}
+
+	// Close channel after all workers complete
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
 	// Collect results in order
 	results := make([]*domain.ProcessedRule, len(rules))
@@ -100,19 +102,19 @@ func (p *TemplateProcessor) ProcessRulesWithContext(
 			if res.err != nil {
 				errors = append(
 					errors,
-					fmt.Errorf("failed to process rule at index %d: %w", res.index, res.err),
+					contextureerrors.WithOpf("ProcessRulesWithContext", "failed to process rule at index %d: %w", res.index, res.err),
 				)
 			} else {
 				results[res.index] = res.processed
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("context cancelled while processing rules: %w", ctx.Err())
+			return nil, contextureerrors.Wrap(ctx.Err(), "ProcessRulesWithContext")
 		}
 	}
 
 	// Return errors if any occurred
 	if len(errors) > 0 {
-		return nil, fmt.Errorf("failed to process %d rules: %w", len(errors), combineErrors(errors))
+		return nil, contextureerrors.WithOpf("ProcessRulesWithContext", "failed to process %d rules: %w", len(errors), combineErrors(errors))
 	}
 
 	// Filter out nil results
@@ -147,7 +149,7 @@ func (p *TemplateProcessor) ValidateTemplate(templateContent string, requiredVar
 	// Check syntax by trying to process with empty variables
 	_, err := p.templateEngine.ProcessTemplate(templateContent, make(map[string]any))
 	if err != nil {
-		return fmt.Errorf("template syntax error: %w", err)
+		return contextureerrors.Wrap(err, "ValidateTemplate")
 	}
 
 	// If no required variables specified, we're done
@@ -158,7 +160,7 @@ func (p *TemplateProcessor) ValidateTemplate(templateContent string, requiredVar
 	// Extract variables from template and check if all required variables are present
 	templateVars, err := p.templateEngine.ExtractVariables(templateContent)
 	if err != nil {
-		return fmt.Errorf("failed to extract template variables: %w", err)
+		return contextureerrors.Wrap(err, "ValidateTemplate")
 	}
 
 	// Check if all required variables are present
@@ -175,7 +177,7 @@ func (p *TemplateProcessor) ValidateTemplate(templateContent string, requiredVar
 	}
 
 	if len(missingVars) > 0 {
-		return fmt.Errorf("missing required variables: %v", missingVars)
+		return contextureerrors.ValidationErrorf("template", "missing required variables: %v", missingVars)
 	}
 
 	return nil

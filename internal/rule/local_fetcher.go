@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/spf13/afero"
 	"github.com/titanous/json5"
 )
@@ -51,7 +52,7 @@ func (f *LocalFetcher) ParseRuleID(ruleID string) (*domain.ParsedRuleID, error) 
 			if len(matches) > 4 && matches[4] != "" {
 				variables := make(map[string]any)
 				if err := json5.Unmarshal([]byte(matches[4]), &variables); err != nil {
-					return nil, fmt.Errorf("invalid JSON5 variables in rule ID '%s': %w", ruleID, err)
+					return nil, contextureerrors.WithOpf("ParseRuleID", "invalid JSON5 variables in rule ID '%s': %w", ruleID, err)
 				}
 				parsed.Variables = variables
 			}
@@ -64,7 +65,7 @@ func (f *LocalFetcher) ParseRuleID(ruleID string) (*domain.ParsedRuleID, error) 
 	matches := localVariablesPattern.FindStringSubmatch(ruleID)
 
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("invalid local rule ID format: %s", ruleID)
+		return nil, contextureerrors.WithOpf("ParseRuleID", "invalid local rule ID format: %s", ruleID)
 	}
 
 	parsed := &domain.ParsedRuleID{
@@ -78,7 +79,7 @@ func (f *LocalFetcher) ParseRuleID(ruleID string) (*domain.ParsedRuleID, error) 
 		variablesJSON := matches[2]
 		variables := make(map[string]any)
 		if err := json5.Unmarshal([]byte(variablesJSON), &variables); err != nil {
-			return nil, fmt.Errorf("invalid JSON5 variables in rule ID '%s': %w", ruleID, err)
+			return nil, contextureerrors.WithOpf("ParseRuleID", "invalid JSON5 variables in rule ID '%s': %w", ruleID, err)
 		}
 		parsed.Variables = variables
 	}
@@ -100,19 +101,35 @@ func (f *LocalFetcher) FetchRule(_ context.Context, ruleID string) (*domain.Rule
 	// Find the correct rules directory
 	rulesDir, err := f.findRulesDirectory()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find rules directory: %w", err)
+		return nil, contextureerrors.WithOp("FetchRule", err)
 	}
 
-	// Construct full path
+	// Construct full path with validation to prevent path traversal
 	rulePath := filepath.Join(rulesDir, parsed.RulePath)
 	if !strings.HasSuffix(rulePath, ".md") {
 		rulePath += ".md"
 	}
 
+	// Validate path is within rules directory
+	cleanPath, err := filepath.Abs(rulePath)
+	if err != nil {
+		return nil, contextureerrors.WithOp("FetchRule", err)
+	}
+
+	cleanBase, err := filepath.Abs(rulesDir)
+	if err != nil {
+		return nil, contextureerrors.WithOp("FetchRule", err)
+	}
+
+	// Ensure rule path is within rules directory
+	if !strings.HasPrefix(cleanPath, cleanBase+string(filepath.Separator)) && cleanPath != cleanBase {
+		return nil, contextureerrors.WithOpf("FetchRule", "rule path %q is outside rules directory", parsed.RulePath)
+	}
+
 	// Read the file
 	data, err := afero.ReadFile(f.fs, rulePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read rule file %s: %w", rulePath, err)
+		return nil, contextureerrors.WithOpf("FetchRule", "failed to read rule file %s: %w", rulePath, err)
 	}
 
 	// Parse the rule - format the rule ID properly for local rules
@@ -127,7 +144,7 @@ func (f *LocalFetcher) FetchRule(_ context.Context, ruleID string) (*domain.Rule
 
 	rule, err := f.parser.ParseRule(string(data), metadata)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse rule: %w", err)
+		return nil, contextureerrors.WithOp("FetchRule", err)
 	}
 
 	log.Debug("Successfully fetched local rule", "ruleID", ruleID)
@@ -142,7 +159,7 @@ func (f *LocalFetcher) FetchRules(ctx context.Context, ruleIDs []string) ([]*dom
 	for _, ruleID := range ruleIDs {
 		rule, err := f.FetchRule(ctx, ruleID)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to fetch rule %s: %w", ruleID, err))
+			errors = append(errors, contextureerrors.WithOpf("FetchRules", "failed to fetch rule %s: %w", ruleID, err))
 			continue
 		}
 		rules = append(rules, rule)
@@ -163,13 +180,13 @@ func (f *LocalFetcher) ListAvailableRules(
 	// Find the correct rules directory
 	rulesDir, err := f.findRulesDirectory()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find rules directory: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRules", err)
 	}
 
 	// Check if rules directory exists
 	exists, err := afero.DirExists(f.fs, rulesDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check rules directory: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRules", err)
 	}
 	if !exists {
 		return []string{}, nil // Return empty slice if directory doesn't exist
@@ -198,7 +215,7 @@ func (f *LocalFetcher) ListAvailableRules(
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRules", err)
 	}
 
 	return ruleFiles, nil
@@ -212,7 +229,7 @@ func (f *LocalFetcher) ListAvailableRulesWithStructure(
 	// Get the flat list of rules first
 	ruleFiles, err := f.ListAvailableRules(ctx, source, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list available rules: %w", err)
+		return nil, contextureerrors.WithOp("ListAvailableRulesWithStructure", err)
 	}
 
 	// Build the tree structure
@@ -227,7 +244,7 @@ func (f *LocalFetcher) findRulesDirectory() (string, error) {
 		var err error
 		currentDir, err = os.Getwd()
 		if err != nil {
-			return "", fmt.Errorf("failed to get current directory: %w", err)
+			return "", contextureerrors.WithOp("findRulesDirectory", err)
 		}
 	}
 

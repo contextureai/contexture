@@ -2,9 +2,8 @@
 package format
 
 import (
-	"fmt"
-
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/spf13/afero"
 )
 
@@ -27,7 +26,7 @@ func (dm *DirectoryManager) CreateFormatDirectories(formatType domain.FormatType
 	// Create a format instance to delegate directory creation
 	format, err := dm.builder.Build(formatType, dm.fs, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create format instance: %w", err)
+		return contextureerrors.Wrap(err, "CreateFormatDirectories")
 	}
 
 	// Use the format's own directory creation method

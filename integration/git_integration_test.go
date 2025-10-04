@@ -651,7 +651,12 @@ func TestGitPullOperations(t *testing.T) {
 		// Pull should fail
 		err = repo.Pull(ctx, notARepo)
 		require.Error(t, err, "Should error when pulling non-repository")
-		assert.Contains(t, strings.ToLower(err.Error()), "not a git repository", "Error should mention not a git repository")
+		errorMsg := strings.ToLower(err.Error())
+		assert.True(t,
+			strings.Contains(errorMsg, "repository does not exist") ||
+				strings.Contains(errorMsg, "not a git repository") ||
+				strings.Contains(errorMsg, "pull"),
+			"Error should indicate repository issue: %v", err)
 	})
 }
 

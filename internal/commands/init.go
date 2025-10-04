@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/tui"
@@ -46,7 +47,7 @@ func (c *InitCommand) initProjectConfig(force, noInteractive bool) error {
 	// Check if configuration already exists
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get current directory")
 	}
 
 	existingConfig, _ := c.projectManager.LoadConfig(currentDir)
@@ -54,7 +55,7 @@ func (c *InitCommand) initProjectConfig(force, noInteractive bool) error {
 	if existingConfig != nil && !force {
 		log.Error("Configuration already exists", "path", existingConfig.Path)
 		log.Info("Use --force to overwrite existing configuration")
-		return fmt.Errorf("configuration already exists")
+		return contextureerrors.ValidationErrorf("configuration", "configuration already exists")
 	}
 
 	// Show command header
@@ -88,7 +89,7 @@ func (c *InitCommand) initProjectConfig(force, noInteractive bool) error {
 				Value(&selectedFormats).
 				Validate(func(val []string) error {
 					if len(val) == 0 {
-						return fmt.Errorf("at least one format must be selected")
+						return contextureerrors.ValidationErrorf("formats", "at least one format must be selected")
 					}
 					return nil
 				}),
@@ -130,7 +131,7 @@ func (c *InitCommand) initProjectConfig(force, noInteractive bool) error {
 	// Create the configuration
 	config, err := c.projectManager.InitConfig(currentDir, formatTypes, location)
 	if err != nil {
-		return fmt.Errorf("failed to create configuration: %w", err)
+		return contextureerrors.Wrap(err, "create configuration")
 	}
 
 	// Success message
@@ -171,7 +172,7 @@ func (c *InitCommand) initProjectNonInteractive(currentDir string) error {
 	// Create the configuration
 	config, err := c.projectManager.InitConfig(currentDir, formatTypes, location)
 	if err != nil {
-		return fmt.Errorf("failed to create configuration: %w", err)
+		return contextureerrors.Wrap(err, "create configuration")
 	}
 
 	// Success message

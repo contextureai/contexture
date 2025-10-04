@@ -1,7 +1,6 @@
 package rule
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -59,7 +58,7 @@ func (p *DefaultRuleIDParser) ParseRuleID(ruleID string) (*domain.ParsedRuleID, 
 		if len(matches) > 4 && matches[4] != "" {
 			variables := make(map[string]any)
 			if err := json5.Unmarshal([]byte(matches[4]), &variables); err != nil {
-				return nil, fmt.Errorf("invalid JSON5 variables in rule ID '%s': %w", ruleID, err)
+				return nil, contextureerrors.ValidationErrorf("ruleID", "invalid JSON5 variables in rule ID '%s': %v", ruleID, err)
 			}
 			parsed.Variables = variables
 		}

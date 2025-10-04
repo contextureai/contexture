@@ -1,9 +1,8 @@
 package format
 
 import (
-	"fmt"
-
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format/claude"
 	"github.com/contextureai/contexture/internal/format/cursor"
 	"github.com/contextureai/contexture/internal/format/windsurf"
@@ -45,7 +44,7 @@ func (fb *Builder) Build(
 ) (domain.Format, error) {
 	constructor, exists := fb.constructors[formatType]
 	if !exists {
-		return nil, fmt.Errorf("unsupported format type: %s", formatType)
+		return nil, contextureerrors.ValidationErrorf("format_type", "unsupported format type: %s", formatType)
 	}
 
 	return constructor(fs, options)

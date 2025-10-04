@@ -59,13 +59,27 @@ func Run(args []string) int {
 
 // Execute runs the CLI application with the given context and arguments
 func (a *Application) Execute(ctx context.Context, args []string) error {
+	// Save and restore original help printer to avoid global state mutation
+	originalHelpPrinter := cli.HelpPrinter
+	defer func() {
+		cli.HelpPrinter = originalHelpPrinter
+	}()
+
 	app := a.buildCLIApp()
 	return app.Run(ctx, args)
 }
 
 // buildCLIApp constructs the CLI application structure
 func (a *Application) buildCLIApp() *cli.Command {
-	// Set up custom help printer (but don't mutate global state during execution)
+	// Set up custom help printer for this execution
+	helpPrinter := helpCLI.NewHelpPrinter()
+	cli.HelpPrinter = func(w io.Writer, templ string, data any) {
+		if err := helpPrinter.Print(w, templ, data); err != nil {
+			// For backward compatibility, we write the error but don't panic
+			_, _ = fmt.Fprintf(w, "Error rendering help: %v\n", err)
+		}
+	}
+
 	app := &cli.Command{
 		Name:    "contexture",
 		Usage:   "AI assistant rule management",
@@ -78,15 +92,6 @@ func (a *Application) buildCLIApp() *cli.Command {
 		Commands:           a.buildCommands(),
 		Flags:              a.buildGlobalFlags(),
 		Before:             a.setupGlobalFlags,
-	}
-
-	// Set help printer only during execution, not globally
-	helpPrinter := helpCLI.NewHelpPrinter()
-	cli.HelpPrinter = func(w io.Writer, templ string, data any) {
-		if err := helpPrinter.Print(w, templ, data); err != nil {
-			// For backward compatibility, we write the error but don't panic
-			_, _ = fmt.Fprintf(w, "Error rendering help: %v\n", err)
-		}
 	}
 
 	return app

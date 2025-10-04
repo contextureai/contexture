@@ -6,7 +6,6 @@ package validation
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -104,7 +103,10 @@ func NewValidator() (Validator, error) {
 
 	for tag, fn := range customValidators {
 		if err := v.RegisterValidation(tag, fn); err != nil {
-			return nil, fmt.Errorf("failed to register %s validation: %w", tag, err)
+			return nil, contextureerrors.WithOpf(
+				"register validation",
+				"failed to register %s validation: %w", tag, err,
+			)
 		}
 	}
 
@@ -149,7 +151,7 @@ func (v *defaultValidator) ValidateRule(rule *domain.Rule) *domain.ValidationRes
 		seen := make(map[string]bool)
 		for _, tag := range rule.Tags {
 			if seen[tag] {
-				result.AddError("tags", fmt.Sprintf("duplicate tag: %s", tag), "DUPLICATE_TAG")
+				result.AddError("tags", "duplicate tag: "+tag, "DUPLICATE_TAG")
 				break // Only report first duplicate
 			}
 			seen[tag] = true
@@ -166,18 +168,7 @@ func (v *defaultValidator) ValidateRule(rule *domain.Rule) *domain.ValidationRes
 	// Additional trigger validation (avoid duplicating struct validation errors)
 	if rule.Trigger != nil {
 		// Only do custom validation if struct validation passed for the trigger
-		hasStructErrors := false
-		for _, err := range result.Errors {
-			var validationErr *contextureerrors.Error
-			if errors.As(err, &validationErr) {
-				if validationErr.Field == "globs" || validationErr.Field == "type" {
-					hasStructErrors = true
-					break
-				}
-			}
-		}
-
-		if !hasStructErrors {
+		if !v.hasStructErrors(result, "globs", "type") {
 			if err := v.validateTrigger(rule.Trigger); err != nil {
 				result.AddError("trigger", err.Error(), "INVALID_TRIGGER")
 			}
@@ -310,11 +301,14 @@ func (v *defaultValidator) ValidateRuleRef(ref domain.RuleRef) error {
 // ValidateRuleID validates a rule ID format
 func (v *defaultValidator) ValidateRuleID(ruleID string) error {
 	if ruleID == "" {
-		return fmt.Errorf("rule ID cannot be empty")
+		return contextureerrors.ValidationErrorf("rule_id", "rule ID cannot be empty")
 	}
 
 	if len(ruleID) > MaxRuleIDLength {
-		return fmt.Errorf("rule ID exceeds maximum length of %d characters", MaxRuleIDLength)
+		return contextureerrors.ValidationErrorf(
+			"rule_id",
+			"rule ID exceeds maximum length of %d characters", MaxRuleIDLength,
+		)
 	}
 
 	// Check if it's a full format [contexture:path] or [contexture(source):path,branch]{variables}
@@ -322,19 +316,28 @@ func (v *defaultValidator) ValidateRuleID(ruleID string) error {
 		// Use the existing regex pattern to validate the complete format
 		if !domain.RuleIDPatternRegex.MatchString(ruleID) {
 			if !strings.HasSuffix(ruleID, "]") && !strings.HasSuffix(ruleID, "}") {
-				return fmt.Errorf("invalid rule ID format: missing closing bracket")
+				return contextureerrors.ValidationErrorf(
+					"rule_id",
+					"invalid rule ID format: missing closing bracket",
+				)
 			}
 			if !strings.Contains(ruleID, ":") {
-				return fmt.Errorf("invalid rule ID format: missing colon separator")
+				return contextureerrors.ValidationErrorf(
+					"rule_id",
+					"invalid rule ID format: missing colon separator",
+				)
 			}
-			return fmt.Errorf("invalid rule ID format")
+			return contextureerrors.ValidationErrorf("rule_id", "invalid rule ID format")
 		}
 	} else {
 		// For non-contexture rule IDs, check for invalid characters
 		invalidChars := []string{"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "{", "}", "[", "]", "|", "\\", ":", ";", "\"", "'", "<", ">", "?", ",", " "}
 		for _, char := range invalidChars {
 			if strings.Contains(ruleID, char) {
-				return fmt.Errorf("invalid rule ID format: contains invalid character '%s'", char)
+				return contextureerrors.ValidationErrorf(
+					"rule_id",
+					"invalid rule ID format: contains invalid character '%s'", char,
+				)
 			}
 		}
 	}
@@ -345,7 +348,7 @@ func (v *defaultValidator) ValidateRuleID(ruleID string) error {
 // ValidateGitURL validates a git repository URL
 func (v *defaultValidator) ValidateGitURL(gitURL string) error {
 	if gitURL == "" {
-		return fmt.Errorf("git URL cannot be empty")
+		return contextureerrors.ValidationErrorf("git_url", "git URL cannot be empty")
 	}
 
 	// Accept common git URL formats
@@ -353,7 +356,8 @@ func (v *defaultValidator) ValidateGitURL(gitURL string) error {
 		!strings.HasPrefix(gitURL, "http://") &&
 		!strings.HasPrefix(gitURL, "git@") &&
 		!strings.HasPrefix(gitURL, "ssh://") {
-		return fmt.Errorf(
+		return contextureerrors.ValidationErrorf(
+			"git_url",
 			"invalid git URL format: must start with https://, http://, git@, or ssh://",
 		)
 	}
@@ -382,6 +386,21 @@ func (v *defaultValidator) ValidateWithContext(
 }
 
 // Helper methods
+
+// hasStructErrors checks if result contains validation errors for any of the specified fields
+func (v *defaultValidator) hasStructErrors(result *domain.ValidationResult, fields ...string) bool {
+	for _, err := range result.Errors {
+		var validationErr *contextureerrors.Error
+		if errors.As(err, &validationErr) {
+			for _, field := range fields {
+				if validationErr.Field == field {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
 
 func (v *defaultValidator) validateRuleRef(fl validator.FieldLevel) bool {
 	ref, ok := fl.Field().Interface().(domain.RuleRef)
@@ -423,19 +442,22 @@ func (v *defaultValidator) validateContexturePath(fl validator.FieldLevel) bool 
 
 func (v *defaultValidator) validateTrigger(trigger *domain.RuleTrigger) error {
 	if trigger.Type == "" {
-		return fmt.Errorf("trigger type cannot be empty")
+		return contextureerrors.ValidationErrorf("trigger_type", "trigger type cannot be empty")
 	}
 
 	// Validate based on trigger type
 	switch trigger.Type {
 	case domain.TriggerGlob:
 		if len(trigger.Globs) == 0 {
-			return fmt.Errorf("glob trigger must have globs")
+			return contextureerrors.ValidationErrorf("trigger_globs", "glob trigger must have globs")
 		}
 	case domain.TriggerAlways, domain.TriggerManual, domain.TriggerModel:
 		// No additional validation needed
 	default:
-		return fmt.Errorf("unknown trigger type: %s", trigger.Type)
+		return contextureerrors.ValidationErrorf(
+			"trigger_type",
+			"unknown trigger type: %s", trigger.Type,
+		)
 	}
 
 	return nil
@@ -462,9 +484,10 @@ func (v *defaultValidator) formatValidationError(err error, entityType string) e
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(
-				fmt.Sprintf("field '%s': %s", fieldErr.Field(), v.getErrorMessage(fieldErr)),
-			)
+			sb.WriteString("field '")
+			sb.WriteString(fieldErr.Field())
+			sb.WriteString("': ")
+			sb.WriteString(v.getErrorMessage(fieldErr))
 		}
 	} else {
 		sb.WriteString(err.Error())
@@ -481,13 +504,13 @@ func (v *defaultValidator) getErrorMessage(fieldErr validator.FieldError) string
 	case "required":
 		return "is required"
 	case "min":
-		return fmt.Sprintf("must be at least %s", fieldErr.Param())
+		return "must be at least " + fieldErr.Param()
 	case "max":
-		return fmt.Sprintf("must be at most %s", fieldErr.Param())
+		return "must be at most " + fieldErr.Param()
 	case "len":
-		return fmt.Sprintf("must be exactly %s characters", fieldErr.Param())
+		return "must be exactly " + fieldErr.Param() + " characters"
 	case "oneof":
-		return fmt.Sprintf("must be one of: %s", fieldErr.Param())
+		return "must be one of: " + fieldErr.Param()
 	case "ruleid":
 		return "must be a valid rule ID"
 	case "ruleref":
@@ -499,6 +522,6 @@ func (v *defaultValidator) getErrorMessage(fieldErr validator.FieldError) string
 	case "contexturepath":
 		return "must be a valid path"
 	default:
-		return fmt.Sprintf("failed %s validation", fieldErr.Tag())
+		return "failed " + fieldErr.Tag() + " validation"
 	}
 }

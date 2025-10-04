@@ -131,7 +131,8 @@ type DefaultHomeDirectoryProvider struct {
 	fs afero.Fs
 }
 
-// ConfigError represents a configuration operation error with context.
+// ConfigError represents a configuration operation error with operation context and file path.
+// It implements the error interface and supports error unwrapping for error chain traversal.
 type ConfigError struct {
 	Operation string
 	Path      string
@@ -325,7 +326,7 @@ func (m *Manager) InitConfig(
 
 	// Save the configuration
 	if err := m.SaveConfig(config, location, basePath); err != nil {
-		return nil, fmt.Errorf("failed to save initial config: %w", err)
+		return nil, contextureerrors.Wrap(err, "save initial config")
 	}
 
 	return config, nil
@@ -339,7 +340,7 @@ func (m *Manager) AddRule(config *domain.Project, ruleRef domain.RuleRef) error 
 	}
 
 	if err := m.validator.ValidateRuleRef(ruleRef); err != nil {
-		return fmt.Errorf("invalid rule reference: %w", err)
+		return contextureerrors.Wrap(err, "validate rule reference")
 	}
 
 	// Check if rule already exists (O(n) is acceptable for typical rule counts)
@@ -434,13 +435,13 @@ func (m *Manager) DiscoverLocalRules(configResult *domain.ConfigResult) ([]domai
 		contextureDir := filepath.Dir(configResult.Path)
 		rulesDir = filepath.Join(contextureDir, domain.LocalRulesDir)
 	default:
-		return nil, fmt.Errorf("unknown config location: %s", configResult.Location)
+		return nil, contextureerrors.ValidationErrorf("configResult.Location", "unknown location: %s", configResult.Location)
 	}
 
 	// Check if rules directory exists
 	exists, err := m.repo.DirExists(rulesDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check rules directory: %w", err)
+		return nil, contextureerrors.Wrap(err, "check rules directory")
 	}
 
 	if !exists {
@@ -463,7 +464,7 @@ func (m *Manager) DiscoverLocalRules(configResult *domain.ConfigResult) ([]domai
 		// Get relative path from rules directory
 		relPath, err := filepath.Rel(rulesDir, path)
 		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
+			return contextureerrors.Wrap(err, "get relative path")
 		}
 
 		// Remove .md extension to get rule ID
@@ -479,7 +480,7 @@ func (m *Manager) DiscoverLocalRules(configResult *domain.ConfigResult) ([]domai
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk rules directory: %w", err)
+		return nil, contextureerrors.Wrap(err, "walk rules directory")
 	}
 
 	log.Debug("Discovered local rules", "count", len(localRules), "directory", rulesDir)
@@ -497,7 +498,7 @@ func (m *Manager) LoadConfigWithLocalRules(basePath string) (*domain.ConfigResul
 	// Discover local rules
 	localRules, err := m.DiscoverLocalRules(configResult)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover local rules: %w", err)
+		return nil, contextureerrors.Wrap(err, "discover local rules")
 	}
 
 	// If we have local rules, merge them with existing rules
@@ -526,12 +527,12 @@ func (m *Manager) LoadConfigWithLocalRules(basePath string) (*domain.ConfigResul
 func (r *DefaultConfigRepository) Load(path string) (*domain.Project, error) {
 	data, err := afero.ReadFile(r.fs, path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, contextureerrors.Wrap(err, "read config file")
 	}
 
 	var config domain.Project
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		return nil, contextureerrors.Wrap(err, "parse config file")
 	}
 
 	// Apply default values
@@ -546,25 +547,25 @@ func (r *DefaultConfigRepository) Load(path string) (*domain.Project, error) {
 func (r *DefaultConfigRepository) Save(config *domain.Project, path string) error {
 	// Ensure directory exists
 	if err := r.fs.MkdirAll(filepath.Dir(path), configDirPermissions); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
+		return contextureerrors.Wrap(err, "create config directory")
 	}
 
 	// Marshal config to YAML
 	data, err := yaml.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		return contextureerrors.Wrap(err, "marshal config")
 	}
 
 	// Atomic write: write to temp file first, then rename
 	tempPath := path + ".tmp"
 	if err := afero.WriteFile(r.fs, tempPath, data, configFilePermissions); err != nil {
-		return fmt.Errorf("failed to write temp config file: %w", err)
+		return contextureerrors.Wrap(err, "write temp config file")
 	}
 
 	if err := r.fs.Rename(tempPath, path); err != nil {
 		// Clean up temp file on error
 		_ = r.fs.Remove(tempPath)
-		return fmt.Errorf("failed to rename temp config file: %w", err)
+		return contextureerrors.Wrap(err, "rename temp config file")
 	}
 
 	return nil
@@ -621,7 +622,7 @@ func (m *DefaultRuleMatcher) ExtractPath(ruleID string) (string, error) {
 
 	matches := m.regex.FindStringSubmatch(ruleID)
 	if len(matches) < 3 {
-		return "", fmt.Errorf("invalid rule ID format: %s", ruleID)
+		return "", contextureerrors.ValidationErrorf("ruleID", "invalid format: %s", ruleID)
 	}
 
 	return matches[2], nil
@@ -663,7 +664,7 @@ func (p *DefaultHomeDirectoryProvider) GetHomeDir() (string, error) {
 	// so it can be easily mocked or replaced in tests
 	homeDir, err := getUserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to get user home directory: %w", err)
+		return "", contextureerrors.Wrap(err, "get user home directory")
 	}
 	return homeDir, nil
 }
@@ -826,7 +827,7 @@ func (c *ConfigCleaner) cleanGenerationConfig(
 func (f *FailsafeConfigValidator) ValidateRule(_ *domain.Rule) *domain.ValidationResult {
 	return &domain.ValidationResult{
 		Valid:    false,
-		Errors:   []error{fmt.Errorf("validator initialization failed: %w", f.err)},
+		Errors:   []error{contextureerrors.Wrap(f.err, "validator initialization")},
 		Warnings: make([]domain.ValidationWarning, 0),
 	}
 }
@@ -844,27 +845,27 @@ func (f *FailsafeConfigValidator) ValidateRules(rules []*domain.Rule) *validatio
 
 // ValidateProject returns an error for FailsafeConfigValidator
 func (f *FailsafeConfigValidator) ValidateProject(_ *domain.Project) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "validator initialization")
 }
 
 // ValidateRuleRef returns an error for FailsafeConfigValidator
 func (f *FailsafeConfigValidator) ValidateRuleRef(_ domain.RuleRef) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "validator initialization")
 }
 
 // ValidateRuleID returns an error for FailsafeConfigValidator
 func (f *FailsafeConfigValidator) ValidateRuleID(_ string) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "validator initialization")
 }
 
 // ValidateGitURL returns an error for FailsafeConfigValidator
 func (f *FailsafeConfigValidator) ValidateGitURL(_ string) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "validator initialization")
 }
 
 // ValidateFormatConfig returns an error for FailsafeConfigValidator
 func (f *FailsafeConfigValidator) ValidateFormatConfig(_ *domain.FormatConfig) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "validator initialization")
 }
 
 // ValidateWithContext returns an error for FailsafeConfigValidator
@@ -873,5 +874,5 @@ func (f *FailsafeConfigValidator) ValidateWithContext(
 	_ any,
 	_ string,
 ) error {
-	return fmt.Errorf("validator initialization failed: %w", f.err)
+	return contextureerrors.Wrap(f.err, "validator initialization")
 }

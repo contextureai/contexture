@@ -2,10 +2,10 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/project"
 )
 
@@ -23,13 +23,14 @@ func LoadProjectConfig(projectManager *project.Manager) (*ConfigLoadResult, erro
 	// Get current directory
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get current directory: %w", err)
+		return nil, contextureerrors.Wrap(err, "get current directory")
 	}
 
 	// Load project configuration with local rules
 	configResult, err := projectManager.LoadConfigWithLocalRules(currentDir)
 	if err != nil {
-		return nil, fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return nil, contextureerrors.Wrap(err, "load project configuration").
+			WithSuggestions("Run 'contexture init' to create a project configuration")
 	}
 
 	result := &ConfigLoadResult{
@@ -48,7 +49,7 @@ func LoadProjectConfigOptional(projectManager *project.Manager) (*ConfigLoadResu
 	// Get current directory
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get current directory: %w", err)
+		return nil, contextureerrors.Wrap(err, "get current directory")
 	}
 
 	result := &ConfigLoadResult{

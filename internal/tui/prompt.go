@@ -3,9 +3,9 @@ package tui
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/charmbracelet/huh"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/ui"
 )
 
@@ -55,7 +55,7 @@ func Select(opts SelectOptions) (string, error) {
 	}
 
 	if len(opts.Options) == 0 {
-		return "", fmt.Errorf("no options provided")
+		return "", contextureerrors.ValidationErrorf("options", "no options provided")
 	}
 
 	var selected string
@@ -104,7 +104,7 @@ func MultiSelect(opts MultiSelectOptions) ([]string, error) {
 	}
 
 	if len(opts.Options) == 0 {
-		return nil, fmt.Errorf("no options provided")
+		return nil, contextureerrors.ValidationErrorf("options", "no options provided")
 	}
 
 	var selected []string

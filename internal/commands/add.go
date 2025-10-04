@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/contextureai/contexture/internal/output"
@@ -69,7 +70,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	var customData map[string]any
 	if dataStr := cmd.String("data"); dataStr != "" {
 		if err := json.Unmarshal([]byte(dataStr), &customData); err != nil {
-			return fmt.Errorf("invalid JSON in --data parameter: %w", err)
+			return contextureerrors.Wrap(err, "parse data")
 		}
 		log.Debug("Parsed custom data", "data", customData)
 	}
@@ -83,7 +84,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	for _, varFlag := range varFlags {
 		key, value, err := parseVarFlag(varFlag)
 		if err != nil {
-			return fmt.Errorf("invalid --var parameter '%s': %w", varFlag, err)
+			return contextureerrors.Wrap(err, "parse var")
 		}
 		customData[key] = value
 		log.Debug("Parsed var flag", "key", key, "value", value)
@@ -97,12 +98,12 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get current directory")
 	}
 
 	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
 	if err != nil {
-		return fmt.Errorf("no Contexture project found in '%s' or parent directories.\n\nOriginal error: %w", currentDir, err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 	config := configResult.Config
 	configPath := configResult.Path
@@ -136,7 +137,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 			// Parse rule ID
 			parsedID, err := c.ruleFetcher.ParseRuleID(processedRuleID)
 			if err != nil {
-				return fmt.Errorf("invalid rule ID '%s'.\n\nRule IDs should be in one of these formats:\n  - [contexture:path/to/rule]           (from default repository)\n  - [contexture(source):path/to/rule]   (from custom source)\n  - path/to/rule                        (shorthand for default registry)\n  - path/to/rule --source URL           (with custom source flag)\n\nExamples:\n  - [contexture:languages/go/testing]\n  - languages/go/testing\n  - test/lemon --source https://github.com/user/repo.git\n\nOriginal error: %w", ruleID, err)
+				return contextureerrors.Wrap(err, "parse rule ID")
 			}
 
 			// Convert simple format to full format for storage (without variables)
@@ -182,7 +183,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 				fetchedRule, err = c.ruleFetcher.FetchRule(ctx, processedRuleID)
 			}
 			if err != nil {
-				return fmt.Errorf("failed to fetch rule '%s'.\n\nOriginal error: %w", processedRuleID, err)
+				return contextureerrors.Wrap(err, "fetch rule")
 			}
 
 			// Validate rule
@@ -192,8 +193,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 				for _, err := range validationResult.Errors {
 					errorMessages = append(errorMessages, err.Error())
 				}
-				return fmt.Errorf("rule '%s' failed validation\n\nvalidation errors:\n  - %s\n\nthis usually indicates:\n  - the rule file is malformed or incomplete\n  - required fields are missing\n  - invalid YAML syntax\n\nplease check the rule source or report this issue to the rule maintainer",
-					ruleID, strings.Join(errorMessages, "\n  - "))
+				return contextureerrors.ValidationErrorf("rule", "validation failed: %s", strings.Join(errorMessages, "; "))
 			}
 
 			// Create rule reference with merged variables, storing the full format
@@ -260,7 +260,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	for _, ruleRefWithOrig := range validRuleRefs {
 		err := c.projectManager.AddRule(config, ruleRefWithOrig.ruleRef)
 		if err != nil {
-			return fmt.Errorf("failed to add rule '%s' to project configuration.\n\nOriginal error: %w", ruleRefWithOrig.ruleRef.ID, err)
+			return contextureerrors.Wrap(err, "add rule")
 		}
 	}
 
@@ -268,7 +268,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	location := c.projectManager.GetConfigLocation(currentDir, false)
 	err = c.projectManager.SaveConfig(config, location, currentDir)
 	if err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	// Auto-generate rules after adding them (skip in JSON mode for clean output)
@@ -282,7 +282,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	// Handle output format
 	outputManager, err := output.NewManager(outputFormat)
 	if err != nil {
-		return fmt.Errorf("failed to create output manager: %w", err)
+		return contextureerrors.Wrap(err, "create output manager")
 	}
 
 	// Collect added rule IDs for output
@@ -306,7 +306,7 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 
 	err = outputManager.WriteRulesAdd(metadata)
 	if err != nil {
-		return fmt.Errorf("failed to write add output: %w", err)
+		return contextureerrors.Wrap(err, "write output")
 	}
 
 	// For default format, also display the detailed information
@@ -381,7 +381,7 @@ func (c *AddCommand) generateRules(
 	// Get target formats (all enabled formats)
 	targetFormats := config.GetEnabledFormats()
 	if len(targetFormats) == 0 {
-		return fmt.Errorf("no enabled formats found for rule generation.\n\nTo fix this:\n  1. Run 'contexture init' to configure formats\n  2. Or manually add formats to your .contexture.yaml:\n     formats:\n       - name: claude\n         enabled: true\n\nAvailable formats: claude, cursor, windsurf")
+		return contextureerrors.ValidationErrorf("formats", "no enabled formats found")
 	}
 
 	log.Debug("Auto-generating rules", "rules", len(config.Rules), "formats", len(targetFormats))
@@ -398,7 +398,7 @@ func (c *AddCommand) fetchLatestCommitHash(
 	// Clone the repository to a temporary directory
 	tempDir, cleanup, err := c.cloneRepositoryToTemp(ctx, parsedID.Source, parsedID.Ref)
 	if err != nil {
-		return "", fmt.Errorf("failed to clone repository: %w", err)
+		return "", contextureerrors.Wrap(err, "clone repository")
 	}
 	defer cleanup()
 
@@ -411,7 +411,7 @@ func (c *AddCommand) fetchLatestCommitHash(
 	// Get the latest commit information for this specific file
 	commitInfo, err := gitRepo.GetFileCommitInfo(tempDir, ruleFilePath, parsedID.Ref)
 	if err != nil {
-		return "", fmt.Errorf("failed to get file commit info: %w", err)
+		return "", contextureerrors.Wrap(err, "get file commit info")
 	}
 
 	return commitInfo.Hash, nil
@@ -425,7 +425,7 @@ func (c *AddCommand) cloneRepositoryToTemp(
 	// Create temporary directory
 	tempDir, err := afero.TempDir(afero.NewOsFs(), "", "contexture-add-*")
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
+		return "", nil, contextureerrors.Wrap(err, "create temp directory")
 	}
 
 	// Cleanup function
@@ -442,7 +442,7 @@ func (c *AddCommand) cloneRepositoryToTemp(
 	err = gitRepo.Clone(ctx, repoURL, tempDir, git.WithBranch(branch))
 	if err != nil {
 		cleanup() // Clean up on error
-		return "", nil, fmt.Errorf("failed to clone repository: %w", err)
+		return "", nil, contextureerrors.Wrap(err, "clone repository")
 	}
 
 	return tempDir, cleanup, nil
@@ -455,7 +455,7 @@ func AddAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depende
 
 	// If no rule IDs provided, show helpful error message
 	if len(ruleIDs) == 0 {
-		return fmt.Errorf("no rule IDs provided\n\nUsage:\n  contexture rules add [rule-id...]\n\nExamples:\n  # Add specific rules (simple format)\n  contexture rules add languages/go/code-organization testing/unit-tests\n  \n  # Add rules (full format)\n  contexture rules add \"[contexture:languages/go/advanced-patterns]\" \"[contexture:security/input-validation]\"\n  \n  # Add rule with variables\n  contexture rules add languages/go/testing --var threshold=90\n  \n  # Add from custom source\n  contexture rules add my/custom-rule --source \"https://github.com/my-org/rules.git\"\n\nTo browse available rules:\n  1. Check the repository at https://github.com/contextureai/rules\n  2. Use 'contexture rules list' to see currently installed rules\n  \nRun 'contexture rules add --help' for more options")
+		return contextureerrors.ValidationErrorf("rule-id", "no rule IDs provided")
 	}
 
 	return addCmd.Execute(ctx, cmd, ruleIDs)
@@ -466,14 +466,14 @@ func AddAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depende
 func parseVarFlag(varFlag string) (string, any, error) {
 	parts := strings.SplitN(varFlag, "=", 2)
 	if len(parts) != 2 {
-		return "", nil, fmt.Errorf("format should be 'key=value', got: %s", varFlag)
+		return "", nil, contextureerrors.ValidationErrorf("var", "format should be 'key=value'")
 	}
 
 	key := parts[0]
 	valueStr := parts[1]
 
 	if key == "" {
-		return "", nil, fmt.Errorf("key cannot be empty")
+		return "", nil, contextureerrors.ValidationErrorf("var", "key cannot be empty")
 	}
 
 	// Try to parse as JSON first (for complex values)

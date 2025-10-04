@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 )
 
 // JSONWriter implements Writer interface for JSON output format
@@ -83,7 +84,7 @@ func (w *JSONWriter) WriteRulesList(rules []*domain.Rule, metadata ListMetadata)
 	// Marshal with indentation for readability
 	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal rules to JSON: %w", err)
+		return contextureerrors.Wrap(err, "marshal rules to JSON")
 	}
 
 	// Print to stdout
@@ -99,7 +100,7 @@ func (w *JSONWriter) WriteRulesAdd(metadata AddMetadata) error {
 
 	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal add result to JSON: %w", err)
+		return contextureerrors.Wrap(err, "marshal add result to JSON")
 	}
 
 	fmt.Println(string(jsonData))
@@ -114,7 +115,7 @@ func (w *JSONWriter) WriteRulesRemove(metadata RemoveMetadata) error {
 
 	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal remove result to JSON: %w", err)
+		return contextureerrors.Wrap(err, "marshal remove result to JSON")
 	}
 
 	fmt.Println(string(jsonData))
@@ -129,7 +130,7 @@ func (w *JSONWriter) WriteRulesUpdate(metadata UpdateMetadata) error {
 
 	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal update result to JSON: %w", err)
+		return contextureerrors.Wrap(err, "marshal update result to JSON")
 	}
 
 	fmt.Println(string(jsonData))

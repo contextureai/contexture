@@ -7,21 +7,37 @@ import (
 	"github.com/contextureai/contexture/internal/version"
 )
 
-// VariableManager handles variable management for rule processing
+// VariableManager defines the interface for managing template variables with precedence.
+// It provides methods to build complete variable maps for template processing and enrich
+// them with built-in system variables. Variable precedence from lowest to highest:
+// globals < context variables < rule variables.
 type VariableManager interface {
 	BuildVariableMap(rule *domain.Rule, context *domain.RuleContext) map[string]any
 	EnrichWithBuiltins(variables map[string]any) map[string]any
 }
 
-// DefaultVariableManager implements variable management
+// DefaultVariableManager is the default implementation of VariableManager.
+// It handles variable merging with proper precedence ordering and enriches
+// variable maps with built-in variables including date/time and contexture metadata.
 type DefaultVariableManager struct{}
 
-// NewVariableManager creates a new variable manager
+// NewVariableManager creates a new DefaultVariableManager instance.
+// The returned VariableManager can be used to build variable maps for template
+// processing with automatic precedence handling and built-in variable enrichment.
 func NewVariableManager() VariableManager {
 	return &DefaultVariableManager{}
 }
 
-// BuildVariableMap creates a complete variable map for template processing
+// BuildVariableMap constructs a complete variable map for template processing with proper precedence.
+// Variables are merged in order of increasing precedence: globals < context variables < rule variables.
+// The resulting map also includes built-in variables (date, time, contexture metadata) and a "rule"
+// object containing the rule's metadata fields for template access.
+//
+// Parameters:
+//   - rule: The rule containing rule-specific variables (highest precedence)
+//   - context: The rule context containing globals and context-specific variables
+//
+// Returns a map suitable for use with Go's text/template engine.
 func (vm *DefaultVariableManager) BuildVariableMap(
 	rule *domain.Rule,
 	context *domain.RuleContext,
@@ -58,7 +74,15 @@ func (vm *DefaultVariableManager) BuildVariableMap(
 	return variables
 }
 
-// EnrichWithBuiltins adds built-in variables to an existing variable map
+// EnrichWithBuiltins adds built-in variables to an existing variable map.
+// Built-in variables include date/time helpers (now, date, time, datetime, timestamp, year)
+// and contexture metadata (version, engine, build information). This method creates a new
+// map with all existing variables plus the built-ins, without modifying the input.
+//
+// Parameters:
+//   - variables: The existing variable map to enrich
+//
+// Returns a new map containing all original variables plus built-in variables.
 func (vm *DefaultVariableManager) EnrichWithBuiltins(variables map[string]any) map[string]any {
 	enriched := make(map[string]any)
 

@@ -24,7 +24,7 @@ func TestNewBuildCommand(t *testing.T) {
 func TestBuildAction(t *testing.T) {
 	deps := createTestDependencies()
 
-	app := createTestApp("test", func(ctx context.Context, cmd *cli.Command) error {
+	app := createTestApp(func(ctx context.Context, cmd *cli.Command) error {
 		return BuildAction(ctx, cmd, deps)
 	})
 

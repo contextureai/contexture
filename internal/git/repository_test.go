@@ -397,7 +397,7 @@ func TestClient_createParentDir_ErrorHandling(t *testing.T) {
 	err := client.(*Client).createParentDir("/tmp/test/repo")
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to create parent directory")
+	assert.Contains(t, err.Error(), "create_dir")
 }
 
 func TestClient_buildCloneOptions(t *testing.T) {
@@ -479,7 +479,7 @@ func TestClient_handleCloneError(t *testing.T) {
 			localPath:   "/tmp/test",
 			repoURL:     "https://github.com/test/repo.git",
 			inputErr:    fmt.Errorf("clone failed"),
-			expectError: "clone failed: clone failed",
+			expectError: "clone: clone failed",
 		},
 		{
 			name: "repository not found with SSH should mention authentication",
@@ -489,7 +489,7 @@ func TestClient_handleCloneError(t *testing.T) {
 			localPath:   "/tmp/ssh-test",
 			repoURL:     "git@github.com:private/repo.git",
 			inputErr:    transport.ErrRepositoryNotFound,
-			expectError: "repository not found (may be due to authentication issues)",
+			expectError: "validation failed for repository: repository not found (may be due to authentication issues)",
 		},
 		{
 			name: "repository not found with HTTPS should not mention authentication",
@@ -499,7 +499,7 @@ func TestClient_handleCloneError(t *testing.T) {
 			localPath:   "/tmp/https-test",
 			repoURL:     "https://github.com/test/repo.git",
 			inputErr:    transport.ErrRepositoryNotFound,
-			expectError: "repository not found",
+			expectError: "validation failed for repository: repository not found",
 		},
 	}
 

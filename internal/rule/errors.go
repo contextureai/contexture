@@ -1,7 +1,7 @@
 package rule
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 )
 
@@ -21,5 +21,5 @@ func combineErrors(errs []error) error {
 		}
 		sb.WriteString(err.Error())
 	}
-	return fmt.Errorf("%s", sb.String())
+	return errors.New(sb.String())
 }

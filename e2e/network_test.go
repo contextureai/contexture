@@ -22,14 +22,14 @@ func TestNetworkFailures(t *testing.T) {
 	t.Run("invalid git repository", func(t *testing.T) {
 		result := project.Run(t, "rules", "add", "[contexture(https://invalid-repo.example.com):test/rule]")
 		result.ExpectFailure(t).
-			ExpectStderr(t, "failed to clone repository")
+			ExpectStderr(t, "clone repository")
 	})
 
 	t.Run("timeout handling", func(t *testing.T) {
 		// Use a very slow DNS resolution to simulate timeout
 		result := project.Run(t, "rules", "add", "[contexture(https://very-slow-dns-that-should-not-exist.example.invalid):test/rule]")
 		result.ExpectFailure(t).
-			ExpectStderr(t, "failed")
+			ExpectStderr(t, "clone")
 	})
 
 	t.Run("unsupported URL scheme", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestGitBranchHandling(t *testing.T) {
 	t.Run("invalid branch", func(t *testing.T) {
 		result := project.Run(t, "rules", "add", "[contexture(https://github.com/contextureai/rules.git):core/example,nonexistent-branch]")
 		result.ExpectFailure(t).
-			ExpectStderr(t, "branch")
+			ExpectStderr(t, "reference not found")
 	})
 }
 
