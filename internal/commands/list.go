@@ -8,6 +8,7 @@ import (
 
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
@@ -41,12 +42,13 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get current directory")
 	}
 
 	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load project configuration").
+			WithSuggestions("Run 'contexture init' to initialize a new project")
 	}
 
 	config := configResult.Config
@@ -54,7 +56,7 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 	// Fetch the actual rules from the rule references
 	rules, err := c.fetchRulesFromReferences(ctx, config.Rules)
 	if err != nil {
-		return fmt.Errorf("failed to fetch rules: %w", err)
+		return contextureerrors.Wrap(err, "fetch rules")
 	}
 
 	// Use simple rule list display
@@ -101,7 +103,7 @@ func (c *ListCommand) fetchRulesFromReferences(
 
 	// If we failed to fetch any rules and had errors, return the last error
 	if len(rules) == 0 && len(ruleRefs) > 0 && lastError != nil {
-		return nil, fmt.Errorf("failed to fetch any rules: %w", lastError)
+		return nil, contextureerrors.Wrap(lastError, "fetch rules")
 	}
 
 	return rules, nil

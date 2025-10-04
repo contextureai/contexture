@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/project"
 	"github.com/contextureai/contexture/internal/tui"
@@ -40,7 +41,7 @@ func (fm *FormatManager) ListFormats(_ context.Context, _ *cli.Command) error {
 	// Handle project configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
@@ -62,12 +63,12 @@ func (fm *FormatManager) AddFormat(ctx context.Context, cmd *cli.Command, format
 	// Handle project configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	return fm.addFormatToProjectConfig(configResult, formatType, currentDir)
@@ -82,12 +83,12 @@ func (fm *FormatManager) EnableFormat(
 	// Handle project configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	return fm.enableFormatInProjectConfig(configResult, formatType, currentDir)
@@ -102,12 +103,12 @@ func (fm *FormatManager) DisableFormat(
 	// Handle project configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	return fm.disableFormatInProjectConfig(configResult, formatType, currentDir)
@@ -122,12 +123,12 @@ func (fm *FormatManager) RemoveFormat(
 	// Handle project configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	return fm.removeFormatFromProjectConfig(configResult, formatType, currentDir)
@@ -138,12 +139,12 @@ func (fm *FormatManager) interactiveAddFormat(_ context.Context, _ *cli.Command)
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	config := configResult.Config
@@ -251,7 +252,7 @@ func (fm *FormatManager) interactiveAddFormat(_ context.Context, _ *cli.Command)
 		Options:     availableFormats,
 	})
 	if err != nil {
-		return fmt.Errorf("format selection cancelled: %w", err)
+		return contextureerrors.Wrap(err, "select format")
 	}
 
 	if len(selectedFormats) == 0 {
@@ -278,7 +279,7 @@ func (fm *FormatManager) interactiveAddFormat(_ context.Context, _ *cli.Command)
 
 	// Save configuration
 	if err := fm.projectManager.SaveConfig(config, configResult.Location, currentDir); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	// Show success message
@@ -306,12 +307,12 @@ func (fm *FormatManager) interactiveRemoveFormat(_ context.Context, _ *cli.Comma
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	config := configResult.Config
@@ -402,7 +403,7 @@ func (fm *FormatManager) interactiveRemoveFormat(_ context.Context, _ *cli.Comma
 		Options:     availableFormats,
 	})
 	if err != nil {
-		return fmt.Errorf("format selection cancelled: %w", err)
+		return contextureerrors.Wrap(err, "select format")
 	}
 
 	if len(selectedFormats) == 0 {
@@ -426,7 +427,8 @@ func (fm *FormatManager) interactiveRemoveFormat(_ context.Context, _ *cli.Comma
 	}
 
 	if enabledCount-removingEnabledCount <= 0 {
-		return fmt.Errorf(
+		return contextureerrors.ValidationErrorf(
+			"formats",
 			"cannot remove all enabled formats. At least one format must remain enabled",
 		)
 	}
@@ -446,7 +448,7 @@ func (fm *FormatManager) interactiveRemoveFormat(_ context.Context, _ *cli.Comma
 
 	// Save configuration
 	if err := fm.projectManager.SaveConfig(config, configResult.Location, currentDir); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	// Show success message
@@ -473,12 +475,12 @@ func (fm *FormatManager) interactiveEnableFormat(_ context.Context, _ *cli.Comma
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	config := configResult.Config
@@ -576,7 +578,7 @@ func (fm *FormatManager) interactiveEnableFormat(_ context.Context, _ *cli.Comma
 		Options:     availableFormats,
 	})
 	if err != nil {
-		return fmt.Errorf("format selection cancelled: %w", err)
+		return contextureerrors.Wrap(err, "select format")
 	}
 
 	if selectedFormat == "" {
@@ -593,12 +595,12 @@ func (fm *FormatManager) interactiveDisableFormat(_ context.Context, _ *cli.Comm
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get directory")
 	}
 
 	configResult, err := fm.projectManager.LoadConfig(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load config")
 	}
 
 	config := configResult.Config
@@ -709,7 +711,7 @@ func (fm *FormatManager) interactiveDisableFormat(_ context.Context, _ *cli.Comm
 		Options:     availableFormats,
 	})
 	if err != nil {
-		return fmt.Errorf("format selection cancelled: %w", err)
+		return contextureerrors.Wrap(err, "select format")
 	}
 
 	if selectedFormat == "" {
@@ -811,7 +813,7 @@ func (fm *FormatManager) addFormatToProjectConfig(configResult *domain.ConfigRes
 
 	// Validate format type
 	if !fm.registry.IsSupported(domain.FormatType(formatType)) {
-		return fmt.Errorf("unsupported format: %s", formatType)
+		return contextureerrors.ValidationErrorf("format", "unsupported format: %s", formatType)
 	}
 
 	// Check if format already exists
@@ -847,7 +849,7 @@ func (fm *FormatManager) addFormatToProjectConfig(configResult *domain.ConfigRes
 
 	// Save configuration
 	if err := fm.projectManager.SaveConfig(config, configResult.Location, currentDir); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	// Create format directories if needed
@@ -914,7 +916,8 @@ func (fm *FormatManager) enableFormatInProjectConfig(configResult *domain.Config
 	}
 
 	if !found {
-		return fmt.Errorf(
+		return contextureerrors.ValidationErrorf(
+			"format",
 			"format %s is not configured. Add it first with 'contexture config formats add %s'",
 			formatType,
 			formatType,
@@ -923,7 +926,7 @@ func (fm *FormatManager) enableFormatInProjectConfig(configResult *domain.Config
 
 	// Save configuration
 	if err := fm.projectManager.SaveConfig(config, configResult.Location, currentDir); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	// Create format directories if needed
@@ -954,7 +957,8 @@ func (fm *FormatManager) disableFormatInProjectConfig(configResult *domain.Confi
 	}
 
 	if enabledCount <= 1 {
-		return fmt.Errorf(
+		return contextureerrors.ValidationErrorf(
+			"formats",
 			"cannot disable the last enabled format. At least one format must remain enabled",
 		)
 	}
@@ -974,12 +978,12 @@ func (fm *FormatManager) disableFormatInProjectConfig(configResult *domain.Confi
 	}
 
 	if !found {
-		return fmt.Errorf("format %s is not configured", formatType)
+		return contextureerrors.ValidationErrorf("format", "format %s is not configured", formatType)
 	}
 
 	// Save configuration
 	if err := fm.projectManager.SaveConfig(config, configResult.Location, currentDir); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	theme := ui.DefaultTheme()
@@ -1011,7 +1015,7 @@ func (fm *FormatManager) removeFormatFromProjectConfig(configResult *domain.Conf
 	}
 
 	if !found {
-		return fmt.Errorf("format %s is not configured", formatType)
+		return contextureerrors.ValidationErrorf("format", "format %s is not configured", formatType)
 	}
 
 	// Check if we're removing the last enabled format
@@ -1023,7 +1027,8 @@ func (fm *FormatManager) removeFormatFromProjectConfig(configResult *domain.Conf
 			}
 		}
 		if enabledCount == 0 {
-			return fmt.Errorf(
+			return contextureerrors.ValidationErrorf(
+				"formats",
 				"cannot remove the last enabled format. Enable another format first or add a new one",
 			)
 		}
@@ -1031,7 +1036,7 @@ func (fm *FormatManager) removeFormatFromProjectConfig(configResult *domain.Conf
 
 	// Save configuration
 	if err := fm.projectManager.SaveConfig(config, configResult.Location, currentDir); err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save config")
 	}
 
 	theme := ui.DefaultTheme()

@@ -1,10 +1,11 @@
 package domain
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
+
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 )
 
 // TriggerType represents the type of rule trigger
@@ -44,7 +45,7 @@ func (rt *RuleTrigger) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		case "glob":
 			rt.Type = TriggerGlob
 		default:
-			return fmt.Errorf("invalid trigger type: %s", triggerStr)
+			return contextureerrors.ValidationErrorf("trigger", "invalid trigger type: %s", triggerStr)
 		}
 		return nil
 	}
@@ -53,7 +54,7 @@ func (rt *RuleTrigger) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type rawRuleTrigger RuleTrigger
 	var raw rawRuleTrigger
 	if err := unmarshal(&raw); err != nil {
-		return fmt.Errorf("trigger must be string or object: %w", err)
+		return contextureerrors.ValidationError("trigger", err)
 	}
 
 	*rt = RuleTrigger(raw)

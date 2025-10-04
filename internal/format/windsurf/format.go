@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
+
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/format/base"
 	"github.com/spf13/afero"
@@ -20,6 +22,8 @@ const (
 	ModeSingleFile OutputMode = "single"
 	// ModeMultiFile outputs each rule to its own file
 	ModeMultiFile OutputMode = "multi"
+
+	singleFileFilename = "rules.md"
 )
 
 // Strategy implements the FormatStrategy interface for Windsurf format
@@ -100,7 +104,7 @@ func (s *Strategy) IsSingleFile() bool {
 // GenerateFilename generates a filename from rule ID
 func (s *Strategy) GenerateFilename(ruleID string) string {
 	if s.mode == ModeSingleFile {
-		return "rules.md"
+		return singleFileFilename
 	}
 	return s.bf.GenerateFilename(ruleID)
 }
@@ -127,7 +131,8 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 	// Check character limits for each rule individually
 	for _, rule := range rules {
 		if len(rule.Content) > domain.WindsurfMaxSingleRuleChars {
-			return fmt.Errorf(
+			return contextureerrors.ValidationErrorf(
+				rule.Rule.ID,
 				"rule '%s' exceeds Windsurf per-file limit of %d characters (current: %d)",
 				rule.Rule.ID,
 				domain.WindsurfMaxSingleRuleChars,
@@ -140,7 +145,7 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 
 	// Ensure output directory exists
 	if err := s.bf.EnsureDirectory(outputDir); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+		return contextureerrors.Wrap(err, "windsurf.WriteFiles: create output directory")
 	}
 
 	if s.mode == ModeSingleFile {
@@ -175,7 +180,7 @@ func (s *Strategy) CreateDirectories(config *domain.FormatConfig) error {
 
 // writeSingleFile writes all rules to a single file
 func (s *Strategy) writeSingleFile(rules []*domain.TransformedRule, outputDir string) error {
-	filename := "rules.md"
+	filename := singleFileFilename
 	filePath := filepath.Join(outputDir, filename)
 
 	var content strings.Builder
@@ -202,7 +207,7 @@ func (s *Strategy) writeSingleFile(rules []*domain.TransformedRule, outputDir st
 
 	// Write to file
 	if err := s.bf.WriteFile(filePath, []byte(content.String())); err != nil {
-		return fmt.Errorf("failed to write Windsurf single file: %w", err)
+		return contextureerrors.Wrap(err, "windsurf.writeSingleFile")
 	}
 
 	s.bf.LogInfo("Successfully wrote Windsurf single file", "path", filePath, "rules", len(rules))
@@ -221,7 +226,7 @@ func (s *Strategy) writeMultiFile(rules []*domain.TransformedRule, outputDir str
 		content := s.bf.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		if err := s.bf.WriteFile(filePath, []byte(content)); err != nil {
-			errors = append(errors, fmt.Errorf("failed to write rule %s: %w", rule.Rule.ID, err))
+			errors = append(errors, contextureerrors.Wrap(err, "windsurf.writeMultiFile: write rule "+rule.Rule.ID))
 			continue
 		}
 
@@ -229,7 +234,7 @@ func (s *Strategy) writeMultiFile(rules []*domain.TransformedRule, outputDir str
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("failed to write %d rules: %v", len(errors), errors)
+		return contextureerrors.WithOpf("windsurf.writeMultiFile", "failed to write %d rules: %v", len(errors), errors)
 	}
 
 	s.bf.LogInfo("Successfully wrote Windsurf multi-file format", "count", len(rules), "directory", outputDir)
@@ -270,6 +275,7 @@ func (s *Strategy) estimateContentSize(rules []*domain.TransformedRule) int {
 // Format implements the Windsurf format with support for both single and multi-file modes
 type Format struct {
 	*base.CommonFormat
+
 	strategy *Strategy
 }
 
@@ -350,7 +356,8 @@ func (f *Format) Validate(rule *domain.Rule) (*domain.ValidationResult, error) {
 	// Add Windsurf-specific character limit validation
 	contentLength := len(rule.Content)
 	if contentLength > domain.WindsurfMaxSingleRuleChars {
-		result.Errors = append(result.Errors, fmt.Errorf(
+		result.Errors = append(result.Errors, contextureerrors.ValidationErrorf(
+			"content",
 			"rule content exceeds Windsurf limit of %d characters (current: %d)",
 			domain.WindsurfMaxSingleRuleChars,
 			contentLength,
@@ -371,7 +378,7 @@ func (f *Format) List(config *domain.FormatConfig) ([]*domain.InstalledRule, err
 	// Check if directory exists
 	exists, err := f.strategy.bf.DirExists(outputDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if directory exists: %w", err)
+		return nil, contextureerrors.Wrap(err, "windsurf.List: check directory exists")
 	}
 	if !exists {
 		f.strategy.bf.LogDebug("Windsurf format directory does not exist", "path", outputDir)
@@ -394,10 +401,20 @@ func (f *Format) Remove(ruleID string, config *domain.FormatConfig) error {
 	return f.CommonFormat.Remove(ruleID, config)
 }
 
+// GetSingleFileFilename returns the filename for single-file mode.
+func (f *Format) GetSingleFileFilename() string {
+	return singleFileFilename
+}
+
+// GetDefaultTemplate returns the default template for the format.
+func (f *Format) GetDefaultTemplate() string {
+	return f.strategy.GetDefaultTemplate()
+}
+
 // removeSingleFile removes a rule from the single file by parsing and rebuilding content
 func (f *Format) removeSingleFile(ruleID string, config *domain.FormatConfig) error {
 	outputDir := f.strategy.GetOutputPath(config)
-	filename := "rules.md"
+	filename := singleFileFilename
 	filePath := filepath.Join(outputDir, filename)
 
 	// Read current content (EAFP - will fail if file doesn't exist)
@@ -407,7 +424,7 @@ func (f *Format) removeSingleFile(ruleID string, config *domain.FormatConfig) er
 			f.strategy.bf.LogDebug("Windsurf single file does not exist", "path", filePath)
 			return nil
 		}
-		return fmt.Errorf("failed to read Windsurf single file: %w", err)
+		return contextureerrors.Wrap(err, "windsurf.removeSingleFile: read file")
 	}
 
 	// Remove the rule from content by parsing sections
@@ -416,7 +433,7 @@ func (f *Format) removeSingleFile(ruleID string, config *domain.FormatConfig) er
 
 	// Write back the updated content
 	if err := f.strategy.bf.WriteFile(filePath, []byte(updatedContent)); err != nil {
-		return fmt.Errorf("failed to write updated Windsurf single file: %w", err)
+		return contextureerrors.Wrap(err, "windsurf.removeSingleFile: write file")
 	}
 
 	f.strategy.bf.LogInfo("Successfully removed rule from Windsurf single file", "ruleID", ruleID)
@@ -443,16 +460,8 @@ func (f *Format) removeRuleFromContent(content, ruleID string) string {
 // Test helper methods to expose strategy methods
 // These are used by tests to verify private implementation details
 
-func (f *Format) GetSingleFileFilename() string {
-	return "rules.md"
-}
-
 func (f *Format) getOutputDir(config *domain.FormatConfig) string {
 	return f.strategy.GetOutputPath(config)
-}
-
-func (f *Format) GetDefaultTemplate() string {
-	return f.strategy.GetDefaultTemplate()
 }
 
 func (f *Format) getSingleFileHeader(ruleCount int) string {

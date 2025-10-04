@@ -3,11 +3,11 @@ package rule
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"sync"
 
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 )
 
 // FetchRulesParallel fetches rules in parallel with a worker pool
@@ -97,14 +97,14 @@ func FetchRulesParallel(
 
 	for res := range results {
 		if res.err != nil {
-			errors = append(errors, fmt.Errorf("rule %s: %w", res.id, res.err))
+			errors = append(errors, contextureerrors.Wrap(res.err, "rule "+res.id))
 			continue
 		}
 		rules = append(rules, res.rule)
 	}
 
 	if len(errors) > 0 {
-		return nil, fmt.Errorf("failed to fetch some rules: %w", combineErrors(errors))
+		return nil, contextureerrors.Wrap(combineErrors(errors), "failed to fetch some rules")
 	}
 
 	return rules, nil
@@ -158,7 +158,7 @@ func ParseRules(parser Parser, rules []Content) *ParseResult {
 		if err != nil {
 			result.Errors = append(
 				result.Errors,
-				fmt.Errorf("failed to parse rule %s: %w", ruleContent.Metadata.ID, err),
+				contextureerrors.Wrap(err, "failed to parse rule "+ruleContent.Metadata.ID),
 			)
 			result.Skipped = append(result.Skipped, ruleContent.Metadata.ID)
 			continue

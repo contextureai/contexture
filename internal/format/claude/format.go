@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format/base"
 	"github.com/spf13/afero"
 )
+
+const defaultClaudeFilename = "CLAUDE.md"
 
 // Strategy implements the FormatStrategy interface for Claude format
 type Strategy struct {
@@ -44,7 +47,7 @@ func (s *Strategy) GetDefaultTemplate() string {
 
 // GetOutputPath returns the full output path for the Claude format file
 func (s *Strategy) GetOutputPath(config *domain.FormatConfig) string {
-	filename := "CLAUDE.md"
+	filename := defaultClaudeFilename
 
 	if config == nil {
 		return filename
@@ -69,8 +72,8 @@ func (s *Strategy) IsSingleFile() bool {
 }
 
 // GenerateFilename generates a filename from a rule ID (not used for single-file format)
-func (s *Strategy) GenerateFilename(ruleID string) string {
-	return "CLAUDE.md"
+func (s *Strategy) GenerateFilename(_ string) string {
+	return defaultClaudeFilename
 }
 
 // GetMetadata returns metadata about Claude format
@@ -126,17 +129,17 @@ func (s *Strategy) writeWithTemplate(rules []*domain.TransformedRule, config *do
 		// Validate path is within base directory to prevent path traversal
 		cleanPath, err := filepath.Abs(templatePath)
 		if err != nil {
-			return fmt.Errorf("invalid template path: %w", err)
+			return contextureerrors.Wrap(err, "invalid template path")
 		}
 
 		cleanBase, err := filepath.Abs(config.BaseDir)
 		if err != nil {
-			return fmt.Errorf("invalid base directory: %w", err)
+			return contextureerrors.Wrap(err, "invalid base directory")
 		}
 
 		// Ensure template path is within base directory
 		if !strings.HasPrefix(cleanPath, cleanBase+string(filepath.Separator)) && cleanPath != cleanBase {
-			return fmt.Errorf("template path %q is outside base directory %q", config.Template, config.BaseDir)
+			return contextureerrors.WithOpf("validate template path", "template path %q is outside base directory %q", config.Template, config.BaseDir)
 		}
 	} else {
 		templatePath = config.Template
@@ -145,7 +148,7 @@ func (s *Strategy) writeWithTemplate(rules []*domain.TransformedRule, config *do
 	// Check if template file exists
 	exists, err := s.bf.FileExists(templatePath)
 	if err != nil {
-		return fmt.Errorf("failed to check template file: %w", err)
+		return contextureerrors.Wrap(err, "failed to check template file")
 	}
 	if !exists {
 		s.bf.LogWarn("Template file not found, falling back to default format", "template", templatePath)
@@ -155,7 +158,7 @@ func (s *Strategy) writeWithTemplate(rules []*domain.TransformedRule, config *do
 	// Read template content
 	templateBytes, err := s.bf.ReadFile(templatePath)
 	if err != nil {
-		return fmt.Errorf("failed to read template file %s: %w", templatePath, err)
+		return contextureerrors.WithOpf("read template file", "failed to read template file %s: %w", templatePath, err)
 	}
 	templateContent := string(templateBytes)
 
@@ -171,12 +174,12 @@ func (s *Strategy) writeWithTemplate(rules []*domain.TransformedRule, config *do
 	dummyRule := &domain.Rule{ID: "template", Title: "Template Processing"}
 	processedContent, err := s.bf.ProcessTemplate(dummyRule, templateContent, variables)
 	if err != nil {
-		return fmt.Errorf("failed to process template: %w", err)
+		return contextureerrors.Wrap(err, "failed to process template")
 	}
 
 	// Write to file
 	if err := s.bf.WriteFile(outputPath, []byte(processedContent)); err != nil {
-		return fmt.Errorf("failed to write Claude format file with template: %w", err)
+		return contextureerrors.Wrap(err, "failed to write Claude format file with template")
 	}
 
 	s.bf.LogInfo("Successfully wrote Claude format file using template", "path", outputPath, "template", config.Template, "rules", len(rules))
@@ -202,7 +205,7 @@ func (s *Strategy) writeWithoutTemplate(rules []*domain.TransformedRule, outputP
 
 	// Write to file
 	if err := s.bf.WriteFile(outputPath, []byte(content.String())); err != nil {
-		return fmt.Errorf("failed to write Claude format file: %w", err)
+		return contextureerrors.Wrap(err, "failed to write Claude format file")
 	}
 
 	s.bf.LogInfo("Successfully wrote Claude format file", "path", outputPath, "rules", len(rules))
@@ -257,6 +260,7 @@ func (s *Strategy) estimateContentSize(rules []*domain.TransformedRule) int {
 // Format implements the Claude single-file format using CommonFormat
 type Format struct {
 	*base.CommonFormat
+
 	strategy *Strategy
 }
 
@@ -297,7 +301,7 @@ func (f *Format) getFileFooter() string {
 }
 
 func (f *Format) getOutputFilename() string {
-	return "CLAUDE.md"
+	return defaultClaudeFilename
 }
 
 func (f *Format) generateRulesContent(rules []*domain.TransformedRule) string {

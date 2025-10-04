@@ -959,5 +959,5 @@ func TestDisplayRuleList_WithInvalidPattern(t *testing.T) {
 
 	err := DisplayRuleList(rules, options)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid pattern")
+	assert.Contains(t, err.Error(), "validation failed for pattern")
 }

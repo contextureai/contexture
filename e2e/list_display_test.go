@@ -113,7 +113,7 @@ func TestListCommand_NoProject(t *testing.T) {
 	result := project.Run(t, "rules", "list").ExpectFailure(t)
 
 	// Should provide helpful error message
-	result.ExpectStderr(t, "no project configuration found")
+	result.ExpectStderr(t, "load project configuration")
 }
 
 func TestListCommand_WithPattern(t *testing.T) {
@@ -189,7 +189,7 @@ func TestListCommand_WithInvalidPattern(t *testing.T) {
 
 	// Test invalid regex pattern
 	result := project.Run(t, "rules", "list", "--pattern", "[invalid").ExpectFailure(t)
-	result.ExpectStderr(t, "invalid pattern")
+	result.ExpectStderr(t, "validation failed for pattern")
 }
 
 func TestListCommand_JSONOutput(t *testing.T) {

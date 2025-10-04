@@ -2,12 +2,12 @@
 package base
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 )
 
 // FormatStrategy defines format-specific behavior that varies between formats
@@ -44,6 +44,7 @@ type FormatStrategy interface {
 // It uses the strategy pattern to delegate format-specific behavior
 type CommonFormat struct {
 	*Base
+
 	strategy FormatStrategy
 }
 
@@ -66,7 +67,7 @@ func (cf *CommonFormat) Transform(processedRule *domain.ProcessedRule) (*domain.
 	// Stage 1: Render the rule content template first
 	renderedContent, err := cf.ProcessTemplate(rule, rule.Content, processedRule.Variables)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render rule content template: %w", err)
+		return nil, contextureerrors.Wrap(err, "render_rule_content")
 	}
 
 	// Stage 2: Use format-specific template wrapper and include rendered content
@@ -84,7 +85,7 @@ func (cf *CommonFormat) Transform(processedRule *domain.ProcessedRule) (*domain.
 	// Process the wrapper template with rendered content
 	content, err := cf.ProcessTemplate(rule, templateContent, variables)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render wrapper template: %w", err)
+		return nil, contextureerrors.Wrap(err, "render_wrapper")
 	}
 
 	// Generate filename and relative path based on format strategy
@@ -141,6 +142,36 @@ func (cf *CommonFormat) Remove(ruleID string, config *domain.FormatConfig) error
 	return cf.removeMultiFile(ruleID, config)
 }
 
+// List returns all currently installed rules for this format
+func (cf *CommonFormat) List(config *domain.FormatConfig) ([]*domain.InstalledRule, error) {
+	cf.LogDebug("Listing installed rules")
+
+	if cf.strategy.IsSingleFile() {
+		return cf.listSingleFile(config)
+	}
+	return cf.listMultiFile(config)
+}
+
+// GetOutputPath returns the output path for this format
+func (cf *CommonFormat) GetOutputPath(config *domain.FormatConfig) string {
+	return cf.strategy.GetOutputPath(config)
+}
+
+// CleanupEmptyDirectories handles cleanup of empty directories
+func (cf *CommonFormat) CleanupEmptyDirectories(config *domain.FormatConfig) error {
+	return cf.strategy.CleanupEmptyDirectories(config)
+}
+
+// CreateDirectories creates necessary directories for this format
+func (cf *CommonFormat) CreateDirectories(config *domain.FormatConfig) error {
+	return cf.strategy.CreateDirectories(config)
+}
+
+// GetMetadata returns metadata about this format
+func (cf *CommonFormat) GetMetadata() *domain.FormatMetadata {
+	return cf.strategy.GetMetadata()
+}
+
 // removeSingleFile handles removal for single-file formats
 func (cf *CommonFormat) removeSingleFile(ruleID string, config *domain.FormatConfig) error {
 	outputPath := cf.strategy.GetOutputPath(config)
@@ -148,7 +179,7 @@ func (cf *CommonFormat) removeSingleFile(ruleID string, config *domain.FormatCon
 	// Check if file exists
 	exists, err := cf.FileExists(outputPath)
 	if err != nil {
-		return fmt.Errorf("failed to check if file exists: %w", err)
+		return contextureerrors.Wrap(err, "check_file_exists")
 	}
 	if !exists {
 		cf.LogDebug("File does not exist", "path", outputPath)
@@ -158,7 +189,7 @@ func (cf *CommonFormat) removeSingleFile(ruleID string, config *domain.FormatCon
 	// Get current rules from the file
 	currentRules, err := cf.List(config)
 	if err != nil {
-		return fmt.Errorf("failed to list current rules: %w", err)
+		return contextureerrors.Wrap(err, "list_rules")
 	}
 
 	// Filter out the rule we want to remove
@@ -177,13 +208,13 @@ func (cf *CommonFormat) removeSingleFile(ruleID string, config *domain.FormatCon
 	if len(remainingRules) == 0 {
 		// No rules left, remove the file
 		if err := cf.RemoveFile(outputPath); err != nil {
-			return fmt.Errorf("failed to remove empty file: %w", err)
+			return contextureerrors.Wrap(err, "remove_file")
 		}
 		cf.LogInfo("Removed file (no rules remaining)", "path", outputPath)
 	} else {
 		// Regenerate the file with remaining rules
 		if err := cf.Write(remainingRules, config); err != nil {
-			return fmt.Errorf("failed to regenerate file: %w", err)
+			return contextureerrors.Wrap(err, "regenerate_file")
 		}
 		cf.LogInfo("Successfully regenerated file", "ruleID", ruleID, "remainingRules", len(remainingRules))
 	}
@@ -200,7 +231,7 @@ func (cf *CommonFormat) removeMultiFile(ruleID string, config *domain.FormatConf
 	// Check if file exists
 	exists, err := cf.FileExists(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to check if file exists: %w", err)
+		return contextureerrors.Wrap(err, "check_file_exists")
 	}
 	if !exists {
 		cf.LogDebug("Rule file does not exist", "path", filePath)
@@ -209,7 +240,7 @@ func (cf *CommonFormat) removeMultiFile(ruleID string, config *domain.FormatConf
 
 	// Remove the file
 	if err := cf.RemoveFile(filePath); err != nil {
-		return fmt.Errorf("failed to remove rule file: %w", err)
+		return contextureerrors.Wrap(err, "remove_file")
 	}
 
 	// Check if directory is now empty and remove it if so
@@ -217,16 +248,6 @@ func (cf *CommonFormat) removeMultiFile(ruleID string, config *domain.FormatConf
 
 	cf.LogInfo("Successfully removed rule file", "ruleID", ruleID, "path", filePath)
 	return nil
-}
-
-// List returns all currently installed rules for this format
-func (cf *CommonFormat) List(config *domain.FormatConfig) ([]*domain.InstalledRule, error) {
-	cf.LogDebug("Listing installed rules")
-
-	if cf.strategy.IsSingleFile() {
-		return cf.listSingleFile(config)
-	}
-	return cf.listMultiFile(config)
 }
 
 // listSingleFile lists rules from a single file
@@ -251,7 +272,7 @@ func (cf *CommonFormat) listSingleFile(config *domain.FormatConfig) ([]*domain.I
 			cf.LogDebug("File does not exist", "path", filePath)
 			return []*domain.InstalledRule{}, nil
 		}
-		return nil, fmt.Errorf("failed to get file info: %w", err)
+		return nil, contextureerrors.Wrap(err, "get_file_info")
 	}
 
 	// Read content to parse individual rules
@@ -261,7 +282,7 @@ func (cf *CommonFormat) listSingleFile(config *domain.FormatConfig) ([]*domain.I
 			cf.LogDebug("File was deleted", "path", filePath)
 			return []*domain.InstalledRule{}, nil
 		}
-		return nil, fmt.Errorf("failed to read file content: %w", err)
+		return nil, contextureerrors.Wrap(err, "read_file")
 	}
 
 	// Parse individual rules from the file
@@ -291,7 +312,7 @@ func (cf *CommonFormat) listMultiFile(config *domain.FormatConfig) ([]*domain.In
 			cf.LogDebug("Directory does not exist", "path", outputDir)
 			return []*domain.InstalledRule{}, nil
 		}
-		return nil, fmt.Errorf("failed to read directory: %w", err)
+		return nil, contextureerrors.Wrap(err, "read_directory")
 	}
 
 	var installedRules []*domain.InstalledRule
@@ -469,24 +490,4 @@ func (cf *CommonFormat) extractBasePath(ruleID string) string {
 	}
 
 	return rulePath
-}
-
-// GetOutputPath returns the output path for this format
-func (cf *CommonFormat) GetOutputPath(config *domain.FormatConfig) string {
-	return cf.strategy.GetOutputPath(config)
-}
-
-// CleanupEmptyDirectories handles cleanup of empty directories
-func (cf *CommonFormat) CleanupEmptyDirectories(config *domain.FormatConfig) error {
-	return cf.strategy.CleanupEmptyDirectories(config)
-}
-
-// CreateDirectories creates necessary directories for this format
-func (cf *CommonFormat) CreateDirectories(config *domain.FormatConfig) error {
-	return cf.strategy.CreateDirectories(config)
-}
-
-// GetMetadata returns metadata about this format
-func (cf *CommonFormat) GetMetadata() *domain.FormatMetadata {
-	return cf.strategy.GetMetadata()
 }

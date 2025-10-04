@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format/base"
 	"github.com/spf13/afero"
 )
@@ -87,7 +88,7 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 
 	// Ensure output directory exists
 	if err := s.bf.EnsureDirectory(outputDir); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+		return contextureerrors.Wrap(err, "failed to create output directory")
 	}
 
 	// Write each rule to its own file
@@ -99,7 +100,7 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 		content := s.bf.AppendTrackingCommentWithDefaults(rule.Content, rule.Rule.ID, rule.Rule.Variables, rule.Rule.DefaultVariables)
 
 		if err := s.bf.WriteFile(filePath, []byte(content)); err != nil {
-			errors = append(errors, fmt.Errorf("failed to write rule %s: %w", rule.Rule.ID, err))
+			errors = append(errors, contextureerrors.WithOpf("failed to write rule", "%s: %w", rule.Rule.ID, err))
 			continue
 		}
 
@@ -107,7 +108,7 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("failed to write %d rules: %v", len(errors), errors)
+		return contextureerrors.WithOpf("WriteFiles", "failed to write %d rules: %v", len(errors), errors)
 	}
 
 	s.bf.LogInfo("Successfully wrote Cursor format files", "count", len(rules), "directory", outputDir)
@@ -141,6 +142,7 @@ func (s *Strategy) CreateDirectories(config *domain.FormatConfig) error {
 // Format implements the Cursor multi-file format using CommonFormat
 type Format struct {
 	*base.CommonFormat
+
 	strategy *Strategy
 }
 
@@ -173,13 +175,14 @@ func (f *Format) ExtractRuleIDFromFilename(filename string) string {
 	return fmt.Sprintf("[contexture:%s]", path)
 }
 
+// GetDefaultTemplate returns the default template for the format.
+func (f *Format) GetDefaultTemplate() string {
+	return f.strategy.GetDefaultTemplate()
+}
+
 // Test helper methods to expose strategy methods
 // These are used by tests to verify private implementation details
 
 func (f *Format) getOutputDir(config *domain.FormatConfig) string {
 	return f.strategy.GetOutputPath(config)
-}
-
-func (f *Format) GetDefaultTemplate() string {
-	return f.strategy.GetDefaultTemplate()
 }

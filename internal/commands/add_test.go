@@ -38,23 +38,16 @@ func TestAddAction(t *testing.T) {
 		Context: context.Background(),
 	}
 
-	// Create a context with empty arguments to simulate CLI with no args
-	ctx := context.Background()
-
 	// Test with no arguments (should now return helpful error message)
-	// Create a command that will have no arguments
-	app := &cli.Command{
-		Name: "test",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return AddAction(ctx, cmd, deps)
-		},
-	}
+	app := createTestApp(func(ctx context.Context, cmd *cli.Command) error {
+		return AddAction(ctx, cmd, deps)
+	})
 
-	err := app.Run(ctx, []string{"test"})
+	err := runTestApp(app)
 	// Should error now with helpful message
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "validation failed")
 	assert.Contains(t, err.Error(), "no rule IDs provided")
-	assert.Contains(t, err.Error(), "contexture rules add [rule-id...]")
 }
 
 func TestAddCommand_Execute_NoConfig(t *testing.T) {
@@ -76,7 +69,7 @@ func TestAddCommand_Execute_NoConfig(t *testing.T) {
 	// Test with no project configuration (should fail)
 	err := cmd.Execute(context.Background(), cliCmd, []string{"[contexture:test/rule]"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no Contexture project found")
+	assert.Contains(t, err.Error(), "no configuration file found")
 }
 
 func TestAddCommand_CustomDataParsing(t *testing.T) {

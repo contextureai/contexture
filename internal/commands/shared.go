@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/ui"
@@ -56,7 +57,7 @@ func (g *RuleGenerator) GenerateRules(
 	}
 
 	if len(targetFormats) == 0 {
-		return fmt.Errorf("no target formats available")
+		return contextureerrors.ValidationErrorf("formats", "no target formats available")
 	}
 
 	// Fetch all rules in parallel with progress indicator and timing
@@ -72,7 +73,7 @@ func (g *RuleGenerator) GenerateRules(
 		return fetchErr
 	})
 	if err != nil {
-		return fmt.Errorf("failed to fetch rules: %w", err)
+		return contextureerrors.Wrap(err, "fetch rules")
 	}
 
 	// Process rules (templates, validation) with progress indicator and timing
@@ -83,7 +84,7 @@ func (g *RuleGenerator) GenerateRules(
 		return processErr
 	})
 	if err != nil {
-		return fmt.Errorf("failed to process rules: %w", err)
+		return contextureerrors.Wrap(err, "process rules")
 	}
 
 	// Generate output for each format
@@ -139,7 +140,7 @@ func (g *RuleGenerator) processRules(
 	}
 
 	if len(errors) > 0 {
-		return nil, fmt.Errorf("rule processing errors: %v", errors)
+		return nil, contextureerrors.ValidationErrorf("rules", "processing errors: %v", errors)
 	}
 
 	return processedRules, nil
@@ -154,7 +155,7 @@ func (g *RuleGenerator) generateFormat(
 	// Create format instance
 	format, err := g.registry.CreateFormat(formatConfig.Type, g.fs, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create format: %w", err)
+		return contextureerrors.Wrap(err, "create format")
 	}
 
 	// Transform rules for this format
@@ -162,7 +163,7 @@ func (g *RuleGenerator) generateFormat(
 	for _, processedRule := range rules {
 		transformed, err := format.Transform(processedRule)
 		if err != nil {
-			return fmt.Errorf("failed to transform rule %s: %w", processedRule.Rule.ID, err)
+			return contextureerrors.Wrap(err, "transform rule")
 		}
 		transformedRules = append(transformedRules, transformed)
 	}
@@ -170,7 +171,7 @@ func (g *RuleGenerator) generateFormat(
 	// Write format output
 	err = format.Write(transformedRules, &formatConfig)
 	if err != nil {
-		return fmt.Errorf("failed to write format output: %w", err)
+		return contextureerrors.Wrap(err, "write format output")
 	}
 
 	// Clean up empty directories if no rules were written

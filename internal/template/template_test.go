@@ -104,7 +104,7 @@ func TestTemplateEngine_Render(t *testing.T) {
 				"name": "test",
 			},
 			wantErr: true,
-			errMsg:  "template parsing failed",
+			errMsg:  "parse template",
 		},
 		{
 			name:     "execution error",
@@ -113,7 +113,7 @@ func TestTemplateEngine_Render(t *testing.T) {
 				"func": func() {},
 			},
 			wantErr: true,
-			errMsg:  "template execution failed",
+			errMsg:  "execute template",
 		},
 		{
 			name:      "empty template",
@@ -172,7 +172,7 @@ func TestTemplateEngine_ParseAndValidate(t *testing.T) {
 			name:     "invalid syntax",
 			template: "{{.name",
 			wantErr:  true,
-			errMsg:   "template validation failed",
+			errMsg:   "validate template",
 		},
 		{
 			name:     "empty template",
@@ -188,7 +188,7 @@ func TestTemplateEngine_ParseAndValidate(t *testing.T) {
 			name:     "undefined function",
 			template: "{{unknownFunc .data}}",
 			wantErr:  true,
-			errMsg:   "template validation failed",
+			errMsg:   "validate template",
 		},
 	}
 
@@ -684,7 +684,7 @@ func TestErrorHandling(t *testing.T) {
 
 		_, err := engine.Render(template, vars)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "template execution failed")
+		assert.Contains(t, err.Error(), "execute template")
 	})
 
 	// Test with function that returns error

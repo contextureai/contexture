@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
@@ -55,12 +56,13 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return contextureerrors.Wrap(err, "get current directory")
 	}
 
 	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
 	if err != nil {
-		return fmt.Errorf("no project configuration found. Run 'contexture init' first: %w", err)
+		return contextureerrors.Wrap(err, "load project configuration").
+			WithSuggestions("Run 'contexture init' to initialize a new project")
 	}
 
 	// Find rules to remove
@@ -90,7 +92,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		outputFormat := output.Format(cmd.String("output"))
 		outputManager, err := output.NewManager(outputFormat)
 		if err != nil {
-			return fmt.Errorf("failed to create output manager: %w", err)
+			return contextureerrors.Wrap(err, "create output manager")
 		}
 
 		// Write empty output
@@ -100,7 +102,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 
 		err = outputManager.WriteRulesRemove(metadata)
 		if err != nil {
-			return fmt.Errorf("failed to write remove output: %w", err)
+			return contextureerrors.Wrap(err, "write remove output")
 		}
 
 		// For default format, also show the log message
@@ -136,7 +138,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	}
 
 	if len(removedRules) == 0 {
-		return fmt.Errorf("failed to remove any rules")
+		return contextureerrors.ValidationErrorf("rules", "failed to remove any rules")
 	}
 
 	// Automatically clean outputs
@@ -161,13 +163,13 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	// Save updated configuration
 	err = c.projectManager.SaveConfig(configResult.Config, configResult.Location, currentDir)
 	if err != nil {
-		return fmt.Errorf("failed to save configuration: %w", err)
+		return contextureerrors.Wrap(err, "save configuration")
 	}
 
 	// Handle output format
 	outputManager, err := output.NewManager(outputFormat)
 	if err != nil {
-		return fmt.Errorf("failed to create output manager: %w", err)
+		return contextureerrors.Wrap(err, "create output manager")
 	}
 
 	// Collect removed rule IDs for output
@@ -188,7 +190,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 
 	err = outputManager.WriteRulesRemove(metadata)
 	if err != nil {
-		return fmt.Errorf("failed to write remove output: %w", err)
+		return contextureerrors.Wrap(err, "write remove output")
 	}
 
 	// For default format, also display the detailed information
@@ -270,22 +272,20 @@ func (c *RemoveCommand) removeFromOutputs(
 	for _, formatConfig := range config.GetEnabledFormats() {
 		format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to create format %s: %v",
-				formatConfig.Type, err))
+			errors = append(errors, contextureerrors.Wrap(err, "create format").Error())
 			continue
 		}
 
 		for _, ruleID := range ruleIDs {
 			err := format.Remove(ruleID, &formatConfig)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("failed to remove %s from %s: %v",
-					ruleID, formatConfig.Type, err))
+				errors = append(errors, contextureerrors.Wrap(err, "remove from format").Error())
 			}
 		}
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("cleanup errors: %s", strings.Join(errors, "; "))
+		return contextureerrors.ValidationErrorf("cleanup", "cleanup errors: %s", strings.Join(errors, "; "))
 	}
 
 	return nil
@@ -298,7 +298,8 @@ func RemoveAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depe
 
 	// If no rule IDs provided, show helpful error message
 	if len(ruleIDs) == 0 {
-		return fmt.Errorf("no rule IDs provided\n\nUsage:\n  contexture rules remove [rule-id...]\n\nExamples:\n  # Remove specific rules (simple format)\n  contexture rules remove languages/go/code-organization testing/unit-tests\n  \n  # Remove rules (full format)\n  contexture rules remove \"[contexture:languages/go/advanced-patterns]\" \"[contexture:security/input-validation]\"\n  \n  # Remove from custom source\n  contexture rules remove my/custom-rule\n\nTo see installed rules:\n  Use 'contexture rules list' to see currently installed rules\n  \nRun 'contexture rules remove --help' for more options")
+		return contextureerrors.ValidationErrorf("rule-ids",
+			"no rule IDs provided\n\nUsage:\n  contexture rules remove [rule-id...]\n\nExamples:\n  # Remove specific rules (simple format)\n  contexture rules remove languages/go/code-organization testing/unit-tests\n  \n  # Remove rules (full format)\n  contexture rules remove \"[contexture:languages/go/advanced-patterns]\" \"[contexture:security/input-validation]\"\n  \n  # Remove from custom source\n  contexture rules remove my/custom-rule\n\nTo see installed rules:\n  Use 'contexture rules list' to see currently installed rules\n  \nRun 'contexture rules remove --help' for more options")
 	}
 
 	return removeCmd.Execute(ctx, cmd, ruleIDs)

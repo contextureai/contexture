@@ -2,11 +2,11 @@
 package format
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/charmbracelet/huh"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format/claude"
 	"github.com/contextureai/contexture/internal/format/cursor"
 	"github.com/contextureai/contexture/internal/format/windsurf"
@@ -92,19 +92,21 @@ func (r *Registry) GetAvailableFormats() []domain.FormatType {
 	return formats
 }
 
-// CreateFormat creates a format implementation using the builder
+// CreateFormat creates a format implementation instance using the registry's builder.
+// Returns the format instance or an error if the builder is not configured or creation fails.
 func (r *Registry) CreateFormat(
 	formatType domain.FormatType,
 	fs afero.Fs,
 	options map[string]any,
 ) (domain.Format, error) {
 	if r.builder == nil {
-		return nil, fmt.Errorf("no format builder configured")
+		return nil, contextureerrors.WithOpf("create_format", "no format builder configured")
 	}
 	return r.builder.Build(formatType, fs, options)
 }
 
-// GetHandler returns the format handler for a given format type
+// GetHandler retrieves the UI handler for a specific format type.
+// Returns the handler and true if found, or nil and false if not registered.
 func (r *Registry) GetHandler(formatType domain.FormatType) (Handler, bool) {
 	handler, exists := r.handlers[formatType]
 	return handler, exists
@@ -119,7 +121,7 @@ func (r *Registry) IsSupported(formatType domain.FormatType) bool {
 // CreateFormatDirectories creates necessary directories for specific formats
 func (r *Registry) CreateFormatDirectories(formatType domain.FormatType) error {
 	if r.dirMgr == nil {
-		return fmt.Errorf("no directory manager configured")
+		return contextureerrors.WithOpf("create_directories", "no directory manager configured")
 	}
 	return r.dirMgr.CreateFormatDirectories(formatType)
 }

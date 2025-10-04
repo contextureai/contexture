@@ -136,7 +136,7 @@ func TestDefaultTemplateEngine_ProcessTemplate(t *testing.T) {
 		// The template engine should handle missing variables gracefully
 		// The exact behavior depends on the underlying template implementation
 		if err != nil {
-			assert.Contains(t, err.Error(), "template processing failed")
+			assert.Contains(t, err.Error(), "process template")
 		} else {
 			// If no error, result should still be valid
 			assert.NotEmpty(t, result)
@@ -166,7 +166,7 @@ func TestDefaultTemplateEngine_ProcessTemplate(t *testing.T) {
 
 		result, err := engine.ProcessTemplate(template, variables)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "template processing failed")
+		assert.Contains(t, err.Error(), "process template")
 		assert.Empty(t, result)
 	})
 }

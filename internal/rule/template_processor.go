@@ -1,8 +1,7 @@
 package rule
 
 import (
-	"fmt"
-
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/template"
 )
 
@@ -31,7 +30,7 @@ func (te *DefaultTemplateEngine) ProcessTemplate(
 ) (string, error) {
 	result, err := te.engine.Render(content, variables)
 	if err != nil {
-		return "", fmt.Errorf("template processing failed: %w", err)
+		return "", contextureerrors.Wrap(err, "process template")
 	}
 	return result, nil
 }

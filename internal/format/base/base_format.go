@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/template"
 	"github.com/spf13/afero"
@@ -138,7 +139,7 @@ func (bf *Base) ProcessTemplate(
 	// Process the template (all rendering is text-based, no HTML escaping)
 	content, err := bf.templateEngine.Render(templateContent, variables)
 	if err != nil {
-		return "", fmt.Errorf("failed to render template: %w", err)
+		return "", contextureerrors.Wrap(err, "base.ProcessTemplate")
 	}
 
 	return content, nil
@@ -233,7 +234,7 @@ func (bf *Base) EnsureDirectory(dir string) error {
 func (bf *Base) WriteFile(path string, content []byte) error {
 	dir := filepath.Dir(path)
 	if err := bf.EnsureDirectory(dir); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+		return contextureerrors.Wrap(err, "base.WriteFile")
 	}
 
 	return afero.WriteFile(bf.fs, path, content, domain.FilePermission)
@@ -403,7 +404,11 @@ func (bf *Base) ParseTrackingComment(content string) (string, error) {
 	matches := domain.TrackingCommentRegex.FindStringSubmatch(content)
 
 	if len(matches) != 2 {
-		return "", fmt.Errorf("invalid tracking comment format")
+		return "", &contextureerrors.Error{
+			Op:      "base.ParseTrackingComment",
+			Kind:    contextureerrors.KindFormat,
+			Message: "invalid tracking comment format",
+		}
 	}
 
 	return strings.TrimSpace(matches[1]), nil

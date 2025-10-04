@@ -22,7 +22,7 @@ func TestNewListCommand(t *testing.T) {
 func TestListAction(t *testing.T) {
 	deps := createTestDependencies()
 
-	app := createTestApp("test", func(ctx context.Context, cmd *cli.Command) error {
+	app := createTestApp(func(ctx context.Context, cmd *cli.Command) error {
 		return ListAction(ctx, cmd, deps)
 	})
 

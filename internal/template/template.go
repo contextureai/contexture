@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/log"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 )
 
 // Pre-compiled regex patterns for better performance
@@ -77,7 +78,7 @@ func (e *templateEngine) Render(templateStr string, variables map[string]any) (s
 		if len(preview) > 100 {
 			preview = preview[:100] + "..."
 		}
-		return "", fmt.Errorf("template parsing failed for content %q: %w", preview, err)
+		return "", contextureerrors.WithOpf("parse template", "content %q: %v", preview, err)
 	}
 
 	// Execute template
@@ -88,7 +89,7 @@ func (e *templateEngine) Render(templateStr string, variables map[string]any) (s
 		if len(preview) > 100 {
 			preview = preview[:100] + "..."
 		}
-		return "", fmt.Errorf("template execution failed for content %q: %w", preview, err)
+		return "", contextureerrors.WithOpf("execute template", "content %q: %v", preview, err)
 	}
 
 	log.Debug("Successfully rendered template")
@@ -105,7 +106,7 @@ func (e *templateEngine) ParseAndValidate(templateStr string) error {
 		if len(preview) > 100 {
 			preview = preview[:100] + "..."
 		}
-		return fmt.Errorf("template validation failed for content %q: %w", preview, err)
+		return contextureerrors.WithOpf("validate template", "content %q: %v", preview, err)
 	}
 	return nil
 }

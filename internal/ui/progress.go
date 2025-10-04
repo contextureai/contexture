@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"golang.org/x/term"
 )
 
@@ -55,7 +56,7 @@ func NewProgressIndicator(message string) *ProgressIndicator {
 	}
 }
 
-// Start begins showing the progress indicator
+// Start begins displaying the progress indicator, showing a spinner in TTY mode or simple text in non-TTY environments.
 func (pi *ProgressIndicator) Start() {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
@@ -73,7 +74,7 @@ func (pi *ProgressIndicator) Start() {
 	fmt.Printf("%s %s", pi.spinner.View(), pi.message)
 }
 
-// Update updates the progress with a percentage (0.0 to 1.0)
+// Update updates the progress bar with a percentage (0.0 to 1.0) and optional message, clearing the line in TTY mode.
 func (pi *ProgressIndicator) Update(percent float64, message string) {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
@@ -98,7 +99,7 @@ func (pi *ProgressIndicator) Update(percent float64, message string) {
 	fmt.Printf("\r%s %s", pi.progress.ViewAs(percent), pi.message)
 }
 
-// UpdateSpinner updates just the spinner message (for indeterminate progress)
+// UpdateSpinner updates the spinner message for indeterminate progress, showing animated spinner in TTY mode.
 func (pi *ProgressIndicator) UpdateSpinner(message string) {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
@@ -123,7 +124,7 @@ func (pi *ProgressIndicator) UpdateSpinner(message string) {
 	fmt.Printf("\r%s %s", pi.spinner.View(), pi.message)
 }
 
-// Finish completes the progress indicator
+// Finish completes the progress indicator with a success checkmark and final message.
 func (pi *ProgressIndicator) Finish(message string) {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
@@ -145,7 +146,7 @@ func (pi *ProgressIndicator) Finish(message string) {
 	}
 }
 
-// FinishWithError completes the progress indicator with an error
+// FinishWithError completes the progress indicator with an error symbol and error message.
 func (pi *ProgressIndicator) FinishWithError(message string) {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
@@ -190,7 +191,7 @@ func NewBubblesSpinner(message string) *BubblesSpinner {
 	}
 }
 
-// View renders the current spinner state (following bubbletea patterns)
+// View renders the current spinner state following Bubble Tea's view interface pattern.
 func (s *BubblesSpinner) View() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -204,7 +205,7 @@ func (s *BubblesSpinner) View() string {
 	return s.spinner.View() + " " + messageStyle.Render(s.message)
 }
 
-// Update updates the spinner state (following bubbletea patterns)
+// Update updates the spinner state following Bubble Tea's update interface pattern.
 func (s *BubblesSpinner) Update(msg any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -216,7 +217,7 @@ func (s *BubblesSpinner) Update(msg any) {
 	s.spinner, _ = s.spinner.Update(msg)
 }
 
-// Stop stops the spinner and shows final message
+// Stop stops the spinner and displays a success checkmark with the final message.
 func (s *BubblesSpinner) Stop(finalMessage string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -237,7 +238,7 @@ func (s *BubblesSpinner) Stop(finalMessage string) {
 	}
 }
 
-// StopWithError stops the spinner with an error message
+// StopWithError stops the spinner and displays an error symbol with the error message.
 func (s *BubblesSpinner) StopWithError(errorMessage string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -258,7 +259,7 @@ func (s *BubblesSpinner) StopWithError(errorMessage string) {
 	}
 }
 
-// ProgressBar creates a simple progress bar for known progress
+// ProgressBar creates a simple text-based progress bar for operations with known total steps.
 func ProgressBar(current, total int, message string) {
 	if total == 0 {
 		return
@@ -306,10 +307,10 @@ func getTerminalWidth() int {
 	return width
 }
 
-// WithProgress wraps a function with a bubbles-based spinner
+// WithProgress wraps a function execution with a spinner, showing success or error on completion.
 func WithProgress(message string, fn func() error) error {
 	if fn == nil {
-		return fmt.Errorf("progress function cannot be nil")
+		return contextureerrors.ValidationErrorf("fn", "progress function cannot be nil")
 	}
 
 	spinner := NewBubblesSpinner(message)
@@ -327,10 +328,10 @@ func WithProgress(message string, fn func() error) error {
 	return nil
 }
 
-// WithProgressTiming wraps a function with a bubbles-based spinner and shows timing
+// WithProgressTiming wraps a function execution with a spinner and displays elapsed time on completion.
 func WithProgressTiming(message string, fn func() error) error {
 	if fn == nil {
-		return fmt.Errorf("progress function cannot be nil")
+		return contextureerrors.ValidationErrorf("fn", "progress function cannot be nil")
 	}
 
 	spinner := NewBubblesSpinner(message)
@@ -379,7 +380,7 @@ func showTimedCompletion(icon, message string, duration time.Duration, indent in
 	fmt.Println() // Move to next line
 }
 
-// ShowFormatCompletion shows format completion with right-aligned timing
+// ShowFormatCompletion displays format completion status with right-aligned timing information.
 func ShowFormatCompletion(formatName string, duration time.Duration) {
 	showTimedCompletion("✓", formatName, duration, 2)
 }

@@ -3,6 +3,8 @@ package errors
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -731,4 +733,196 @@ func TestShouldShowDetails(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDisplay(t *testing.T) {
+	tests := []struct {
+		name               string
+		err                error
+		termEnv            string
+		debugEnv           string
+		expectError        bool
+		expectSuggestions  bool
+		expectDetails      bool
+		expectColors       bool
+		expectedContains   []string
+		unexpectedContains []string
+	}{
+		{
+			name:             "nil error",
+			err:              nil,
+			expectError:      false,
+			expectedContains: []string{},
+		},
+		{
+			name:             "basic error without colors",
+			err:              &Error{Message: "test error", Kind: KindValidation},
+			termEnv:          "",
+			expectError:      true,
+			expectColors:     false,
+			expectedContains: []string{"Error:", "test error", "For more help"},
+		},
+		{
+			name:             "basic error with colors",
+			err:              &Error{Message: "test error", Kind: KindValidation},
+			termEnv:          "xterm",
+			expectError:      true,
+			expectColors:     true,
+			expectedContains: []string{"Error:", "test error", "For more help", "\033[31m", "\033[0m"},
+		},
+		{
+			name: "error with suggestions no colors",
+			err: &Error{
+				Message:     "validation failed",
+				Kind:        KindValidation,
+				Suggestions: []string{"Check your input", "Try again"},
+			},
+			termEnv:            "",
+			expectError:        true,
+			expectSuggestions:  true,
+			expectColors:       false,
+			expectedContains:   []string{"Error:", "validation failed", "Suggestions:", "Check your input", "Try again", "•"},
+			unexpectedContains: []string{"\033["},
+		},
+		{
+			name: "error with suggestions and colors",
+			err: &Error{
+				Message:     "validation failed",
+				Kind:        KindValidation,
+				Suggestions: []string{"Check your input"},
+			},
+			termEnv:           "xterm-256color",
+			expectError:       true,
+			expectSuggestions: true,
+			expectColors:      true,
+			expectedContains:  []string{"Suggestions:", "Check your input", "\033[33m"},
+		},
+		{
+			name: "error with details in debug mode",
+			err: &Error{
+				Message: "wrapper error",
+				Kind:    KindNetwork,
+				Err:     fmt.Errorf("underlying network error"),
+			},
+			termEnv:          "xterm",
+			debugEnv:         "true",
+			expectError:      true,
+			expectDetails:    true,
+			expectedContains: []string{"Error:", "wrapper error", "Details:", "underlying network error"},
+		},
+		{
+			name: "error without details when debug off",
+			err: &Error{
+				Message: "wrapper error",
+				Kind:    KindNetwork,
+				Err:     fmt.Errorf("underlying network error"),
+			},
+			termEnv:            "xterm",
+			debugEnv:           "",
+			expectError:        true,
+			expectDetails:      false,
+			expectedContains:   []string{"Error:", "wrapper error"},
+			unexpectedContains: []string{"Details:", "underlying network error"},
+		},
+		{
+			name:             "standard error gets converted",
+			err:              fmt.Errorf("standard error message"),
+			termEnv:          "",
+			expectError:      true,
+			expectedContains: []string{"Error:", "standard error message"},
+		},
+		{
+			name:               "dumb terminal no colors",
+			err:                &Error{Message: "test", Kind: KindOther},
+			termEnv:            "dumb",
+			expectError:        true,
+			expectColors:       false,
+			expectedContains:   []string{"Error:", "test"},
+			unexpectedContains: []string{"\033["},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stderr
+			oldStderr := os.Stderr
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stderr = w
+
+			// Set environment variables
+			t.Setenv("TERM", tt.termEnv)
+			t.Setenv("CONTEXTURE_DEBUG", tt.debugEnv)
+
+			// Call Display
+			Display(tt.err)
+
+			// Restore stderr and read output
+			_ = w.Close()
+			os.Stderr = oldStderr
+
+			var buf []byte
+			buf, err = io.ReadAll(r)
+			require.NoError(t, err)
+			output := string(buf)
+
+			// Verify output
+			if !tt.expectError {
+				assert.Empty(t, output, "should not write anything for nil error")
+				return
+			}
+
+			// Check expected strings are present
+			for _, expected := range tt.expectedContains {
+				assert.Contains(t, output, expected, "output should contain: %q", expected)
+			}
+
+			// Check unexpected strings are not present
+			for _, unexpected := range tt.unexpectedContains {
+				assert.NotContains(t, output, unexpected, "output should not contain: %q", unexpected)
+			}
+		})
+	}
+}
+
+func TestDisplay_WithComplexError(t *testing.T) {
+	// Test a more realistic error scenario
+	t.Setenv("TERM", "xterm")
+	t.Setenv("CONTEXTURE_DEBUG", "true")
+
+	// Capture stderr
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+
+	// Create a complex error with wrapping
+	baseErr := fmt.Errorf("connection refused")
+	wrappedErr := &Error{
+		Op:          "fetch_rule",
+		Kind:        KindNetwork,
+		Message:     "failed to fetch rule",
+		Err:         baseErr,
+		Suggestions: []string{"Check your network connection", "Verify the repository URL"},
+	}
+
+	Display(wrappedErr)
+
+	// Restore stderr and read output
+	_ = w.Close()
+	os.Stderr = oldStderr
+
+	var buf []byte
+	buf, err = io.ReadAll(r)
+	require.NoError(t, err)
+	output := string(buf)
+
+	// Verify all components are present
+	assert.Contains(t, output, "Error:")
+	assert.Contains(t, output, "Suggestions:")
+	assert.Contains(t, output, "Check your network connection")
+	assert.Contains(t, output, "Verify the repository URL")
+	assert.Contains(t, output, "Details:")
+	assert.Contains(t, output, "connection refused")
+	assert.Contains(t, output, "For more help")
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/contextureai/contexture/internal/domain"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/ui"
 )
 
@@ -154,7 +155,7 @@ func DisplayRuleList(rules []*domain.Rule, options DisplayOptions) error {
 	// Apply pattern filtering if provided
 	filteredRules, err := filterRulesByPattern(rules, options.Pattern)
 	if err != nil {
-		return fmt.Errorf("invalid pattern: %w", err)
+		return contextureerrors.ValidationError("pattern", err)
 	}
 
 	if len(filteredRules) == 0 {

@@ -1,12 +1,12 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"text/template"
 
 	"github.com/charmbracelet/lipgloss"
+	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/urfave/cli/v3"
 )
 
@@ -67,12 +67,12 @@ func NewHelpPrinterWithRenderer(renderer Renderer) HelpPrinter {
 func (p *helpPrinter) Print(w io.Writer, templ string, data any) error {
 	content, err := p.render(templ, data)
 	if err != nil {
-		return fmt.Errorf("failed to render help: %w", err)
+		return contextureerrors.Wrap(err, "render help")
 	}
 
 	n, err := w.Write([]byte(content))
 	if err != nil {
-		return fmt.Errorf("failed to write help: %w", err)
+		return contextureerrors.Wrap(err, "write help")
 	}
 
 	if n != len(content) {
@@ -224,12 +224,12 @@ func (r *renderer) RenderDefault(templ string, data any) (string, error) {
 
 	t, err := t.Parse(templ)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse template: %w", err)
+		return "", contextureerrors.Wrap(err, "parse help template")
 	}
 
 	var buf strings.Builder
 	if err := t.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("failed to execute template: %w", err)
+		return "", contextureerrors.Wrap(err, "execute help template")
 	}
 
 	return buf.String(), nil
