@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/contextureai/contexture/internal/domain"
+	"github.com/contextureai/contexture/internal/provider"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -499,7 +500,7 @@ func TestBaseFormat_ProcessTemplateWithVars_RuleIDVariables(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Use the rule ID parser to parse variables from the rule ID
-			parser := rule.NewRuleIDParser("https://github.com/contexture-org/rules.git")
+			parser := rule.NewRuleIDParser("https://github.com/contexture-org/rules.git", provider.NewRegistry())
 			parsedID, err := parser.ParseRuleID(tt.ruleID)
 			require.NoError(t, err)
 

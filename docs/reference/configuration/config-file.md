@@ -1,14 +1,14 @@
 ---
 title: Configuration File
-description: The `.contexture.yaml` file defines the project's rules, sources, output formats, and build settings.
+description: The `.contexture.yaml` file defines the project's rules, providers, output formats, and build settings.
 ---
-The `.contexture.yaml` file defines the project's rules, sources, output formats, and build settings.
+The `.contexture.yaml` file defines the project's rules, providers, output formats, and build settings.
 
 ## Structure
 
 ```yaml
 version: 1
-sources: []
+providers: []
 formats: []
 rules: []
 generation: {}
@@ -24,23 +24,20 @@ Specifies the configuration format version.
 -   **Required**: `true`
 -   **Current Value**: `1`
 
-### `sources`
+### `providers`
 
-Defines custom Git repositories for rules. Each source is an object in a list.
+Defines custom named providers for rule sources. Providers enable `@provider/path` syntax for rule references.
 
 -   **Type**: `list`
 -   **Required**: `false`
 
-**Source Fields:**
+**Provider Fields:**
 
 | Field   | Type     | Required | Description                               |
 | :------ | :------- | :------- | :---------------------------------------- |
-| `name`    | `string`   | `true`     | Unique identifier for the source.         |
-| `type`    | `string`   | `true`     | Source type (currently only `git`).       |
+| `name`    | `string`   | `true`     | Unique identifier for the provider.       |
 | `url`     | `string`   | `true`     | Git repository URL (HTTPS or SSH).        |
-| `branch`  | `string`   | `false`    | Default Git branch (defaults to `main`).    |
-| `tag`     | `string`   | `false`    | Git tag to use (overrides `branch`).      |
-| `enabled` | `boolean`  | `false`    | Enable/disable the source (defaults to `true`). |
+| `defaultBranch`  | `string`   | `false`    | Default Git branch (defaults to `main`).  |
 | `auth`    | `object`   | `false`    | Authentication configuration.             |
 
 **Auth Fields:**
@@ -52,11 +49,10 @@ Defines custom Git repositories for rules. Each source is an object in a list.
 
 **Example:**
 ```yaml
-sources:
-  - name: company
-    type: git
+providers:
+  - name: mycompany
     url: https://github.com/mycompany/contexture-rules.git
-    branch: main
+    defaultBranch: main
     auth:
       type: token
       token: "ghp_..."
@@ -134,7 +130,7 @@ Defines the rules to include in the project.
 ```yaml
 rules:
   - id: "[contexture:code/clean-code]"
-  - id: "[contexture(company):testing/coverage]"
+  - id: "@mycompany/testing/coverage"
     variables:
       threshold: 90
   - id: "rules/local-project-rule.md"

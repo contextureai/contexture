@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/contextureai/contexture/internal/provider"
+
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/git"
 	"github.com/spf13/afero"
@@ -107,7 +109,7 @@ Third rule content.`
 	// Create components
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
 		DefaultURL: "https://github.com/test/repo.git",
-	})
+	}, provider.NewRegistry())
 
 	parser := NewParser()
 	processor := NewProcessor()
@@ -310,7 +312,7 @@ func NewRuleService() *RuleService {
 	gitRepo := git.NewRepository(fs)
 
 	return &RuleService{
-		fetcher:   NewFetcher(fs, gitRepo, FetcherConfig{}),
+		fetcher:   NewFetcher(fs, gitRepo, FetcherConfig{}, provider.NewRegistry()),
 		parser:    NewParser(),
 		processor: NewProcessor(),
 		validator: NewValidator(),

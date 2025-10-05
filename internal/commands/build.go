@@ -32,7 +32,7 @@ func NewBuildCommand(deps *dependencies.Dependencies) *BuildCommand {
 	return &BuildCommand{
 		projectManager: project.NewManager(deps.FS),
 		ruleGenerator: NewRuleGenerator(
-			rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}),
+			rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}, deps.ProviderRegistry),
 			rule.NewValidator(),
 			rule.NewProcessor(),
 			registry,

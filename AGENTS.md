@@ -20,6 +20,7 @@ Contexture is a Go CLI tool for managing AI assistant rules across multiple plat
 - `contexture init` - Initialize project with `.contexture.yaml`
 - `contexture rules add` - Add rules by ID
 - `contexture rules list/remove/update` - Manage rules
+- `contexture providers list/add/remove/show` - Manage rule providers
 - `contexture config` - View/modify configuration
 - `contexture build` - Generate platform-specific files
 
@@ -30,10 +31,11 @@ cmd/contexture/        # CLI entry point
 internal/
 ├── app/               # Main application and command orchestration
 ├── cli/               # CLI help templates and formatting
-├── commands/          # Command implementations (init, build, rules, config)
+├── commands/          # Command implementations (init, build, rules, config, providers)
 ├── domain/            # Core business models and interfaces
 ├── format/            # Output format handlers (claude, cursor, windsurf)
 ├── rule/              # Rule processing, fetching, validation
+├── provider/          # Provider registry and resolution
 ├── template/          # Go template engine for variable substitution
 ├── git/               # Git repository operations
 ├── tui/               # Terminal UI components (Bubble Tea)
@@ -79,15 +81,16 @@ Markdown files with YAML frontmatter containing AI instructions. Support templat
 - `cursor`: Individual files in `.cursor/rules/`
 - `windsurf`: Individual files in `.windsurf/rules/`
 
-### Sources
-- Default community repository
-- Custom Git repositories
+### Providers
+- Default `@contexture` provider (bundled community repository)
+- Custom named providers defined in `.contexture.yaml`
+- Direct Git repository URLs
 - Local project files
 
 ### Project Configuration (`.contexture.yaml`)
 ```yaml
 version: 1
-formats: 
+formats:
   - type: claude
     enabled: true
     template: CLAUDE.template.md  # Optional custom template
@@ -96,7 +99,7 @@ formats:
   - type: windsurf
     enabled: true
 rules: [rule references with optional variables]
-sources: [custom git repositories]
+providers: [custom named providers]
 generation: [build settings]
 ```
 

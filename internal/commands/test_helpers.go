@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/contextureai/contexture/internal/dependencies"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -14,11 +13,7 @@ import (
 
 // createTestDependencies creates test dependencies with a memory filesystem
 func createTestDependencies() *dependencies.Dependencies {
-	fs := afero.NewMemMapFs()
-	return &dependencies.Dependencies{
-		FS:      fs,
-		Context: context.Background(),
-	}
+	return dependencies.NewForTesting(context.Background())
 }
 
 // createTestApp creates a test CLI app that executes the given action

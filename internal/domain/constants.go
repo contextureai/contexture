@@ -23,11 +23,20 @@ const (
 	DefaultSource     = "contexture"
 )
 
+// Provider names and URLs
+const (
+	DefaultProviderName = "contexture"
+	DefaultProviderURL  = "https://github.com/contextureai/rules.git"
+)
+
 // Rule identifier patterns
 const (
+	// ProviderRuleIDPattern matches @provider/path format
+	ProviderRuleIDPattern = `^@([a-zA-Z0-9_-]+)/([a-zA-Z0-9_/-]+)(?:\s*\{.*\})?\s*$`
 	// RuleIDPattern validates the complete rule ID format including optional JSON5 variables
 	RuleIDPattern = `^\[contexture(?:\([^)]+\))?:[^]]+(?:,[^]]+)?\](?:\s*\{.*\})?\s*$`
 	// RuleIDParsePattern captures components: (1) source, (2) path, (3) branch, (4) variables
+	// Now also supports @provider in source position
 	RuleIDParsePattern = `\[contexture(?:\(([^)]+)\))?:([^,\]]+)(?:,([^]]+))?\](?:\s*(\{.*\}))?\s*$`
 	// RuleIDExtractPattern finds rule IDs in content without anchors
 	RuleIDExtractPattern = `\[contexture(?:\([^)]+\))?:[^]]+(?:,[^]]+)?\](?:\s*\{[^}]*\})?`

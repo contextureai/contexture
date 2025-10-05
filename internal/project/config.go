@@ -736,50 +736,40 @@ func (c *ConfigCleaner) CleanProject(config *domain.Project) *domain.Project {
 	}
 
 	// Clean optional fields
-	cleanConfig.Sources = c.cleanSources(config.Sources)
+	cleanConfig.Providers = c.cleanProviders(config.Providers)
 	cleanConfig.Generation = c.cleanGenerationConfig(config.Generation)
 
 	return cleanConfig
 }
 
-// cleanSources cleans source configurations by removing default values.
-func (c *ConfigCleaner) cleanSources(sources []domain.Source) []domain.Source {
-	if len(sources) == 0 {
+// cleanProviders cleans provider configurations by removing default values.
+func (c *ConfigCleaner) cleanProviders(providers []domain.Provider) []domain.Provider {
+	if len(providers) == 0 {
 		return nil
 	}
 
-	var cleanSources []domain.Source
-	for _, source := range sources {
-		cleanSource := domain.Source{
-			Name: source.Name,
-			URL:  source.URL,
+	var cleanProviders []domain.Provider
+	for _, provider := range providers {
+		cleanProvider := domain.Provider{
+			Name: provider.Name,
+			URL:  provider.URL,
 		}
 
-		// Only include branch if it's not the default
-		if source.Branch != "" && source.Branch != domain.DefaultBranch {
-			cleanSource.Branch = source.Branch
-		}
-
-		// Only include tag if it exists
-		if source.Tag != "" {
-			cleanSource.Tag = source.Tag
-		}
-
-		// Only include enabled if it's false (true is default)
-		if !source.Enabled {
-			cleanSource.Enabled = source.Enabled
+		// Only include defaultBranch if it's not the default
+		if provider.DefaultBranch != "" && provider.DefaultBranch != domain.DefaultBranch {
+			cleanProvider.DefaultBranch = provider.DefaultBranch
 		}
 
 		// Only include auth if it exists
-		if source.Auth != nil {
-			cleanSource.Auth = source.Auth
+		if provider.Auth != nil {
+			cleanProvider.Auth = provider.Auth
 		}
 
-		cleanSources = append(cleanSources, cleanSource)
+		cleanProviders = append(cleanProviders, cleanProvider)
 	}
 
-	if len(cleanSources) > 0 {
-		return cleanSources
+	if len(cleanProviders) > 0 {
+		return cleanProviders
 	}
 	return nil
 }

@@ -110,3 +110,44 @@ func (a *CommandActions) ConfigFormatsDisableAction(
 ) error {
 	return commands.ConfigFormatsDisableAction(ctx, cmd, deps)
 }
+
+// ProvidersAction provides a testable wrapper for the providers command
+func (a *CommandActions) ProvidersAction(ctx context.Context, cmd *cli.Command) error {
+	return commands.ProvidersAction(ctx, cmd, a.deps)
+}
+
+// ProvidersListAction provides a testable wrapper for the providers list command
+func (a *CommandActions) ProvidersListAction(
+	ctx context.Context,
+	cmd *cli.Command,
+	deps *dependencies.Dependencies,
+) error {
+	return commands.ProvidersListAction(ctx, cmd, deps)
+}
+
+// ProvidersAddAction provides a testable wrapper for the providers add command
+func (a *CommandActions) ProvidersAddAction(
+	ctx context.Context,
+	cmd *cli.Command,
+	deps *dependencies.Dependencies,
+) error {
+	return commands.ProvidersAddAction(ctx, cmd, deps)
+}
+
+// ProvidersRemoveAction provides a testable wrapper for the providers remove command
+func (a *CommandActions) ProvidersRemoveAction(
+	ctx context.Context,
+	cmd *cli.Command,
+	deps *dependencies.Dependencies,
+) error {
+	return commands.ProvidersRemoveAction(ctx, cmd, deps)
+}
+
+// ProvidersShowAction provides a testable wrapper for the providers show command
+func (a *CommandActions) ProvidersShowAction(
+	ctx context.Context,
+	cmd *cli.Command,
+	deps *dependencies.Dependencies,
+) error {
+	return commands.ProvidersShowAction(ctx, cmd, deps)
+}

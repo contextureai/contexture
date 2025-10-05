@@ -76,7 +76,7 @@ func NewUpdateCommand(deps *dependencies.Dependencies) *UpdateCommand {
 	gitRepo := newOpenRepository(deps.FS)
 	return &UpdateCommand{
 		projectManager: project.NewManager(deps.FS),
-		ruleFetcher:    rule.NewFetcher(deps.FS, gitRepo, rule.FetcherConfig{}),
+		ruleFetcher:    rule.NewFetcher(deps.FS, gitRepo, rule.FetcherConfig{}, deps.ProviderRegistry),
 		ruleValidator:  rule.NewValidator(),
 		cache:          cache.NewSimpleCache(deps.FS, gitRepo),
 		fs:             deps.FS,

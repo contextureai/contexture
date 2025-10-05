@@ -35,7 +35,11 @@ type AddCommand struct {
 // NewAddCommand creates a new add command
 func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 	registry := format.GetDefaultRegistry(deps.FS)
-	ruleFetcher := rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{})
+
+	// Create provider registry
+	providerRegistry := deps.ProviderRegistry
+
+	ruleFetcher := rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}, providerRegistry)
 	ruleValidator := rule.NewValidator()
 
 	return &AddCommand{
@@ -53,8 +57,8 @@ func NewAddCommand(deps *dependencies.Dependencies) *AddCommand {
 	}
 }
 
-// Execute runs the add command
-func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
+// ExecuteWithDeps runs the add command with explicit dependencies
+func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, ruleIDs []string, deps *dependencies.Dependencies) error {
 	// Check if JSON output mode - if so, suppress all terminal output
 	outputFormat := output.Format(cmd.String("output"))
 	isJSONMode := outputFormat == output.FormatJSON
@@ -66,6 +70,10 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 			Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
 		fmt.Printf("%s\n\n", headerStyle.Render("Add Rule"))
 	}
+
+	// Get provider registry from deps
+	providerRegistry := deps.ProviderRegistry
+
 	// Parse custom data if provided
 	var customData map[string]any
 	if dataStr := cmd.String("data"); dataStr != "" {
@@ -107,6 +115,11 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	}
 	config := configResult.Config
 	configPath := configResult.Path
+
+	// Load providers from project config into registry
+	if err := providerRegistry.LoadFromProject(config); err != nil {
+		return contextureerrors.Wrap(err, "load providers")
+	}
 
 	// Parse and validate rule IDs with progress indicators
 	type ruleRefWithOriginal struct {
@@ -368,6 +381,14 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	return nil
 }
 
+// Execute runs the add command
+func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []string) error {
+	// This is a compatibility wrapper that creates dependencies
+	// In practice, this won't be called as we use AddAction which has access to deps
+	deps := dependencies.New(ctx)
+	return c.ExecuteWithDeps(ctx, cmd, ruleIDs, deps)
+}
+
 // generateRules automatically generates output after adding rules
 func (c *AddCommand) generateRules(
 	ctx context.Context,
@@ -458,7 +479,7 @@ func AddAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depende
 		return contextureerrors.ValidationErrorf("rule-id", "no rule IDs provided")
 	}
 
-	return addCmd.Execute(ctx, cmd, ruleIDs)
+	return addCmd.ExecuteWithDeps(ctx, cmd, ruleIDs, deps)
 }
 
 // parseVarFlag parses a single --var flag in the format "key=value"

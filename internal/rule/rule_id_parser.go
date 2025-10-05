@@ -1,11 +1,13 @@
 package rule
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/contextureai/contexture/internal/domain"
 	contextureerrors "github.com/contextureai/contexture/internal/errors"
+	"github.com/contextureai/contexture/internal/provider"
 	"github.com/titanous/json5"
 )
 
@@ -16,23 +18,52 @@ type IDParser interface {
 
 // DefaultRuleIDParser implements rule ID parsing
 type DefaultRuleIDParser struct {
-	defaultURL      string
-	ruleIDPattern   *regexp.Regexp
-	simpleIDPattern *regexp.Regexp
+	defaultURL       string
+	providerRegistry *provider.Registry
+	ruleIDPattern    *regexp.Regexp
+	providerPattern  *regexp.Regexp
+	simpleIDPattern  *regexp.Regexp
 }
 
 // NewRuleIDParser creates a new rule ID parser
-func NewRuleIDParser(defaultURL string) IDParser {
+func NewRuleIDParser(defaultURL string, providerRegistry *provider.Registry) IDParser {
 	return &DefaultRuleIDParser{
-		defaultURL:      defaultURL,
-		ruleIDPattern:   domain.RuleIDParsePatternRegex,
-		simpleIDPattern: domain.SimpleRuleIDPatternRegex,
+		defaultURL:       defaultURL,
+		providerRegistry: providerRegistry,
+		ruleIDPattern:    domain.RuleIDParsePatternRegex,
+		providerPattern:  domain.ProviderRuleIDPatternRegex,
+		simpleIDPattern:  domain.SimpleRuleIDPatternRegex,
 	}
 }
 
 // ParseRuleID parses a Contexture rule ID into its components
 func (p *DefaultRuleIDParser) ParseRuleID(ruleID string) (*domain.ParsedRuleID, error) {
-	// First try the full rule ID pattern [contexture:path] or [contexture(source):path,ref]{variables}
+	// Try @provider/path format first
+	if matches := p.providerPattern.FindStringSubmatch(ruleID); len(matches) > 0 {
+		providerName := matches[1]
+		rulePath := matches[2]
+
+		// Resolve provider to URL
+		var url string
+		var err error
+		if p.providerRegistry != nil {
+			url, err = p.providerRegistry.Resolve(providerName)
+			if err != nil {
+				return nil, fmt.Errorf("unknown provider '@%s': %w", providerName, err)
+			}
+		} else {
+			// Fallback if no registry (shouldn't happen in normal usage)
+			url = p.defaultURL
+		}
+
+		return &domain.ParsedRuleID{
+			Source:   url,
+			RulePath: rulePath,
+			Ref:      "main",
+		}, nil
+	}
+
+	// Try the full rule ID pattern [contexture:path] or [contexture(source):path,ref]{variables}
 	matches := p.ruleIDPattern.FindStringSubmatch(ruleID)
 
 	if len(matches) > 0 {
@@ -41,8 +72,23 @@ func (p *DefaultRuleIDParser) ParseRuleID(ruleID string) (*domain.ParsedRuleID, 
 		}
 
 		// Optional source (defaults to official repo)
-		if matches[1] != "" {
-			parsed.Source = matches[1]
+		source := matches[1]
+		if source != "" {
+			// Check if source starts with @ (provider reference)
+			if strings.HasPrefix(source, "@") {
+				providerName := strings.TrimPrefix(source, "@")
+				if p.providerRegistry != nil {
+					url, err := p.providerRegistry.Resolve(providerName)
+					if err != nil {
+						return nil, fmt.Errorf("unknown provider '@%s': %w", providerName, err)
+					}
+					parsed.Source = url
+				} else {
+					parsed.Source = p.defaultURL
+				}
+			} else {
+				parsed.Source = source
+			}
 		} else {
 			parsed.Source = p.defaultURL
 		}
