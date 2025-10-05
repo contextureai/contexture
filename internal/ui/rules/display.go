@@ -257,6 +257,12 @@ func formatSourceForDisplay(rule *domain.Rule) string {
 		return ""
 	}
 
+	// Don't show source for provider syntax rules (@provider/path)
+	// These rules have a user-friendly ID already
+	if strings.HasPrefix(rule.ID, "@") {
+		return ""
+	}
+
 	// For local rules
 	if rule.Source == "local" {
 		return "local"

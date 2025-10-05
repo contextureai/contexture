@@ -155,11 +155,9 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 
 			// Convert simple format to full format for storage (without variables)
 			var fullRuleID string
-			if !strings.HasPrefix(processedRuleID, "[contexture") {
-				// This is a simple format, convert to full format
-				fullRuleID = fmt.Sprintf("[contexture:%s]", processedRuleID)
-			} else {
-				// Extract the rule ID without variables for storage
+			switch {
+			case strings.HasPrefix(processedRuleID, "[contexture"):
+				// Already in full format - extract without variables
 				if strings.Contains(processedRuleID, "]{") {
 					// Remove variables part from the rule ID for storage
 					if bracketIdx := strings.Index(processedRuleID, "]{"); bracketIdx != -1 {
@@ -168,6 +166,16 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 				} else {
 					fullRuleID = processedRuleID
 				}
+			case strings.HasPrefix(processedRuleID, "@"):
+				// Provider format @provider/path - store without variables
+				if braceIdx := strings.Index(processedRuleID, "{"); braceIdx != -1 {
+					fullRuleID = processedRuleID[:braceIdx]
+				} else {
+					fullRuleID = processedRuleID
+				}
+			default:
+				// Simple format - convert to full format
+				fullRuleID = fmt.Sprintf("[contexture:%s]", processedRuleID)
 			}
 
 			// Check if rule already exists (check both formats)
@@ -239,10 +247,15 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 
 			ruleRef := domain.RuleRef{
 				ID:         fullRuleID,
-				Source:     parsedID.Source,
-				Ref:        parsedID.Ref,
 				Variables:  variables, // Include merged variables
 				CommitHash: commitHash,
+			}
+
+			// Only set Source and Ref for non-provider rules
+			// Provider syntax rules (@provider/path) don't need Source/Ref since the provider contains that info
+			if !strings.HasPrefix(fullRuleID, "@") {
+				ruleRef.Source = parsedID.Source
+				ruleRef.Ref = parsedID.Ref
 			}
 
 			validRuleRefs = append(validRuleRefs, ruleRefWithOriginal{
@@ -289,6 +302,7 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 		if err := c.generateRules(ctx, config, currentDir); err != nil {
 			log.Warn("Failed to auto-generate rules", "error", err)
 			fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
+			return nil // Exit early - rules were added but generation failed
 		}
 	}
 
@@ -301,14 +315,8 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 	// Collect added rule IDs for output
 	var addedRuleIDs []string
 	for _, ruleRefWithOrig := range validRuleRefs {
-		// Extract simple rule ID for display (remove [contexture:] wrapper if present)
-		displayRuleID := ruleRefWithOrig.originalID
-		if strings.HasPrefix(ruleRefWithOrig.originalID, "[contexture:") {
-			// Parse to extract just the path component
-			if parsed, err := c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID); err == nil && parsed.RulePath != "" {
-				displayRuleID = parsed.RulePath
-			}
-		}
+		// Use the stored rule ID (which preserves @provider/path format)
+		displayRuleID := domain.ExtractRulePath(ruleRefWithOrig.ruleRef.ID)
 		addedRuleIDs = append(addedRuleIDs, displayRuleID)
 	}
 
@@ -333,36 +341,27 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 		fmt.Println(successStyle.Render("Rules added successfully!"))
 
 		for _, ruleRefWithOrig := range validRuleRefs {
-			// Extract simple rule ID for display (remove [contexture:] wrapper if present)
-			displayRuleID := ruleRefWithOrig.originalID
-			var variables map[string]any
-			var parsed *domain.ParsedRuleID
+			// Use the stored rule ID (which preserves @provider/path format)
+			displayRuleID := domain.ExtractRulePath(ruleRefWithOrig.ruleRef.ID)
 
-			if strings.HasPrefix(ruleRefWithOrig.originalID, "[contexture:") {
-				// Parse to extract just the path component
-				var err error
-				parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID)
-				if err == nil && parsed.RulePath != "" {
-					displayRuleID = parsed.RulePath
-					variables = parsed.Variables
-				}
-			} else {
-				// Parse the full rule ID from ruleRef to get source info
-				var err error
-				parsed, err = c.ruleFetcher.ParseRuleID(ruleRefWithOrig.ruleRef.ID)
-				if err == nil && parsed.RulePath != "" {
-					displayRuleID = parsed.RulePath
-					variables = parsed.Variables
-				}
+			// Parse to get variables
+			var variables map[string]any
+			if parsed, err := c.ruleFetcher.ParseRuleID(ruleRefWithOrig.originalID); err == nil {
+				variables = parsed.Variables
 			}
 
 			fmt.Printf("  %s\n", displayRuleID)
 
-			// Show source information for custom source rules (like in remove command)
-			if parsed != nil && parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
-				darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-				sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
-				fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
+			// Show source information for custom source rules (but not provider syntax)
+			// Provider syntax rules start with @ and shouldn't show the underlying git URL
+			if !strings.HasPrefix(ruleRefWithOrig.ruleRef.ID, "@") {
+				if parsed, err := c.ruleFetcher.ParseRuleID(ruleRefWithOrig.ruleRef.ID); err == nil {
+					if parsed.Source != "" && domain.IsCustomGitSource(parsed.Source) {
+						darkGrayStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+						sourceDisplay := domain.FormatSourceForDisplay(parsed.Source, parsed.Ref)
+						fmt.Printf("    %s\n", darkGrayStyle.Render(sourceDisplay))
+					}
+				}
 			}
 
 			// Show variables only if they differ from defaults

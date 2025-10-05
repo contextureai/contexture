@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -54,7 +55,7 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	config := configLoad.Config
 
 	if len(config.Rules) == 0 {
-		log.Info("No rules configured")
+		fmt.Fprintln(os.Stderr, "No rules configured")
 
 		// Clean up empty directories for all enabled formats even when no rules exist
 		targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))

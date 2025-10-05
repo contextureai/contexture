@@ -68,15 +68,17 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 	defaultStyle := lipgloss.NewStyle().Foreground(theme.Success).Italic(true)
 
 	for _, provider := range providers {
-		fmt.Printf("  %s\n", nameStyle.Render("@"+provider.Name))
+		// Build provider name with default indicator if applicable
+		nameWithDefault := "@" + provider.Name
+		if provider.Name == domain.DefaultProviderName {
+			nameWithDefault += " " + defaultStyle.Render("(default)")
+		}
+
+		fmt.Printf("  %s\n", nameStyle.Render(nameWithDefault))
 		fmt.Printf("    %s\n", urlStyle.Render(provider.URL))
 		if provider.DefaultBranch != "" && provider.DefaultBranch != "main" {
 			fmt.Printf("    Branch: %s\n", provider.DefaultBranch)
 		}
-		if provider.Name == domain.DefaultProviderName {
-			fmt.Printf("    %s\n", defaultStyle.Render("(default)"))
-		}
-		fmt.Println()
 	}
 
 	return nil

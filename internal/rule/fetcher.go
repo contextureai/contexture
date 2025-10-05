@@ -222,6 +222,11 @@ func isLocalPath(path string) bool {
 		return true
 	}
 
+	// Provider syntax (@provider/path) is NOT a local path
+	if strings.HasPrefix(path, "@") {
+		return false
+	}
+
 	// Check if it's NOT a contexture rule ID format (simple relative paths are local)
 	// Contexture rule IDs start with [contexture: or contain special chars like :, [, ]
 	if !strings.HasPrefix(path, "[contexture:") &&
