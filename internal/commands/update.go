@@ -16,6 +16,7 @@ import (
 	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
+	"github.com/contextureai/contexture/internal/provider"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/contextureai/contexture/internal/tui"
 	"github.com/contextureai/contexture/internal/ui"
@@ -25,11 +26,12 @@ import (
 
 // UpdateCommand implements the update command
 type UpdateCommand struct {
-	projectManager *project.Manager
-	ruleFetcher    rule.Fetcher
-	ruleValidator  rule.Validator
-	cache          *cache.SimpleCache
-	fs             afero.Fs
+	projectManager   *project.Manager
+	ruleFetcher      rule.Fetcher
+	ruleValidator    rule.Validator
+	cache            *cache.SimpleCache
+	fs               afero.Fs
+	providerRegistry *provider.Registry
 }
 
 // GitCommitInfo represents git commit information for a rule
@@ -75,11 +77,12 @@ const (
 func NewUpdateCommand(deps *dependencies.Dependencies) *UpdateCommand {
 	gitRepo := newOpenRepository(deps.FS)
 	return &UpdateCommand{
-		projectManager: project.NewManager(deps.FS),
-		ruleFetcher:    rule.NewFetcher(deps.FS, gitRepo, rule.FetcherConfig{}),
-		ruleValidator:  rule.NewValidator(),
-		cache:          cache.NewSimpleCache(deps.FS, gitRepo),
-		fs:             deps.FS,
+		projectManager:   project.NewManager(deps.FS),
+		ruleFetcher:      rule.NewFetcher(deps.FS, gitRepo, rule.FetcherConfig{}, deps.ProviderRegistry),
+		ruleValidator:    rule.NewValidator(),
+		cache:            cache.NewSimpleCache(deps.FS, gitRepo),
+		fs:               deps.FS,
+		providerRegistry: deps.ProviderRegistry,
 	}
 }
 
@@ -123,6 +126,11 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	config := configLoad.Config
+
+	// Load providers from project config into registry
+	if err := c.providerRegistry.LoadFromProject(config); err != nil {
+		return contextureerrors.Wrap(err, "load providers")
+	}
 
 	const localSource = "local"
 
@@ -840,7 +848,8 @@ func (c *UpdateCommand) formatRuleDisplay(result UpdateResult, status, statusTex
 	}
 
 	// Check if this is a custom source rule (not empty and not default)
-	if result.Source != "" && domain.IsCustomGitSource(result.Source) {
+	// Don't show source for provider syntax rules (@provider/path) since the provider is already in the ID
+	if result.Source != "" && domain.IsCustomGitSource(result.Source) && !strings.HasPrefix(result.RuleID, "@") {
 		// Add source line in dark gray underneath
 		sourceLine := domain.FormatSourceForDisplay(result.Source, result.Ref)
 		sourceDisplay := darkGrayStyle.Render(fmt.Sprintf("    %s", sourceLine))

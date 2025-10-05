@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -32,7 +33,7 @@ func NewBuildCommand(deps *dependencies.Dependencies) *BuildCommand {
 	return &BuildCommand{
 		projectManager: project.NewManager(deps.FS),
 		ruleGenerator: NewRuleGenerator(
-			rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}),
+			rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}, deps.ProviderRegistry),
 			rule.NewValidator(),
 			rule.NewProcessor(),
 			registry,
@@ -54,7 +55,7 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	config := configLoad.Config
 
 	if len(config.Rules) == 0 {
-		log.Info("No rules configured")
+		fmt.Fprintln(os.Stderr, "No rules configured")
 
 		// Clean up empty directories for all enabled formats even when no rules exist
 		targetFormats := c.getTargetFormats(config, cmd.StringSlice("formats"))

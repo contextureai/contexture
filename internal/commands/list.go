@@ -12,23 +12,26 @@ import (
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/output"
 	"github.com/contextureai/contexture/internal/project"
+	"github.com/contextureai/contexture/internal/provider"
 	"github.com/contextureai/contexture/internal/rule"
 	"github.com/urfave/cli/v3"
 )
 
 // ListCommand implements the list command
 type ListCommand struct {
-	projectManager *project.Manager
-	ruleFetcher    rule.Fetcher
-	registry       *format.Registry
+	projectManager   *project.Manager
+	ruleFetcher      rule.Fetcher
+	registry         *format.Registry
+	providerRegistry *provider.Registry
 }
 
 // NewListCommand creates a new list command
 func NewListCommand(deps *dependencies.Dependencies) *ListCommand {
 	return &ListCommand{
-		projectManager: project.NewManager(deps.FS),
-		ruleFetcher:    rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}),
-		registry:       format.GetDefaultRegistry(deps.FS),
+		projectManager:   project.NewManager(deps.FS),
+		ruleFetcher:      rule.NewFetcher(deps.FS, newOpenRepository(deps.FS), rule.FetcherConfig{}, deps.ProviderRegistry),
+		registry:         format.GetDefaultRegistry(deps.FS),
+		providerRegistry: deps.ProviderRegistry,
 	}
 }
 
@@ -52,6 +55,11 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 	}
 
 	config := configResult.Config
+
+	// Load providers from project config into registry
+	if err := c.providerRegistry.LoadFromProject(config); err != nil {
+		return contextureerrors.Wrap(err, "load providers")
+	}
 
 	// Fetch the actual rules from the rule references
 	rules, err := c.fetchRulesFromReferences(ctx, config.Rules)

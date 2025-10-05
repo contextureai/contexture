@@ -8,8 +8,7 @@ import (
 )
 
 // RulesAction is the CLI action handler for the main rules command
-func RulesAction(_ context.Context, _ *cli.Command, _ *dependencies.Dependencies) error {
-	// When the rules command is called without subcommands, just show help
-	// The CLI framework will automatically show the available subcommands
-	return nil
+func RulesAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Dependencies) error {
+	// When the rules command is called without subcommands, default to list action
+	return ListAction(ctx, cmd, deps)
 }

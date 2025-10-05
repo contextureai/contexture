@@ -11,6 +11,7 @@ import (
 	"github.com/contextureai/contexture/internal/domain"
 	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/provider"
 	"github.com/spf13/afero"
 )
 
@@ -28,7 +29,7 @@ type CompositeFetcher struct {
 }
 
 // NewFetcher creates a new fetcher with separated components
-func NewFetcher(fs afero.Fs, repository git.Repository, config FetcherConfig) Fetcher {
+func NewFetcher(fs afero.Fs, repository git.Repository, config FetcherConfig, providerRegistry *provider.Registry) Fetcher {
 	if config.DefaultURL == "" {
 		config.DefaultURL = defaultRulesRepo
 	}
@@ -37,7 +38,7 @@ func NewFetcher(fs afero.Fs, repository git.Repository, config FetcherConfig) Fe
 	}
 
 	parser := NewParser()
-	idParser := NewRuleIDParser(config.DefaultURL)
+	idParser := NewRuleIDParser(config.DefaultURL, providerRegistry)
 	simpleCache := cache.NewSimpleCache(fs, repository)
 
 	gitFetcher := NewGitRuleFetcher(fs, parser, simpleCache, repository, idParser)
@@ -219,6 +220,11 @@ func isLocalPath(path string) bool {
 		strings.HasPrefix(path, "./") ||
 		strings.HasPrefix(path, "../") {
 		return true
+	}
+
+	// Provider syntax (@provider/path) is NOT a local path
+	if strings.HasPrefix(path, "@") {
+		return false
 	}
 
 	// Check if it's NOT a contexture rule ID format (simple relative paths are local)

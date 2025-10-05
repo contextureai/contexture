@@ -311,8 +311,10 @@ func (v *defaultValidator) ValidateRuleID(ruleID string) error {
 		)
 	}
 
-	// Check if it's a full format [contexture:path] or [contexture(source):path,branch]{variables}
-	if strings.HasPrefix(ruleID, "[contexture") {
+	// Check rule ID format using switch for cleaner logic
+	switch {
+	case strings.HasPrefix(ruleID, "[contexture"):
+		// Full format [contexture:path] or [contexture(source):path,branch]{variables}
 		// Use the existing regex pattern to validate the complete format
 		if !domain.RuleIDPatternRegex.MatchString(ruleID) {
 			if !strings.HasSuffix(ruleID, "]") && !strings.HasSuffix(ruleID, "}") {
@@ -329,9 +331,12 @@ func (v *defaultValidator) ValidateRuleID(ruleID string) error {
 			}
 			return contextureerrors.ValidationErrorf("rule_id", "invalid rule ID format")
 		}
-	} else {
+	case strings.HasPrefix(ruleID, "@"):
+		// Provider syntax @provider/path - valid, skip character validation
+		return nil
+	default:
 		// For non-contexture rule IDs, check for invalid characters
-		invalidChars := []string{"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "{", "}", "[", "]", "|", "\\", ":", ";", "\"", "'", "<", ">", "?", ",", " "}
+		invalidChars := []string{"!", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "{", "}", "[", "]", "|", "\\", ":", ";", "\"", "'", "<", ">", "?", ",", " "}
 		for _, char := range invalidChars {
 			if strings.Contains(ruleID, char) {
 				return contextureerrors.ValidationErrorf(

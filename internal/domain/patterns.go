@@ -4,6 +4,9 @@ import "regexp"
 
 // Pre-compiled regex patterns for performance
 var (
+	// ProviderRuleIDPatternRegex matches @provider/path format
+	ProviderRuleIDPatternRegex = regexp.MustCompile(ProviderRuleIDPattern)
+
 	// RuleIDPatternRegex validates the complete rule ID format including optional JSON5 variables
 	RuleIDPatternRegex = regexp.MustCompile(RuleIDPattern)
 

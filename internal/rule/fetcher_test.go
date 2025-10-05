@@ -6,6 +6,7 @@ import (
 
 	"github.com/contextureai/contexture/internal/domain"
 	"github.com/contextureai/contexture/internal/git"
+	"github.com/contextureai/contexture/internal/provider"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,7 +22,7 @@ func TestNewFetcher(t *testing.T) {
 		DefaultURL: "https://github.com/test/repo.git",
 	}
 
-	fetcher := NewFetcher(fs, mockRepo, config)
+	fetcher := NewFetcher(fs, mockRepo, config, provider.NewRegistry())
 
 	assert.NotNil(t, fetcher)
 	// Verify it implements the interface (fetcher is already of type Fetcher)
@@ -33,7 +34,7 @@ func TestNewFetcherWithDefaults(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	mockRepo := git.NewMockRepository(t)
 
-	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{})
+	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{}, provider.NewRegistry())
 
 	// Verify it implements the interface (fetcher is already of type Fetcher)
 	assert.Implements(t, (*Fetcher)(nil), fetcher)
@@ -45,7 +46,7 @@ func TestGitFetcher_ParseRuleID(t *testing.T) {
 	mockRepo := git.NewMockRepository(t)
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
 		DefaultURL: "https://github.com/contextureai/rules.git",
-	})
+	}, provider.NewRegistry())
 
 	tests := []struct {
 		name          string
@@ -208,7 +209,7 @@ func TestGitFetcher_FetchRule(t *testing.T) {
 
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
 		DefaultURL: "https://github.com/contextureai/rules.git",
-	})
+	}, provider.NewRegistry())
 
 	// Mock the Clone method to create test data in temporary directory
 	mockRepo.On("Clone", mock.Anything, "https://github.com/contextureai/rules.git", mock.AnythingOfType("string"), mock.AnythingOfType("[]git.CloneOption")).
@@ -246,7 +247,7 @@ func TestGitFetcher_FetchRule_NotFound(t *testing.T) {
 
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
 		DefaultURL: "https://github.com/contextureai/rules.git",
-	})
+	}, provider.NewRegistry())
 
 	// Mock the Clone method to create empty directory structure (no rule file)
 	mockRepo.On("Clone", mock.Anything, "https://github.com/contextureai/rules.git", mock.AnythingOfType("string"), mock.AnythingOfType("[]git.CloneOption")).
@@ -274,7 +275,7 @@ func TestGitFetcher_FetchRules(t *testing.T) {
 
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
 		DefaultURL: "https://github.com/contextureai/rules.git",
-	})
+	}, provider.NewRegistry())
 
 	// Mock the Clone method to create test data for each rule fetch (called multiple times)
 	mockRepo.On("Clone", mock.Anything, "https://github.com/contextureai/rules.git", mock.AnythingOfType("string"), mock.AnythingOfType("[]git.CloneOption")).
@@ -328,7 +329,7 @@ func TestGitFetcher_ListAvailableRules(t *testing.T) {
 
 	fetcher := NewFetcher(fs, mockRepo, FetcherConfig{
 		DefaultURL: "https://github.com/contextureai/rules.git",
-	})
+	}, provider.NewRegistry())
 
 	// Mock the Clone method to create test repository structure
 	mockRepo.On("Clone", mock.Anything, "https://github.com/contextureai/rules.git", mock.AnythingOfType("string"), mock.AnythingOfType("[]git.CloneOption")).

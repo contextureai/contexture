@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRule_GetDefaultTrigger(t *testing.T) {
@@ -189,4 +191,73 @@ func TestRule_MatchesGlob(t *testing.T) {
 
 		assert.False(t, rule.MatchesGlob("main.go"))
 	})
+}
+
+func TestRuleRef_UnmarshalYAML(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		yaml           string
+		expectedID     string
+		expectedSource string
+		expectedRef    string
+	}{
+		{
+			name:           "@provider/path syntax",
+			yaml:           `id: "@mycompany/security/auth"`,
+			expectedID:     "@mycompany/security/auth",
+			expectedSource: "", // Source not extracted from @provider format, resolved by parser
+			expectedRef:    "",
+		},
+		{
+			name:           "full format with @provider",
+			yaml:           `id: "[contexture(@mycompany):security/auth]"`,
+			expectedID:     "[contexture(@mycompany):security/auth]",
+			expectedSource: "@mycompany", // Source extracted from full format
+			expectedRef:    "",
+		},
+		{
+			name:           "full format with URL",
+			yaml:           `id: "[contexture(https://github.com/user/repo.git):path/to/rule]"`,
+			expectedID:     "[contexture(https://github.com/user/repo.git):path/to/rule]",
+			expectedSource: "https://github.com/user/repo.git",
+			expectedRef:    "",
+		},
+		{
+			name:           "simple path format",
+			yaml:           `id: "typescript/naming"`,
+			expectedID:     "typescript/naming",
+			expectedSource: "",
+			expectedRef:    "",
+		},
+		{
+			name: "explicit source field",
+			yaml: `id: "path/to/rule"
+source: "explicit-source"`,
+			expectedID:     "path/to/rule",
+			expectedSource: "explicit-source", // Explicit source takes precedence
+			expectedRef:    "",
+		},
+		{
+			name: "with ref field",
+			yaml: `id: "@contexture/go/testing"
+ref: "v1.2.0"`,
+			expectedID:     "@contexture/go/testing",
+			expectedSource: "",
+			expectedRef:    "v1.2.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ruleRef RuleRef
+			err := yaml.Unmarshal([]byte(tt.yaml), &ruleRef)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedID, ruleRef.ID)
+			assert.Equal(t, tt.expectedSource, ruleRef.Source)
+			assert.Equal(t, tt.expectedRef, ruleRef.Ref)
+		})
+	}
 }

@@ -104,6 +104,7 @@ func (a *Application) buildCommands() []*cli.Command {
 		a.buildRulesCommand(),
 		a.buildBuildCommand(),
 		a.buildConfigCommand(),
+		a.buildProvidersCommand(),
 	}
 }
 
@@ -180,16 +181,18 @@ func (a *Application) buildRulesAddCommand() *cli.Command {
 		Description: `Add one or more rules to the current project.
 
 Rule IDs can be specified in multiple ways:
-• Short format: path/to/rule
-• Full format: [contexture:path/to/rule]  
-• Custom sources: [contexture(source):path/to/rule,branch]
-• With flags: path/to/rule --source https://github.com/user/repo --ref branch
+• Provider syntax: @provider/path/to/rule
+• Short format: path/to/rule (defaults to @contexture)
+• Full format: [contexture:path/to/rule]
+• Custom provider: [contexture(@provider):path/to/rule]
+• Direct URL: [contexture(https://github.com/user/repo.git):path/to/rule]
+• Git URL: https://github.com/user/repo.git#path/to/rule
 
 Examples:
+  contexture rules add @contexture/languages/go/testing
+  contexture rules add @mycompany/security/auth
   contexture rules add languages/go/testing
-  contexture rules add [contexture:languages/go/testing]
-  contexture rules add [contexture(git@github.com:user/rules):custom/rule,main]
-  contexture rules add my/rule --source https://github.com/user/repo --ref v1.0`,
+  contexture rules add @contexture/go/testing --ref v1.2.0`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -452,6 +455,96 @@ This is the default action when running 'contexture config' without subcommands.
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return a.actions.ConfigAction(ctx, cmd)
+		},
+	}
+}
+
+func (a *Application) buildProvidersCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "providers",
+		Usage: "Manage rule providers",
+		Description: `Manage rule providers for your Contexture project.
+
+Providers are named references to rule repositories that enable clean, readable
+rule references like @contexture/typescript/naming.
+
+Use subcommands to list, add, remove, or view provider details.`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Action:             a.actions.ProvidersAction,
+		Commands: []*cli.Command{
+			a.buildProvidersListCommand(),
+			a.buildProvidersAddCommand(),
+			a.buildProvidersRemoveCommand(),
+			a.buildProvidersShowCommand(),
+		},
+	}
+}
+
+func (a *Application) buildProvidersListCommand() *cli.Command {
+	return &cli.Command{
+		Name:    "list",
+		Aliases: []string{"ls"},
+		Usage:   "List all available providers",
+		Description: `Display all available providers including the default @contexture provider
+and any custom providers configured in your project.`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return a.actions.ProvidersListAction(ctx, cmd, a.deps)
+		},
+	}
+}
+
+func (a *Application) buildProvidersAddCommand() *cli.Command {
+	return &cli.Command{
+		Name:      "add",
+		Usage:     "Add a custom provider",
+		ArgsUsage: "<name> <url>",
+		Description: `Add a custom provider to your project configuration.
+
+The provider name will be available for use with the @provider/path syntax.
+
+Examples:
+  contexture providers add mycompany https://github.com/mycompany/rules.git
+  contexture providers add team-security git@github.com:team/security-rules.git`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return a.actions.ProvidersAddAction(ctx, cmd, a.deps)
+		},
+	}
+}
+
+func (a *Application) buildProvidersRemoveCommand() *cli.Command {
+	return &cli.Command{
+		Name:      "remove",
+		Aliases:   []string{"rm"},
+		Usage:     "Remove a custom provider",
+		ArgsUsage: "<name>",
+		Description: `Remove a custom provider from your project configuration.
+
+Note: You cannot remove the default @contexture provider.
+
+Examples:
+  contexture providers remove mycompany`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return a.actions.ProvidersRemoveAction(ctx, cmd, a.deps)
+		},
+	}
+}
+
+func (a *Application) buildProvidersShowCommand() *cli.Command {
+	return &cli.Command{
+		Name:      "show",
+		Usage:     "Show details for a provider",
+		ArgsUsage: "<name>",
+		Description: `Display detailed information about a specific provider.
+
+Examples:
+  contexture providers show contexture
+  contexture providers show @mycompany`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return a.actions.ProvidersShowAction(ctx, cmd, a.deps)
 		},
 	}
 }

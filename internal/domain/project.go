@@ -9,8 +9,8 @@ type Project struct {
 	// Version for configuration compatibility
 	Version int `yaml:"version,omitempty" json:"version,omitempty"`
 
-	// Sources for external rule repositories (optional)
-	Sources []Source `yaml:"sources,omitempty" json:"sources,omitempty"`
+	// Providers for external rule repositories (optional)
+	Providers []Provider `yaml:"providers,omitempty" json:"providers,omitempty"`
 
 	// Format configurations
 	Formats []FormatConfig `yaml:"formats" json:"formats"`
@@ -27,21 +27,18 @@ type Project struct {
 	genProvider generationConfigProvider `yaml:"-" json:"-"`
 }
 
-// Source represents an external rule source
-type Source struct {
-	Name    string      `yaml:"name"             json:"name"`
-	Type    string      `yaml:"type"             json:"type"` // Currently only "git"
-	URL     string      `yaml:"url"              json:"url"`
-	Branch  string      `yaml:"branch,omitempty" json:"branch,omitempty"`
-	Tag     string      `yaml:"tag,omitempty"    json:"tag,omitempty"`
-	Enabled bool        `yaml:"enabled"          json:"enabled"`
-	Auth    *SourceAuth `yaml:"auth,omitempty"   json:"auth,omitempty"`
+// Provider represents a named rule repository
+type Provider struct {
+	Name          string        `yaml:"name"                     json:"name"                     validate:"required"`
+	URL           string        `yaml:"url"                      json:"url"                      validate:"required,url"`
+	DefaultBranch string        `yaml:"defaultBranch,omitempty"  json:"defaultBranch,omitempty"`
+	Auth          *ProviderAuth `yaml:"auth,omitempty"           json:"auth,omitempty"`
 }
 
-// SourceAuth represents authentication configuration for a source
-type SourceAuth struct {
-	Type  string `yaml:"type"            json:"type"` // "token" or "ssh"
-	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+// ProviderAuth represents authentication configuration for a provider
+type ProviderAuth struct {
+	Type  string `yaml:"type"            json:"type"            validate:"required,oneof=token ssh"`
+	Token string `yaml:"token,omitempty" json:"token,omitempty" validate:"required_if=Type token"`
 }
 
 // GenerationConfig represents settings for rule generation
@@ -70,25 +67,19 @@ func (p *Project) HasFormat(formatType FormatType) bool {
 	return p.formatContainer.HasFormat(formatType)
 }
 
-// GetEnabledSources returns only the enabled sources
-func (p *Project) GetEnabledSources() []Source {
-	var enabled []Source
-	for _, source := range p.Sources {
-		if source.Enabled {
-			enabled = append(enabled, source)
-		}
-	}
-	return enabled
-}
-
-// GetSourceByName returns a source by name
-func (p *Project) GetSourceByName(name string) *Source {
-	for i := range p.Sources {
-		if p.Sources[i].Name == name {
-			return &p.Sources[i]
+// GetProviderByName returns a provider by name
+func (p *Project) GetProviderByName(name string) *Provider {
+	for i := range p.Providers {
+		if p.Providers[i].Name == name {
+			return &p.Providers[i]
 		}
 	}
 	return nil
+}
+
+// GetProviders returns all configured providers
+func (p *Project) GetProviders() []Provider {
+	return p.Providers
 }
 
 // GetGeneration returns generation config with defaults for Project

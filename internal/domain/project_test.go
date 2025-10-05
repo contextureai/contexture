@@ -58,41 +58,40 @@ func TestProject_HasFormat(t *testing.T) {
 	assert.False(t, project.HasFormat(FormatWindsurf))
 }
 
-func TestProject_GetEnabledSources(t *testing.T) {
+func TestProject_GetProviders(t *testing.T) {
 	t.Parallel()
 	project := &Project{
-		Sources: []Source{
-			{Name: "enabled-source", Enabled: true},
-			{Name: "disabled-source", Enabled: false},
-			{Name: "another-enabled", Enabled: true},
+		Providers: []Provider{
+			{Name: "provider1", URL: "url1"},
+			{Name: "provider2", URL: "url2"},
 		},
 	}
 
-	enabled := project.GetEnabledSources()
-	assert.Len(t, enabled, 2)
-	assert.Equal(t, "enabled-source", enabled[0].Name)
-	assert.Equal(t, "another-enabled", enabled[1].Name)
+	providers := project.GetProviders()
+	assert.Len(t, providers, 2)
+	assert.Equal(t, "provider1", providers[0].Name)
+	assert.Equal(t, "provider2", providers[1].Name)
 }
 
-func TestProject_GetSourceByName(t *testing.T) {
+func TestProject_GetProviderByName(t *testing.T) {
 	t.Parallel()
 	project := &Project{
-		Sources: []Source{
-			{Name: "source1", URL: "url1"},
-			{Name: "source2", URL: "url2"},
+		Providers: []Provider{
+			{Name: "provider1", URL: "url1"},
+			{Name: "provider2", URL: "url2"},
 		},
 	}
 
-	t.Run("existing source", func(t *testing.T) {
-		source := project.GetSourceByName("source1")
-		assert.NotNil(t, source)
-		assert.Equal(t, "source1", source.Name)
-		assert.Equal(t, "url1", source.URL)
+	t.Run("existing provider", func(t *testing.T) {
+		provider := project.GetProviderByName("provider1")
+		assert.NotNil(t, provider)
+		assert.Equal(t, "provider1", provider.Name)
+		assert.Equal(t, "url1", provider.URL)
 	})
 
-	t.Run("non-existing source", func(t *testing.T) {
-		source := project.GetSourceByName("nonexistent")
-		assert.Nil(t, source)
+	t.Run("non-existing provider", func(t *testing.T) {
+		provider := project.GetProviderByName("nonexistent")
+		assert.Nil(t, provider)
 	})
 }
 

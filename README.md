@@ -99,8 +99,8 @@ contexture rules add languages/go/code-organization testing/unit-tests
 # Add specific rules by ID
 contexture rules add "[contexture:code/clean-code]" "[contexture:docs/readme-best-practices]"
 
-# Add rules from custom source
-contexture rules add "security/auth" --src "git@github.com:company/rules.git" --ref "v2.0"
+# Add rules using @provider syntax
+contexture rules add "@mycompany/security/auth"
 ```
 
 ### 3. Generate Output Files
@@ -174,10 +174,18 @@ rules:
 | Command                | Description                                                      |
 | :--------------------- | :--------------------------------------------------------------- |
 | `rules add`            | Add rules to the project.                                        |
-| `rules add --src URL`  | Add rules from a custom Git repository.                          |
 | `rules remove`         | Remove rules from the project.                                   |
 | `rules list`           | List all configured rules. Use `-o json` for structured output.  |
 | `rules update`         | Update remote rules to their latest versions.                    |
+
+### Providers
+
+| Command              | Description                                        |
+| :------------------- | :------------------------------------------------- |
+| `providers list`     | List all configured providers.                     |
+| `providers add`      | Add a new provider to the project.                 |
+| `providers remove`   | Remove a provider from the project.                |
+| `providers show`     | Show details for a specific provider.              |
 
 ### Build
 
@@ -190,13 +198,11 @@ rules:
 ```yaml
 version: 1
 
-# Defines custom Git repositories for sourcing rules.
-sources:
-  - name: company-rules
-    type: git
+# Defines custom named providers for sourcing rules.
+providers:
+  - name: mycompany
     url: https://github.com/my-org/contexture-rules.git
-    branch: main
-    enabled: true
+    defaultBranch: main
 
 # Specifies which AI assistant formats to generate.
 formats:
@@ -212,7 +218,7 @@ rules:
   - id: "[contexture:code/clean-code]"
     variables:
       maxLineLength: 120
-  - id: "[contexture(company-rules):team/deployment-process,v1.2.0]"
+  - id: "@mycompany/team/deployment-process"
 
 # Controls build behavior and performance.
 generation:

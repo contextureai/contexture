@@ -91,7 +91,7 @@ func (p *helpPrinter) render(templ string, data any) (string, error) {
 
 	// Always use our custom renderer for known commands to avoid template issues
 	if cmd.Name == "config" || cmd.Name == "contexture" || cmd.Name == "formats" ||
-		cmd.Name == "enable" || cmd.Name == "disable" || cmd.Name == "rules" {
+		cmd.Name == "enable" || cmd.Name == "disable" || cmd.Name == "rules" || cmd.Name == "providers" {
 		if len(cmd.Commands) > 0 {
 			return p.renderer.RenderApp(cmd)
 		}
