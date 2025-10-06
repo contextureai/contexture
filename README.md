@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Contexture
 
 `contexture` is a command-line tool for managing AI assistant instructions. It provides a centralized system for organizing, versioning, and deploying rules to multiple platforms and formats, including Claude, Cursor, and Windsurf.
@@ -246,3 +247,20 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+=======
+<p align="center">
+  <a href="https://contexture.sh">
+    <picture>
+      <source srcset="web/assets/full-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="web/assets/full-logo-light.svg" media="(prefers-color-scheme: light)">
+      <img src="web/assets/full-logo-light.svg" alt="Contexture logo">
+    </picture>
+  </a>
+</p>
+<p align="center"></p>
+<p align="center">
+  <a href="https://github.com/contextureai/contexture/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/contextureai/contexture/release.yml?style=flat-square&branch=main" /></a>
+</p>
+
+---
+>>>>>>> Stashed changes
