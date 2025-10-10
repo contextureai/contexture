@@ -1,9 +1,9 @@
-<p align="center">
+<p align="center" style="max-width: 50%; margin: 0 auto;">
   <a href="https://contexture.sh">
     <picture>
       <source srcset="web/assets/full-logo-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="web/assets/full-logo-light.svg" media="(prefers-color-scheme: light)">
-      <img src="web/assets/full-logo-light.svg" alt="Contexture logo" style="max-width: 50%;">
+      <img src="web/assets/full-logo-light.svg" alt="Contexture logo">
     </picture>
   </a>
 </p>
@@ -14,3 +14,31 @@
 </p>
 
 ---
+
+## What is Contexture?
+
+Contexture is a CLI tool for managing AI assistant rules across multiple platforms (Claude, Cursor, Windsurf). It fetches rules from sources, processes templates with variables, and generates platform-specific output files.
+
+## Installation
+
+```bash
+# Go Install
+go install github.com/contextureai/contexture/cmd/contexture@latest
+```
+
+## Quick Start
+
+1. **Initialize a project**
+   ```bash
+   contexture init
+   ```
+2. **Add a rule**
+   ```bash
+   contexture rules add @contexture/go/thought-process
+   ```
+
+## Rules
+
+Contexture comes with a set of -maintained rules that you can find here:
+
+[https://github.com/contextureai/rules](https://github.com/contextureai/rules)
