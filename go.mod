@@ -11,7 +11,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/spf13/afero v1.14.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/titanous/json5 v1.0.0
 	github.com/urfave/cli/v3 v3.3.8
 	golang.org/x/term v0.36.0
