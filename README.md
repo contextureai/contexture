@@ -1,4 +1,4 @@
-<p align="center" style="max-width: 50%; margin: 0 auto;">
+<p align="center">
   <a href="https://contexture.sh">
     <picture>
       <source srcset="web/assets/full-logo-dark.svg" media="(prefers-color-scheme: dark)">
@@ -22,23 +22,23 @@ Contexture is a CLI tool for managing AI assistant rules across multiple platfor
 ## Installation
 
 ```bash
-# Go Install
+# via Go Install:
 go install github.com/contextureai/contexture/cmd/contexture@latest
 ```
 
 ## Quick Start
 
-1. **Initialize a project**
+1. Initialize a project
    ```bash
    contexture init
    ```
-2. **Add a rule**
+2. Add a rule
    ```bash
    contexture rules add @contexture/go/thought-process
    ```
 
 ## Rules
 
-Contexture comes with a set of -maintained rules that you can find here:
+Contexture comes with a set of maintained rules that you can find here:
 
 [https://github.com/contextureai/rules](https://github.com/contextureai/rules)
