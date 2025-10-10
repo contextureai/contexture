@@ -1,4 +1,4 @@
-<p align="center">
+<div align="center">
   <a href="https://contexture.sh">
     <picture>
       <source srcset="web/assets/full-logo-dark.svg" media="(prefers-color-scheme: dark)">
@@ -6,7 +6,7 @@
       <img src="web/assets/full-logo-light.svg" alt="Contexture logo">
     </picture>
   </a>
-</p>
+</div>
 <p align="center">Manage agent context across multiple platforms</p>
 <p align="center">
   <a href="https://github.com/contextureai/contexture/actions/workflows/release.yml"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/contextureai/contexture/release.yml?style=flat-square&branch=main" /></a>
