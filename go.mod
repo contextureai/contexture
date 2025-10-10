@@ -13,7 +13,7 @@ require (
 	github.com/spf13/afero v1.14.0
 	github.com/stretchr/testify v1.11.1
 	github.com/titanous/json5 v1.0.0
-	github.com/urfave/cli/v3 v3.3.8
+	github.com/urfave/cli/v3 v3.4.1
 	golang.org/x/term v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
