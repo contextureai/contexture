@@ -54,9 +54,14 @@ type JSONRulesUpdateOutput struct {
 	Metadata UpdateMetadata `json:"metadata"`
 }
 
-// WriteRulesList writes rules list in JSON format to stdout
-func (w *JSONWriter) WriteRulesList(rules []*domain.Rule, metadata ListMetadata) error {
-	// Convert domain.Rule to JSONRule (without timestamps)
+// JSONQueryOutput represents the JSON structure for query output
+type JSONQueryOutput struct {
+	Metadata QueryMetadata `json:"metadata"`
+	Rules    []*JSONRule   `json:"rules"`
+}
+
+// convertToJSONRules converts domain rules to JSON rules
+func convertToJSONRules(rules []*domain.Rule) []*JSONRule {
 	jsonRules := make([]*JSONRule, len(rules))
 	for i, rule := range rules {
 		jsonRules[i] = &JSONRule{
@@ -75,6 +80,12 @@ func (w *JSONWriter) WriteRulesList(rules []*domain.Rule, metadata ListMetadata)
 			Ref:              rule.Ref,
 		}
 	}
+	return jsonRules
+}
+
+// WriteRulesList writes rules list in JSON format to stdout
+func (w *JSONWriter) WriteRulesList(rules []*domain.Rule, metadata ListMetadata) error {
+	jsonRules := convertToJSONRules(rules)
 
 	output := JSONRulesListOutput{
 		Metadata: metadata,
@@ -133,6 +144,26 @@ func (w *JSONWriter) WriteRulesUpdate(metadata UpdateMetadata) error {
 		return contextureerrors.Wrap(err, "marshal update result to JSON")
 	}
 
+	fmt.Println(string(jsonData))
+	return nil
+}
+
+// WriteQueryResults writes query results in JSON format to stdout
+func (w *JSONWriter) WriteQueryResults(rules []*domain.Rule, metadata QueryMetadata) error {
+	jsonRules := convertToJSONRules(rules)
+
+	output := JSONQueryOutput{
+		Metadata: metadata,
+		Rules:    jsonRules,
+	}
+
+	// Marshal with indentation for readability
+	jsonData, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return contextureerrors.Wrap(err, "marshal query results to JSON")
+	}
+
+	// Print to stdout
 	fmt.Println(string(jsonData))
 	return nil
 }

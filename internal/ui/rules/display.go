@@ -355,3 +355,58 @@ func mapsEqual(a, b map[string]any) bool {
 
 	return true
 }
+
+// DisplayQueryResults displays query results with appropriate header
+func DisplayQueryResults(rules []*domain.Rule, query string, queryType string, options DisplayOptions) error {
+	if len(rules) == 0 {
+		fmt.Printf("No rules found matching query: %s\n", query)
+		return nil
+	}
+
+	styles := createDisplayStyles()
+
+	// Header with query info
+	headerText := fmt.Sprintf("Found %d rule(s) matching", len(rules))
+	if queryType == "expr" {
+		headerText += " expression"
+	} else {
+		headerText += fmt.Sprintf(" \"%s\"", query)
+	}
+	fmt.Printf("%s\n\n", styles.header.Render(headerText))
+
+	// Sort rules by path for consistent output
+	sortedRules := make([]*domain.Rule, len(rules))
+	copy(sortedRules, rules)
+	sort.Slice(sortedRules, func(i, j int) bool {
+		pathI := extractRulePath(sortedRules[i].ID)
+		pathJ := extractRulePath(sortedRules[j].ID)
+		return pathI < pathJ
+	})
+
+	// Display each rule in compact format
+	for i, rule := range sortedRules {
+		if i > 0 {
+			fmt.Println() // Empty line between rules
+		}
+
+		// 1. Rule path
+		rulePath := extractSimpleRulePath(rule.ID)
+		if rulePath == "" {
+			rulePath = rule.ID
+		}
+		fmt.Println(styles.rulePath.Render(rulePath))
+
+		// 2. Title on next line with indentation
+		fmt.Println(styles.ruleTitle.Render(rule.Title))
+
+		// 3. Source on third line (only if non-default)
+		if options.ShowSource {
+			source := formatSourceForDisplay(rule)
+			if source != "" {
+				fmt.Println(styles.ruleSource.Render(source))
+			}
+		}
+	}
+
+	return nil
+}

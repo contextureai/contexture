@@ -32,13 +32,17 @@ go install github.com/contextureai/contexture/cmd/contexture@latest
    ```bash
    contexture init
    ```
-2. Add a rule
+2. Discover available rules (optional)
+   ```bash
+   contexture query "go"
+   ```
+3. Add a rule
    ```bash
    contexture rules add @contexture/go/thought-process
    ```
 
 ## Rules
 
-Contexture comes with a set of maintained rules that you can find here:
+Contexture comes with a set of official, maintained rules that you can find here:
 
 [https://github.com/contextureai/rules](https://github.com/contextureai/rules)

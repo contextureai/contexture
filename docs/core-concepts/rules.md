@@ -141,12 +141,11 @@ flowchart TD
     end
 
     RESOLVE --> REF
-    MERGE --> TEMPLATE
 
     TRANSFORM --> OUTPUT[Generate Files]
 
     style FETCH fill:#e1f5fe
-    style MERGE fill:#f3e5f5
+    style TEMPLATE fill:#f3e5f5
 ```
 
 ## Next Steps

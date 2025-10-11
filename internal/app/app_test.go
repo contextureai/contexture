@@ -139,7 +139,7 @@ func TestApplication_buildCommands(t *testing.T) {
 	commands := app.buildCommands()
 
 	t.Run("returns_expected_number_of_commands", func(t *testing.T) {
-		assert.Len(t, commands, 5) // init, rules, build, config, providers
+		assert.Len(t, commands, 6) // init, rules, build, query, config, providers
 	})
 
 	t.Run("all_commands_have_required_fields", func(t *testing.T) {

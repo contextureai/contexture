@@ -151,3 +151,8 @@ func (a *CommandActions) ProvidersShowAction(
 ) error {
 	return commands.ProvidersShowAction(ctx, cmd, deps)
 }
+
+// QueryAction provides a testable wrapper for the query command
+func (a *CommandActions) QueryAction(ctx context.Context, cmd *cli.Command) error {
+	return commands.QueryAction(ctx, cmd, a.deps)
+}
