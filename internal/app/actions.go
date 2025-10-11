@@ -51,6 +51,11 @@ func (a *CommandActions) UpdateAction(ctx context.Context, cmd *cli.Command) err
 	return commands.UpdateAction(ctx, cmd, a.deps)
 }
 
+// NewAction provides a testable wrapper for the new command
+func (a *CommandActions) NewAction(ctx context.Context, cmd *cli.Command) error {
+	return commands.NewAction(ctx, cmd, a.deps)
+}
+
 // ConfigAction provides a testable wrapper for the config command
 func (a *CommandActions) ConfigAction(ctx context.Context, cmd *cli.Command) error {
 	return commands.ConfigAction(ctx, cmd, a.deps)

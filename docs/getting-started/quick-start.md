@@ -110,6 +110,26 @@ rules:
   - id: "[contexture:docs/readme-best-practices]"
 ```
 
+#### Creating Custom Rules (Optional)
+
+You can create your own project-specific rules using the `rules new` command:
+
+```bash
+# Create a custom rule with metadata
+contexture rules new project-conventions \
+  --name "Project Conventions" \
+  --description "Our team's coding standards" \
+  --tags "conventions,team,standards"
+
+# Edit the generated file to add your content
+vim rules/project-conventions.md
+
+# Add the custom rule to your project
+contexture rules add rules/project-conventions.md
+```
+
+This creates a new rule file in your project's `rules/` directory with YAML frontmatter. See [`contexture rules new`](../reference/commands/rules-new) for more details.
+
 ## Step 4: Generate Output
 
 To generate the output files for all enabled formats, run the `build` command:
@@ -218,6 +238,7 @@ contexture query testing                            # Search for rules across al
 contexture query --expr 'Language == "go"'         # Advanced expression search
 contexture rules add code/clean-code              # Add specific rules
 contexture rules add security/auth --src https://github.com/...  # Add rules from a custom source
+contexture rules new my-rule --name "My Rule"     # Create a new custom rule
 contexture rules list                               # Show configured rules
 contexture rules list -o json                      # Show rules as JSON
 contexture build                                    # Generate output files

@@ -7,13 +7,11 @@
     </picture>
   </a>
 </div>
-<p align="center">Manage agent context across multiple platforms</p>
+<p align="center">Manage agent context across all of your favorite AI platforms</p>
 <p align="center">
   <a href="https://github.com/contextureai/contexture/actions/workflows/release.yml"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/contextureai/contexture/release.yml?style=flat-square&branch=main" /></a>
   <a href="https://github.com/contextureai/contexture/releases"><img alt="Latest Release" src="https://img.shields.io/github/v/release/contextureai/contexture?sort=semver&display_name=release&style=flat-square" /></a>
 </p>
-
----
 
 ## What is Contexture?
 
@@ -39,6 +37,10 @@ go install github.com/contextureai/contexture/cmd/contexture@latest
 3. Add a rule
    ```bash
    contexture rules add @contexture/go/thought-process
+   ```
+4. Create your own custom rules (optional)
+   ```bash
+   contexture rules new my-custom-rule --name "My Rule" --tags "custom"
    ```
 
 ## Rules
