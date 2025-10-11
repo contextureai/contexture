@@ -17,6 +17,12 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const (
+	// queryBatchSize is the number of rules to fetch and process at once
+	// This reduces memory usage by avoiding loading all rules at once
+	queryBatchSize = 50
+)
+
 // QueryCommand implements the query command
 type QueryCommand struct {
 	projectManager   *project.Manager
@@ -101,11 +107,15 @@ func (c *QueryCommand) fetchAndFilterRules(ctx context.Context, cmd *cli.Command
 	}
 
 	// Collect matching rules with early exit
-	const batchSize = 50 // Fetch in batches to avoid loading everything at once
 	matchedRules := make([]*domain.Rule, 0, limit)
 
 	// Iterate through providers
 	for _, provider := range providers {
+		// Check for context cancellation
+		if err := ctx.Err(); err != nil {
+			return matchedRules, err
+		}
+
 		// Check if we've reached the limit
 		if limit > 0 && len(matchedRules) >= limit {
 			break
@@ -119,14 +129,19 @@ func (c *QueryCommand) fetchAndFilterRules(ctx context.Context, cmd *cli.Command
 		}
 
 		// Process rules in batches
-		for i := 0; i < len(ruleIDs); i += batchSize {
+		for i := 0; i < len(ruleIDs); i += queryBatchSize {
+			// Check for context cancellation
+			if err := ctx.Err(); err != nil {
+				return matchedRules, err
+			}
+
 			// Check if we've reached the limit
 			if limit > 0 && len(matchedRules) >= limit {
 				break
 			}
 
 			// Determine batch end
-			end := i + batchSize
+			end := i + queryBatchSize
 			if end > len(ruleIDs) {
 				end = len(ruleIDs)
 			}
@@ -134,6 +149,11 @@ func (c *QueryCommand) fetchAndFilterRules(ctx context.Context, cmd *cli.Command
 
 			// Fetch and filter batch
 			for _, ruleID := range batch {
+				// Check for context cancellation periodically
+				if err := ctx.Err(); err != nil {
+					return matchedRules, err
+				}
+
 				// Early exit if we've hit the limit
 				if limit > 0 && len(matchedRules) >= limit {
 					break
