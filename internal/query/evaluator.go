@@ -3,6 +3,7 @@ package query
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/contextureai/contexture/internal/domain"
 	contextureerrors "github.com/contextureai/contexture/internal/errors"
@@ -23,6 +24,7 @@ type Evaluator interface {
 type evaluator struct {
 	// Cache compiled programs for performance
 	programCache map[string]*vm.Program
+	mu           sync.RWMutex
 }
 
 // NewEvaluator creates a new query evaluator
@@ -64,16 +66,28 @@ func (e *evaluator) EvaluateExpr(rule *domain.Rule, exprStr string) (bool, error
 		return true, nil
 	}
 
-	// Check cache for compiled program
+	// Check cache for compiled program (read lock)
+	e.mu.RLock()
 	program, ok := e.programCache[exprStr]
+	e.mu.RUnlock()
+
 	if !ok {
 		// Compile the expression
 		compiled, err := expr.Compile(exprStr, expr.Env(buildExprEnv(nil)))
 		if err != nil {
 			return false, contextureerrors.ValidationError("expression", err)
 		}
-		program = compiled
-		e.programCache[exprStr] = program
+
+		// Store in cache (write lock)
+		e.mu.Lock()
+		// Double-check in case another goroutine compiled it while we were waiting
+		if existing, exists := e.programCache[exprStr]; exists {
+			program = existing
+		} else {
+			e.programCache[exprStr] = compiled
+			program = compiled
+		}
+		e.mu.Unlock()
 	}
 
 	// Build environment for this rule
