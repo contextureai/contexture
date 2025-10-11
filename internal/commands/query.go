@@ -62,43 +62,23 @@ func (c *QueryCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 	// If config doesn't exist, that's okay - we'll just use default providers
 
-	// Fetch rules
-	rules, err := c.fetchRules(ctx, cmd)
+	// Get limit for early exit optimization
+	limit := cmd.Int("limit")
+
+	// Fetch and filter rules with streaming and early exit
+	filtered, err := c.fetchAndFilterRules(ctx, cmd, queryStr, useExpr, limit)
 	if err != nil {
 		return err
-	}
-
-	// Apply appropriate filter
-	var filtered []*domain.Rule
-	if useExpr {
-		filtered, err = c.filterWithExpr(rules, queryStr)
-		if err != nil {
-			return err
-		}
-	} else {
-		filtered = c.filterWithText(rules, queryStr)
-	}
-
-	// Apply limit if specified
-	limit := cmd.Int("limit")
-	if limit > 0 && len(filtered) > limit {
-		filtered = filtered[:limit]
 	}
 
 	// Output results
 	return c.outputResults(filtered, queryStr, useExpr, cmd)
 }
 
-// fetchRules fetches rules based on command flags
-func (c *QueryCommand) fetchRules(ctx context.Context, cmd *cli.Command) ([]*domain.Rule, error) {
+// fetchAndFilterRules fetches rules with streaming and early exit when limit is reached
+func (c *QueryCommand) fetchAndFilterRules(ctx context.Context, cmd *cli.Command, queryStr string, useExpr bool, limit int) ([]*domain.Rule, error) {
 	providerFilter := cmd.StringSlice("provider")
 
-	// Fetch rules from all providers or specific providers
-	return c.fetchProviderRules(ctx, providerFilter)
-}
-
-// fetchProviderRules fetches rules from all configured providers or specific ones
-func (c *QueryCommand) fetchProviderRules(ctx context.Context, providerFilter []string) ([]*domain.Rule, error) {
 	// Get list of providers to query
 	providers := c.providerRegistry.ListProviders()
 
@@ -120,9 +100,17 @@ func (c *QueryCommand) fetchProviderRules(ctx context.Context, providerFilter []
 		return nil, contextureerrors.ValidationErrorf("provider", "no providers found")
 	}
 
-	// Fetch rules from each provider
-	allRules := make([]*domain.Rule, 0)
+	// Collect matching rules with early exit
+	const batchSize = 50 // Fetch in batches to avoid loading everything at once
+	matchedRules := make([]*domain.Rule, 0, limit)
+
+	// Iterate through providers
 	for _, provider := range providers {
+		// Check if we've reached the limit
+		if limit > 0 && len(matchedRules) >= limit {
+			break
+		}
+
 		// List available rules from this provider
 		ruleIDs, err := c.ruleFetcher.ListAvailableRules(ctx, provider.URL, provider.DefaultBranch)
 		if err != nil {
@@ -130,49 +118,56 @@ func (c *QueryCommand) fetchProviderRules(ctx context.Context, providerFilter []
 			continue
 		}
 
-		// Fetch each rule
-		for _, ruleID := range ruleIDs {
-			// Construct full rule ID with provider context
-			// Always include the provider prefix to ensure proper routing
-			fullRuleID := "@" + provider.Name + "/" + ruleID
-
-			fetchedRule, err := c.ruleFetcher.FetchRule(ctx, fullRuleID)
-			if err != nil {
-				// Skip rules that fail to fetch
-				continue
+		// Process rules in batches
+		for i := 0; i < len(ruleIDs); i += batchSize {
+			// Check if we've reached the limit
+			if limit > 0 && len(matchedRules) >= limit {
+				break
 			}
 
-			allRules = append(allRules, fetchedRule)
+			// Determine batch end
+			end := i + batchSize
+			if end > len(ruleIDs) {
+				end = len(ruleIDs)
+			}
+			batch := ruleIDs[i:end]
+
+			// Fetch and filter batch
+			for _, ruleID := range batch {
+				// Early exit if we've hit the limit
+				if limit > 0 && len(matchedRules) >= limit {
+					break
+				}
+
+				// Construct full rule ID with provider context
+				fullRuleID := "@" + provider.Name + "/" + ruleID
+
+				fetchedRule, err := c.ruleFetcher.FetchRule(ctx, fullRuleID)
+				if err != nil {
+					// Skip rules that fail to fetch
+					continue
+				}
+
+				// Apply filter immediately
+				var matches bool
+				if useExpr {
+					matches, err = c.evaluator.EvaluateExpr(fetchedRule, queryStr)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					matches = c.evaluator.MatchesText(fetchedRule, queryStr)
+				}
+
+				// Add to results if it matches
+				if matches {
+					matchedRules = append(matchedRules, fetchedRule)
+				}
+			}
 		}
 	}
 
-	return allRules, nil
-}
-
-// filterWithText filters rules using simple text matching
-func (c *QueryCommand) filterWithText(rules []*domain.Rule, queryStr string) []*domain.Rule {
-	filtered := make([]*domain.Rule, 0)
-	for _, r := range rules {
-		if c.evaluator.MatchesText(r, queryStr) {
-			filtered = append(filtered, r)
-		}
-	}
-	return filtered
-}
-
-// filterWithExpr filters rules using expr expression evaluation
-func (c *QueryCommand) filterWithExpr(rules []*domain.Rule, exprStr string) ([]*domain.Rule, error) {
-	filtered := make([]*domain.Rule, 0)
-	for _, r := range rules {
-		matches, err := c.evaluator.EvaluateExpr(r, exprStr)
-		if err != nil {
-			return nil, err
-		}
-		if matches {
-			filtered = append(filtered, r)
-		}
-	}
-	return filtered, nil
+	return matchedRules, nil
 }
 
 // outputResults outputs the filtered rules
