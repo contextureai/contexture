@@ -333,7 +333,7 @@ Examples:
 			&cli.IntFlag{
 				Name:    "limit",
 				Aliases: []string{"n"},
-				Value:   50,
+				Value:   10,
 				Usage:   "Maximum number of results",
 			},
 		},

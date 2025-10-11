@@ -356,8 +356,16 @@ func mapsEqual(a, b map[string]any) bool {
 	return true
 }
 
+// truncateString truncates a string to maxLen characters, adding ellipsis if needed
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
+
 // DisplayQueryResults displays query results with appropriate header
-func DisplayQueryResults(rules []*domain.Rule, query string, queryType string, options DisplayOptions) error {
+func DisplayQueryResults(rules []*domain.Rule, query string, queryType string, _ DisplayOptions) error {
 	if len(rules) == 0 {
 		fmt.Printf("No rules found matching query: %s\n", query)
 		return nil
@@ -384,11 +392,7 @@ func DisplayQueryResults(rules []*domain.Rule, query string, queryType string, o
 	})
 
 	// Display each rule in compact format
-	for i, rule := range sortedRules {
-		if i > 0 {
-			fmt.Println() // Empty line between rules
-		}
-
+	for _, rule := range sortedRules {
 		// 1. Rule path
 		rulePath := extractSimpleRulePath(rule.ID)
 		if rulePath == "" {
@@ -399,12 +403,10 @@ func DisplayQueryResults(rules []*domain.Rule, query string, queryType string, o
 		// 2. Title on next line with indentation
 		fmt.Println(styles.ruleTitle.Render(rule.Title))
 
-		// 3. Source on third line (only if non-default)
-		if options.ShowSource {
-			source := formatSourceForDisplay(rule)
-			if source != "" {
-				fmt.Println(styles.ruleSource.Render(source))
-			}
+		// 3. Description (truncated) on third line with indentation
+		if rule.Description != "" {
+			truncated := truncateString(rule.Description, 100)
+			fmt.Println(styles.ruleSource.Render(truncated))
 		}
 	}
 
