@@ -170,6 +170,7 @@ Use subcommands to manage specific aspects of your rules.`,
 			a.buildRulesRemoveCommand(),
 			a.buildRulesListCommand(),
 			a.buildRulesUpdateCommand(),
+			a.buildRulesNewCommand(),
 		},
 	}
 }
@@ -391,6 +392,43 @@ This will check for updates and optionally apply them.`,
 			},
 		},
 		Action: a.actions.UpdateAction,
+	}
+}
+
+func (a *Application) buildRulesNewCommand() *cli.Command {
+	return &cli.Command{
+		Name:      "new",
+		Usage:     "Create a new rule file",
+		ArgsUsage: "<path>",
+		Description: `Create a new blank rule file with pre-populated metadata.
+
+Behavior modes:
+• Inside a Contexture project: Creates rule in the local 'rules/' directory
+• Outside a Contexture project: Creates rule at the literal path specified
+
+Examples:
+  contexture rules new my-rule
+  contexture rules new security/auth-check --name "Auth Check" --tags "security,auth"
+  contexture rules new path/to/custom-rule --description "Custom rule description"`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "name",
+				Aliases: []string{"n"},
+				Usage:   "Rule name/title",
+			},
+			&cli.StringFlag{
+				Name:    "description",
+				Aliases: []string{"d"},
+				Usage:   "Rule description",
+			},
+			&cli.StringFlag{
+				Name:    "tags",
+				Aliases: []string{"t"},
+				Usage:   "Comma-separated tags",
+			},
+		},
+		Action: a.actions.NewAction,
 	}
 }
 
