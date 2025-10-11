@@ -32,7 +32,7 @@ func NewNewCommand(deps *dependencies.Dependencies) *NewCommand {
 }
 
 // Execute runs the new command
-func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath string) error {
+func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath, workingDir string) error {
 	// Get flags
 	name := cmd.String("name")
 	description := cmd.String("description")
@@ -44,14 +44,8 @@ func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath strin
 		tags = parseTags(tagsStr)
 	}
 
-	// Get current directory
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return contextureerrors.Wrap(err, "get current directory")
-	}
-
 	// Determine the target path
-	targetPath := c.determineTargetPath(currentDir, rulePath)
+	targetPath := c.determineTargetPath(workingDir, rulePath)
 
 	// Check if file already exists
 	exists, err := afero.Exists(c.fs, targetPath)
@@ -101,12 +95,13 @@ func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath strin
 }
 
 // determineTargetPath determines where to create the rule file
-func (c *NewCommand) determineTargetPath(currentDir, rulePath string) string {
+func (c *NewCommand) determineTargetPath(workingDir, rulePath string) string {
 	// Normalize the rule path - remove .md extension if provided
+	// This ensures consistent handling whether user provides "my-rule" or "my-rule.md"
 	rulePath = strings.TrimSuffix(rulePath, ".md")
 
 	// Try to load project config
-	configResult, err := c.projectManager.LoadConfig(currentDir)
+	configResult, err := c.projectManager.LoadConfig(workingDir)
 
 	if err == nil {
 		// We're in a Contexture project - create in rules directory
@@ -128,21 +123,16 @@ func (c *NewCommand) determineTargetPath(currentDir, rulePath string) string {
 			rulesDir = filepath.Join(filepath.Dir(configResult.Path), domain.LocalRulesDir)
 		}
 
-		// Construct the full path
-		targetPath := filepath.Join(rulesDir, rulePath+".md")
-		return targetPath
+		// Construct the full path (rulePath is already normalized without .md)
+		return filepath.Join(rulesDir, rulePath+".md")
 	}
 
 	// Not in a Contexture project - use literal path
-	// If the path is relative, make it relative to current directory
-	var targetPath string
+	// rulePath is already normalized (no .md), so we can safely add it
 	if filepath.IsAbs(rulePath) {
-		targetPath = rulePath + ".md"
-	} else {
-		targetPath = filepath.Join(currentDir, rulePath+".md")
+		return rulePath + ".md"
 	}
-
-	return targetPath
+	return filepath.Join(workingDir, rulePath+".md")
 }
 
 // generateRuleContent generates the rule file content with YAML frontmatter
@@ -206,7 +196,13 @@ func NewAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depende
 		return contextureerrors.ValidationErrorf("path", "no path provided")
 	}
 
+	// Get current working directory
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return contextureerrors.Wrap(err, "get current directory")
+	}
+
 	rulePath := args[0]
 	newCmd := NewNewCommand(deps)
-	return newCmd.Execute(ctx, cmd, rulePath)
+	return newCmd.Execute(ctx, cmd, rulePath, workingDir)
 }

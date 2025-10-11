@@ -60,9 +60,9 @@ func TestNewCommand_CreateRuleOutsideProject(t *testing.T) {
 	ctx := context.Background()
 
 	// Test creating rule outside project (no .contexture.yaml)
-	// Note: The file will be created relative to the actual working directory
-	// since Execute() uses os.Getwd(). We just test that no error occurs.
-	err := cmd.Execute(ctx, cliCmd, "test-outside-rule")
+	// Use a test working directory
+	testDir := "/tmp/test-rules"
+	err := cmd.Execute(ctx, cliCmd, "test-outside-rule", testDir)
 	require.NoError(t, err)
 }
 
@@ -83,7 +83,8 @@ func TestNewCommand_CreateRuleInsideProject(t *testing.T) {
 
 	// Test creating rule - just verify no error
 	// E2E tests will verify the actual file creation behavior
-	err := cmd.Execute(ctx, cliCmd, "my-project-rule")
+	testDir := "/tmp/test-project"
+	err := cmd.Execute(ctx, cliCmd, "my-project-rule", testDir)
 	require.NoError(t, err)
 }
 
@@ -125,23 +126,23 @@ func TestNewCommand_WithCustomMetadata(t *testing.T) {
 	ctx := context.Background()
 
 	// Execute command - just verify no error
-	err := cmd.Execute(ctx, cliCmd, "custom-rule-test")
+	testDir := "/tmp/test-custom"
+	err := cmd.Execute(ctx, cliCmd, "custom-rule-test", testDir)
 	require.NoError(t, err)
 }
 
 func TestNewCommand_FileAlreadyExists(t *testing.T) {
 	t.Parallel()
 	// This test is better covered in E2E tests where we can control
-	// the actual filesystem. Unit tests with mock fs can't easily test
-	// this behavior since os.Getwd() returns the real directory.
+	// the actual filesystem and verify error messages properly.
 	t.Skip("File existence checks are better tested in E2E tests")
 }
 
 func TestNewCommand_PathNormalization(t *testing.T) {
 	t.Parallel()
-	// Path normalization logic is tested in generateRuleContent and determineTargetPath
-	// Full path behavior is tested in E2E tests
-	t.Skip("Path normalization is better tested in E2E tests")
+	// Path normalization logic is tested in determineTargetPath unit tests
+	// Full end-to-end path behavior is tested in E2E tests
+	t.Skip("Path normalization is better tested in determineTargetPath tests and E2E tests")
 }
 
 func TestParseTags(t *testing.T) {

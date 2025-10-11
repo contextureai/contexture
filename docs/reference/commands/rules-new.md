@@ -37,32 +37,25 @@ This dual-mode behavior makes it convenient to create rules both in individual p
 
 ### Creating a Basic Rule
 
-Create a simple rule with default values:
+Create a simple rule without metadata:
 
 ```bash
 # Creates rules/my-custom-rule.md in a Contexture project
 contexture rules new my-custom-rule
 ```
 
-This generates a file with default metadata:
+This generates a minimal file with empty title and description:
 
 ```markdown
 ---
-title: New Rule
-description: Rule description
-tags:
-  - general
+description: ""
+title: ""
 trigger: manual
 ---
 
-# New Rule
-
-Rule description
-
-## Rule Content
-
-Add your rule content here.
 ```
+
+Note: Title and description fields are always present in the frontmatter but will be empty strings if not specified. Tags are only included when explicitly provided via the `--tags` flag.
 
 ### Creating a Rule with Custom Metadata
 
@@ -86,22 +79,18 @@ This generates:
 
 ```markdown
 ---
-title: Security Validation
 description: Validates security best practices
 tags:
   - security
   - validation
   - critical
+title: Security Validation
 trigger: manual
 ---
 
 # Security Validation
 
 Validates security best practices
-
-## Rule Content
-
-Add your rule content here.
 ```
 
 ### Creating Nested Rules
@@ -240,14 +229,14 @@ contexture rules new go/concurrency -n "Concurrency Patterns" -t "go,concurrency
 
 ## Default Values
 
-If flags are not provided, the following defaults are used:
+If flags are not provided, the following behavior applies:
 
-| Field       | Default Value       |
-| :---------- | :------------------ |
-| `--name`    | `"New Rule"`        |
-| `--description` | `"Rule description"` |
-| `--tags`    | `["general"]`       |
-| `trigger`   | `"manual"` (always) |
+| Field           | Default Value                                      |
+| :-------------- | :------------------------------------------------- |
+| `--name`        | Empty string (`""`) - field present in frontmatter |
+| `--description` | Empty string (`""`) - field present in frontmatter |
+| `--tags`        | Not included in frontmatter when not specified     |
+| `trigger`       | `"manual"` (always present)                        |
 
 ## Next Steps
 
