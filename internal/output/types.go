@@ -21,6 +21,7 @@ type Writer interface {
 	WriteRulesAdd(metadata AddMetadata) error
 	WriteRulesRemove(metadata RemoveMetadata) error
 	WriteRulesUpdate(metadata UpdateMetadata) error
+	WriteQueryResults(rules []*domain.Rule, metadata QueryMetadata) error
 }
 
 // ListMetadata contains contextual information for rules list commands
@@ -45,6 +46,13 @@ type UpdateMetadata struct {
 	RulesUpdated  []string `json:"rulesUpdated"`
 	RulesUpToDate []string `json:"rulesUpToDate,omitempty"`
 	RulesFailed   []string `json:"rulesFailed,omitempty"`
+}
+
+// QueryMetadata contains contextual information for query commands
+type QueryMetadata struct {
+	Query        string `json:"query"`
+	QueryType    string `json:"queryType"` // "text" or "expr"
+	TotalResults int    `json:"totalResults"`
 }
 
 // Manager handles output format selection and writing
@@ -91,6 +99,11 @@ func (m *Manager) WriteRulesRemove(metadata RemoveMetadata) error {
 // WriteRulesUpdate writes the rules update result using the configured format
 func (m *Manager) WriteRulesUpdate(metadata UpdateMetadata) error {
 	return m.writer.WriteRulesUpdate(metadata)
+}
+
+// WriteQueryResults writes the query results using the configured format
+func (m *Manager) WriteQueryResults(rules []*domain.Rule, metadata QueryMetadata) error {
+	return m.writer.WriteQueryResults(rules, metadata)
 }
 
 // UnsupportedFormatError represents an error for unsupported output formats

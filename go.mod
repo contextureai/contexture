@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/huh v0.7.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/log v0.4.2
+	github.com/expr-lang/expr v1.17.6
 	github.com/go-git/go-git/v5 v5.16.3
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/kevinburke/ssh_config v1.4.0

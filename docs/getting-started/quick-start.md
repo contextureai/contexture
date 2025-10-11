@@ -46,7 +46,30 @@ formats:
 rules: []
 ```
 
-## Step 2: Add Rules
+## Step 2: Discover Rules (Optional)
+
+Before adding rules, you can search for available rules across all providers using the `query` command:
+
+```bash
+# Search for testing-related rules
+contexture query testing
+
+# Search for Go language rules
+contexture query go
+
+# Use advanced expressions for complex searches
+contexture query --expr 'Language == "go" and any(Tags, # in ["testing", "best-practices"])'
+
+# Limit results for easier browsing
+contexture query testing --limit 10
+
+# Get JSON output for scripting
+contexture query testing -o json
+```
+
+The query command helps you discover rules before adding them to your project. See [`contexture query`](../reference/commands/query) for more details.
+
+## Step 3: Add Rules
 
 Add rules by specifying their IDs as arguments:
 
@@ -87,7 +110,7 @@ rules:
   - id: "[contexture:docs/readme-best-practices]"
 ```
 
-## Step 3: Generate Output
+## Step 4: Generate Output
 
 To generate the output files for all enabled formats, run the `build` command:
 
@@ -114,7 +137,7 @@ your-project/
 
 Note: `contexture` automatically runs a build when rules are added or updated.
 
-## Step 4: Customize with Templates (Optional)
+## Step 5: Customize with Templates (Optional)
 
 You can customize the structure of your `CLAUDE.md` file using a custom template:
 
@@ -165,7 +188,7 @@ contexture build
 
 Now your `CLAUDE.md` file will use your custom structure while still including all the generated rules.
 
-## Step 5: Verify the Setup
+## Step 6: Verify the Setup
 
 To verify the setup:
 
@@ -191,6 +214,8 @@ ls -la CLAUDE.md .cursor/rules/ .windsurf/rules/
 ```bash
 # Common commands
 contexture init                                      # Initialize a new project
+contexture query testing                            # Search for rules across all providers
+contexture query --expr 'Language == "go"'         # Advanced expression search
 contexture rules add code/clean-code              # Add specific rules
 contexture rules add security/auth --src https://github.com/...  # Add rules from a custom source
 contexture rules list                               # Show configured rules

@@ -355,3 +355,60 @@ func mapsEqual(a, b map[string]any) bool {
 
 	return true
 }
+
+// truncateString truncates a string to maxLen characters, adding ellipsis if needed
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
+
+// DisplayQueryResults displays query results with appropriate header
+func DisplayQueryResults(rules []*domain.Rule, query string, queryType string, _ DisplayOptions) error {
+	if len(rules) == 0 {
+		fmt.Printf("No rules found matching query: %s\n", query)
+		return nil
+	}
+
+	styles := createDisplayStyles()
+
+	// Header with query info
+	headerText := fmt.Sprintf("Found %d rule(s) matching", len(rules))
+	if queryType == "expr" {
+		headerText += " expression"
+	} else {
+		headerText += fmt.Sprintf(" \"%s\"", query)
+	}
+	fmt.Printf("%s\n\n", styles.header.Render(headerText))
+
+	// Sort rules by path for consistent output
+	sortedRules := make([]*domain.Rule, len(rules))
+	copy(sortedRules, rules)
+	sort.Slice(sortedRules, func(i, j int) bool {
+		pathI := extractRulePath(sortedRules[i].ID)
+		pathJ := extractRulePath(sortedRules[j].ID)
+		return pathI < pathJ
+	})
+
+	// Display each rule in compact format
+	for _, rule := range sortedRules {
+		// 1. Rule path
+		rulePath := extractSimpleRulePath(rule.ID)
+		if rulePath == "" {
+			rulePath = rule.ID
+		}
+		fmt.Println(styles.rulePath.Render(rulePath))
+
+		// 2. Title on next line with indentation
+		fmt.Println(styles.ruleTitle.Render(rule.Title))
+
+		// 3. Description (truncated) on third line with indentation
+		if rule.Description != "" {
+			truncated := truncateString(rule.Description, 100)
+			fmt.Println(styles.ruleSource.Render(truncated))
+		}
+	}
+
+	return nil
+}

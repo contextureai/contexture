@@ -103,6 +103,7 @@ func (a *Application) buildCommands() []*cli.Command {
 		a.buildInitCommand(),
 		a.buildRulesCommand(),
 		a.buildBuildCommand(),
+		a.buildQueryCommand(),
 		a.buildConfigCommand(),
 		a.buildProvidersCommand(),
 	}
@@ -264,6 +265,79 @@ This will fetch all rules, process templates, and write format-specific files.`,
 			},
 		},
 		Action: a.actions.BuildAction,
+	}
+}
+
+func (a *Application) buildQueryCommand() *cli.Command {
+	return &cli.Command{
+		Name:      "query",
+		Usage:     "Search for rules across all providers",
+		ArgsUsage: "<search-text>",
+		Description: `Search for rules across all configured providers.
+
+By default, searches for text in rule titles and paths.
+Use --expr for advanced expression-based queries.
+
+Expression syntax documentation: https://expr-lang.org/docs/language-definition
+
+Available fields for --expr mode:
+  Direct fields:
+    ID            Rule identifier (string)
+    Title         Rule title (string)
+    Description   Rule description (string)
+    Tags          Rule tags ([]string)
+    Languages     Supported languages ([]string)
+    Frameworks    Supported frameworks ([]string)
+    Content       Rule content/body (string)
+    Variables     Rule variables (map)
+    Source        Source provider (string)
+    FilePath      File path in repository (string)
+
+  Computed fields:
+    Tag           Space-joined tags (string)
+    Language      Space-joined languages (string)
+    Framework     Space-joined frameworks (string)
+    Provider      Provider name (string)
+    Path          Extracted path from ID (string)
+    HasVars       Has variables (bool)
+    VarCount      Number of variables (int)
+    TriggerType   Trigger type (string)
+
+Examples:
+  # Simple text search
+  contexture query testing
+  contexture query "go test"
+
+  # Advanced expression search
+  contexture query --expr 'Tag contains "testing"'
+  contexture query --expr 'Language == "go" and Provider != "local"'
+  contexture query --expr 'any(Tags, # in ["security", "auth"])'
+  contexture query --expr 'HasVars == true and VarCount > 2'
+  contexture query --expr 'TriggerType == "file_change"'`,
+		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "expr",
+				Usage: "Use advanced expression syntax (see https://expr-lang.org)",
+			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "default",
+				Usage:   "Output format (default, json)",
+			},
+			&cli.StringSliceFlag{
+				Name:  "provider",
+				Usage: "Search specific providers only",
+			},
+			&cli.IntFlag{
+				Name:    "limit",
+				Aliases: []string{"n"},
+				Value:   10,
+				Usage:   "Maximum number of results",
+			},
+		},
+		Action: a.actions.QueryAction,
 	}
 }
 

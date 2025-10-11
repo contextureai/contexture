@@ -44,3 +44,12 @@ func (w *TerminalWriter) WriteRulesUpdate(_ UpdateMetadata) error {
 	// Terminal format doesn't output anything for update - the command already shows output
 	return nil
 }
+
+// WriteQueryResults writes query results in terminal format
+func (w *TerminalWriter) WriteQueryResults(rulesSlice []*domain.Rule, metadata QueryMetadata) error {
+	// Create display options
+	options := rules.DefaultDisplayOptions()
+
+	// Delegate to existing display logic with custom header
+	return rules.DisplayQueryResults(rulesSlice, metadata.Query, metadata.QueryType, options)
+}
