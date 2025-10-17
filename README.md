@@ -3,7 +3,7 @@
     <picture>
       <source srcset="web/assets/full-logo-dark@4x.webp" width="75%" media="(prefers-color-scheme: dark)">
       <source srcset="web/assets/full-logo-white@4x.webp" width="75%" media="(prefers-color-scheme: light)">
-      <img src="web/assets/full-logo-white@4x.webp" alt="Contexture logo">
+      <img src="web/assets/full-logo-white@4x.webp" width="75%" alt="Contexture logo">
     </picture>
   </a>
 </div>
