@@ -1,9 +1,9 @@
 <div align="center">
   <a href="https://contexture.sh">
     <picture>
-      <source srcset="web/assets/logo-dark.png" sizes="450px" width="50%" media="(prefers-color-scheme: dark)">
-      <source srcset="web/assets/logo-light.png" sizes="450px" width="50%" media="(prefers-color-scheme: light)">
-      <img src="web/assets/logo-light.png" alt="Contexture logo">
+      <source srcset="web/assets/full-logo-dark@4x.webp" width="75%" media="(prefers-color-scheme: dark)">
+      <source srcset="web/assets/full-logo-white@4x.webp" width="75%" media="(prefers-color-scheme: light)">
+      <img src="web/assets/full-logo-white@4x.webp" alt="Contexture logo">
     </picture>
   </a>
 </div>
