@@ -24,57 +24,106 @@ The `rules add` command adds new rules to the project. Rules must be specified b
 
 | Flag        | Description                                                                    |
 | :---------- | :----------------------------------------------------------------------------- |
-| `--force`, `-f` | Update a rule's configuration if it already exists in `.contexture.yaml`.      |
-| `--formats` | Specify which output formats a rule should apply to (can be used multiple times). |
 | `--data`    | Provide rule variables as a JSON string.                                       |
 | `--var`     | Set an individual variable (`key=value`) (can be used multiple times).           |
 | `--source`, `--src` | Specify a custom Git repository URL to pull a rule from.                       |
 | `--ref`     | Specify a Git branch, tag, or commit hash for a remote rule.                   |
+| `--output`, `-o` | Choose the output format: `default` (terminal) or `json`.                  |
 
 ## Usage
 
-### Adding Rules
+### Adding Rules from Providers
 
-Add one or more rules by providing their IDs.
+The recommended way to add rules is using the `@provider/path` syntax:
 
 ```bash
-# Simple format (recommended)
-contexture rules add languages/go/code-organization testing/unit-tests
+# Add rules from the default @contexture provider
+contexture rules add @contexture/code/clean-code @contexture/testing/unit-tests
 
-# Full format
+# Add rules from a custom provider
+contexture rules add @mycompany/security/auth @mycompany/testing/coverage
+
+# Add multiple rules at once
+contexture rules add @contexture/languages/go/code-organization @contexture/languages/go/error-handling
+```
+
+#### Alternative: Bracketed Syntax
+
+You can also use the bracketed syntax:
+
+```bash
+# Bracketed format (alternative)
 contexture rules add "[contexture:code/clean-code]" "[contexture:testing/unit-tests]"
 ```
 
 ### Adding a Rule with Variables
 
-Variables can be provided inline as a JSON5 string.
+Variables can be provided using the `--var` flag (recommended):
 
 ```bash
-contexture rules add 'testing/coverage {"threshold": 90}'
+# Using --var flag (recommended)
+contexture rules add @contexture/testing/coverage --var threshold=90
+
+# Multiple variables
+contexture rules add @contexture/testing/coverage --var threshold=90 --var framework=jest
 ```
 
-Alternatively, use the `--data` or `--var` flags.
+Alternatively, use the `--data` flag or inline JSON5:
 
 ```bash
-contexture rules add testing/coverage --data '{"threshold": 90}'
-contexture rules add testing/coverage --var threshold=90
+# Using --data flag
+contexture rules add @contexture/testing/coverage --data '{"threshold": 90}'
+
+# Inline JSON5
+contexture rules add '@contexture/testing/coverage {"threshold": 90, "framework": "jest"}'
 ```
 
-### Adding a Rule from a Custom Source
+### Using Specific Branches or Tags
 
-To add a rule from a Git repository that is not configured in `sources`, use the `--source` (or `--src`) and `--ref` flags.
+To use a specific version of a rule, use the `--ref` flag:
+
+```bash
+# Use a specific branch
+contexture rules add @contexture/experimental/new-feature --ref development
+
+# Use a specific tag
+contexture rules add @contexture/stable/patterns --ref v1.2.0
+
+# Use a specific commit
+contexture rules add @mycompany/security/auth --ref abc123def
+```
+
+### Adding Rules from Command-Line Sources
+
+For one-time use, you can add rules from Git repositories that aren't configured as providers using the `--source` (or `--src`) and `--ref` flags:
 
 ```bash
 # Using --source flag
-contexture rules add "my/custom-rule" \
-  --source "https://github.com/my-org/rules.git" \
+contexture rules add security/auth \
+  --source "https://github.com/company/rules.git" \
   --ref "main"
 
 # Using --src shorthand
-contexture rules add "security/auth" --src "git@github.com:company/rules.git"
+contexture rules add api/validation --src "git@github.com:team/rules.git"
 
-# Multiple rules from the same custom source
-contexture rules add "api/validation" "api/rate-limiting" \
-  --src "https://github.com/myteam/api-rules.git" \
+# Multiple rules from the same source
+contexture rules add api/validation api/rate-limiting \
+  --src "https://github.com/team/api-rules.git" \
   --ref "v2.0"
 ```
+
+**Note:** For frequently used repositories, consider adding them as providers using `contexture providers add` for cleaner syntax. See [Providers](./providers.md) for details.
+
+### Adding Local Rules
+
+You can add rules from local files by providing the file path:
+
+```bash
+# Add a local rule file
+contexture rules add rules/project-specific-rule.md
+
+# Add multiple local rules
+contexture rules add rules/custom-1.md rules/custom-2.md
+```
+
+After the rules are added, `contexture` immediately regenerates the enabled formats so the new guidance is written to `CLAUDE.md`, `.cursor/rules/`, and `.windsurf/rules/` without an additional `build` step.

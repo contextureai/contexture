@@ -20,6 +20,7 @@ The `rules update` command checks all configured remote rule sources for new com
 | :---------- | :-------------------------------------------------------- |
 | `--dry-run` | Show available updates without applying them.             |
 | `--yes`, `-y` | Skip the confirmation prompt and apply all updates.       |
+| `--output`, `-o` | Choose the output format: `default` (terminal) or `json`. |
 
 ## Usage
 
@@ -44,3 +45,5 @@ For automated environments, use the `--yes` flag to bypass the confirmation prom
 ```bash
 contexture rules update --yes
 ```
+
+When updates are applied successfully, `contexture` automatically regenerates all enabled formats so the freshly fetched rule content is reflected in your `CLAUDE.md`, `.cursor/rules/`, and `.windsurf/rules/` directories.

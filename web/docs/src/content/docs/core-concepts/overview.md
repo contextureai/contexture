@@ -119,10 +119,17 @@ sequenceDiagram
     Dev->>CTX: contexture init
     CTX->>Dev: Creates .contexture.yaml
 
+    opt Discover Rules
+        Dev->>CTX: contexture query
+        CTX->>Remote: Search available rules
+        Remote-->>CTX: Matching rules
+        CTX->>Dev: Display search results
+    end
+
     Dev->>CTX: contexture rules add
-    CTX->>Remote: Fetch available rules
-    Remote-->>CTX: Rule catalog
-    CTX->>Dev: Interactive rule selection
+    CTX->>Remote: Fetch referenced rules
+    Remote-->>CTX: Rule content
+    CTX->>Dev: Update configuration & outputs
 
     Dev->>CTX: contexture build
     CTX->>Remote: Fetch selected rules
@@ -135,8 +142,9 @@ sequenceDiagram
 
 A typical workflow is:
 1.  **Initialize**: `contexture init` creates a project configuration file.
-2.  **Add Rules**: `contexture rules add` to add rules from a repository.
-3.  **Build**: `contexture build` generates the platform-specific output files.
+2.  **Discover Rules** (Optional): `contexture query` to search for available rules.
+3.  **Add Rules**: `contexture rules add` to add rules from a repository.
+4.  **Build**: `contexture build` generates the platform-specific output files.
 
 ## Next Steps
 

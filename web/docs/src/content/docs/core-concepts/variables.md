@@ -28,7 +28,7 @@ Variables are resolved from multiple sources in the following order of precedenc
 Maximum line length: {{.maxLineLength}} characters.
 
 # With a default value
-Test framework: {{.framework | default "jest"}}
+Test framework: {{default_if_empty .framework "jest"}}
 ```
 
 ### Nested Variables
@@ -88,11 +88,16 @@ Languages: {{join .languages ", "}}
 ### Dynamic Content
 
 ```markdown
-{{if has .languages "python"}}
+{{range .languages}}
+{{if eq . "python"}}
 ## Python Guidelines
 - Use type hints for function parameters.
 - Follow PEP 8 style guidelines.
-{{if has .frameworks "django"}}
+{{end}}
+{{end}}
+
+{{range .frameworks}}
+{{if eq . "django"}}
 ### Django Specifics
 - Use Django's built-in User model.
 {{end}}
@@ -139,6 +144,7 @@ rules:
 -   `{{.now}}`: The current time.
 -   `{{.date}}`: The current date (YYYY-MM-DD).
 -   `{{.time}}`: The current time (HH:MM:SS).
+-   `{{.datetime}}`: The current date and time (YYYY-MM-DD HH:MM:SS).
 -   `{{.timestamp}}`: The current Unix timestamp.
 -   `{{.contexture}}`: A map containing build information:
     -   `{{.contexture.version}}`: The version of `contexture`.
