@@ -46,13 +46,26 @@ func NewBuildCommand(deps *dependencies.Dependencies) *BuildCommand {
 
 // Execute runs the build command
 func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
-	// Load project configuration
-	configLoad, err := LoadProjectConfig(c.projectManager)
+	// Get current directory
+	currentDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return contextureerrors.Wrap(err, "get current directory")
 	}
 
-	config := configLoad.Config
+	// Load merged configuration (global + project + local rules)
+	merged, err := c.projectManager.LoadConfigMergedWithLocalRules(currentDir)
+	if err != nil {
+		return contextureerrors.Wrap(err, "load configuration").
+			WithSuggestions("Run 'contexture init' to create a project configuration")
+	}
+
+	// Create a synthetic project config with merged rules for generation
+	config := &domain.Project{}
+	*config = *merged.Project
+	config.Rules = make([]domain.RuleRef, len(merged.MergedRules))
+	for i, rws := range merged.MergedRules {
+		config.Rules[i] = rws.RuleRef
+	}
 
 	if len(config.Rules) == 0 {
 		fmt.Fprintln(os.Stderr, "No rules configured")

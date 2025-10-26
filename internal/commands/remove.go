@@ -53,16 +53,39 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 			Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
 		fmt.Printf("%s\n\n", headerStyle.Render("Remove Rules"))
 	}
-	// Get current directory and load configuration
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return contextureerrors.Wrap(err, "get current directory")
-	}
 
-	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "load project configuration").
-			WithSuggestions("Run 'contexture init' to initialize a new project")
+	// Check if global flag is set
+	isGlobal := cmd.Bool("global")
+
+	var config *domain.Project
+	var currentDir string
+	var err error
+
+	if isGlobal {
+		// Load global config
+		var globalResult *domain.ConfigResult
+		globalResult, err = c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "load global config")
+		}
+		if globalResult == nil {
+			return contextureerrors.ValidationErrorf("global config", "no global configuration found")
+		}
+		config = globalResult.Config
+	} else {
+		// Get current directory and load project configuration
+		currentDir, err = os.Getwd()
+		if err != nil {
+			return contextureerrors.Wrap(err, "get current directory")
+		}
+
+		var configResult *domain.ConfigResult
+		configResult, err = c.projectManager.LoadConfigWithLocalRules(currentDir)
+		if err != nil {
+			return contextureerrors.Wrap(err, "load project configuration").
+				WithSuggestions("Run 'contexture init' to initialize a new project")
+		}
+		config = configResult.Config
 	}
 
 	// Find rules to remove
@@ -72,9 +95,9 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	for _, ruleID := range ruleIDs {
 		// Try both simple format and full format for matching
 		switch {
-		case c.projectManager.HasRule(configResult.Config, ruleID):
+		case c.projectManager.HasRule(config, ruleID):
 			rulesToRemove = append(rulesToRemove, ruleID)
-		case c.projectManager.HasRule(configResult.Config, fmt.Sprintf("[contexture:%s]", ruleID)):
+		case c.projectManager.HasRule(config, fmt.Sprintf("[contexture:%s]", ruleID)):
 			// If the rule exists in full format, add it in the format it's stored
 			rulesToRemove = append(rulesToRemove, fmt.Sprintf("[contexture:%s]", ruleID))
 		default:
@@ -116,7 +139,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	// Capture variables for display BEFORE removing rules from configuration
 	ruleVariablesMap := make(map[string]map[string]any)
 	for _, ruleID := range rulesToRemove {
-		for _, configRule := range configResult.Config.Rules {
+		for _, configRule := range config.Rules {
 			if configRule.ID == ruleID ||
 				configRule.ID == fmt.Sprintf("[contexture:%s]", ruleID) ||
 				strings.TrimPrefix(strings.TrimSuffix(configRule.ID, "]"), "[contexture:") == ruleID {
@@ -129,7 +152,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	// Remove rules from configuration
 	var removedRules []string
 	for _, ruleID := range rulesToRemove {
-		err := c.projectManager.RemoveRule(configResult.Config, ruleID)
+		err := c.projectManager.RemoveRule(config, ruleID)
 		if err != nil {
 			log.Error("Failed to remove rule from configuration", "rule", ruleID, "error", err)
 			continue
@@ -141,27 +164,34 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		return contextureerrors.ValidationErrorf("rules", "failed to remove any rules")
 	}
 
-	// Automatically clean outputs
-	err = c.removeFromOutputs(ctx, configResult.Config, removedRules, currentDir)
-	if err != nil {
-		log.Warn("Failed to clean some outputs", "error", err)
-	}
-
-	// Clean up empty directories after removing rules, similar to build command
-	targetFormats := configResult.Config.GetEnabledFormats()
-	for _, formatConfig := range targetFormats {
-		format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+	// Automatically clean outputs (skip for global)
+	if !isGlobal {
+		err = c.removeFromOutputs(ctx, config, removedRules, currentDir)
 		if err != nil {
-			log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
-			continue
+			log.Warn("Failed to clean some outputs", "error", err)
 		}
-		if err := format.CleanupEmptyDirectories(&formatConfig); err != nil {
-			log.Warn("Failed to cleanup empty directories", "format", formatConfig.Type, "error", err)
+
+		// Clean up empty directories after removing rules, similar to build command
+		targetFormats := config.GetEnabledFormats()
+		for _, formatConfig := range targetFormats {
+			format, err := c.registry.CreateFormat(formatConfig.Type, afero.NewOsFs(), nil)
+			if err != nil {
+				log.Warn("Failed to create format for cleanup", "format", formatConfig.Type, "error", err)
+				continue
+			}
+			if err := format.CleanupEmptyDirectories(&formatConfig); err != nil {
+				log.Warn("Failed to cleanup empty directories", "format", formatConfig.Type, "error", err)
+			}
 		}
 	}
 
 	// Save updated configuration
-	err = c.projectManager.SaveConfig(configResult.Config, configResult.Location, currentDir)
+	if isGlobal {
+		err = c.projectManager.SaveGlobalConfig(config)
+	} else {
+		location := c.projectManager.GetConfigLocation(currentDir, false)
+		err = c.projectManager.SaveConfig(config, location, currentDir)
+	}
 	if err != nil {
 		return contextureerrors.Wrap(err, "save configuration")
 	}
@@ -253,9 +283,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 		}
 	}
 
-	log.Debug("Rules removed",
-		"count", len(removedRules),
-		"config_path", configResult.Path)
+	log.Debug("Rules removed", "count", len(removedRules))
 
 	return nil
 }

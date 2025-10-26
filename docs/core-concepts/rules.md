@@ -89,6 +89,102 @@ touch rules/project-specific.md
 contexture rules add rules/project-specific.md
 ```
 
+### Global Rules
+
+Global rules are stored in your user-level configuration at `~/.contexture/.contexture.yaml` and are automatically included in all projects. This is useful for rules you want to apply universally across your work.
+
+#### Adding and Managing Global Rules
+
+```bash
+# Add a rule to global configuration
+contexture rules add "@contexture/languages/go/context" --global
+
+# Add with shorthand flag
+contexture rules add "@contexture/testing/best-practices" -g
+
+# Add with variables
+contexture rules add "@contexture/code-style" -g --var maxLineLength=120
+
+# Remove global rules
+contexture rules remove "@contexture/languages/go/context" --global
+
+# Update global rules
+contexture rules update "@contexture/testing/best-practices" -g --var level=strict
+
+# View global configuration
+contexture config --global
+```
+
+#### Key Features
+
+- **Shared Across Projects**: Global rules apply to all your projects automatically
+- **Project Overrides**: Project-specific rules with the same ID override global rules
+- **Lazy Initialization**: Global config is created automatically on first use of `-g` flag
+- **Source Indicators**: Use `contexture rules list` to see both global and project rules with `[global]` or `[project]` tags
+- **Variable Support**: Global rules can have their own variable values
+
+#### When to Use Global Rules
+
+**Good Candidates for Global Rules:**
+- Code style and formatting preferences that apply to all your work
+- Security and best practices rules you always want to follow
+- Language-specific rules for languages you use consistently
+- Common patterns and conventions your team/organization uses
+
+**Better as Project Rules:**
+- Framework-specific rules that only apply to certain projects
+- Experimental or temporary rules you're trying out
+- Rules with project-specific variable configurations
+- Client or domain-specific requirements
+
+#### Override Behavior
+
+When you add a rule to both global and project configurations with the same ID:
+
+```bash
+# Global rule with default variable
+contexture rules add "@contexture/logging" -g --var format=json
+
+# Project override with different variable
+contexture rules add "@contexture/logging" --var format=structured
+
+# List will show: [project overrides global]
+contexture rules list
+```
+
+The project version takes precedence during `contexture build`. When you remove the project rule, the global version is used again automatically.
+
+#### Migration Guide
+
+**Moving Project Rules to Global:**
+
+1. Review your existing project rules:
+   ```bash
+   contexture rules list
+   ```
+
+2. Identify rules you want globally (see "When to Use Global Rules" above)
+
+3. Add them to global config:
+   ```bash
+   contexture rules add "@contexture/security/input-validation" -g
+   ```
+
+4. Remove from project (optional):
+   ```bash
+   contexture rules remove "@contexture/security/input-validation"
+   ```
+
+5. Verify the global rule is applied:
+   ```bash
+   contexture rules list  # Should show [global]
+   contexture build       # Should include global rule
+   ```
+
+**Moving Global Rules to Project:**
+
+If a global rule doesn't fit a specific project, simply add a project-level override or remove it for that project context by not including it in the project configuration.
+
 ### Custom Source Rules
 
 Rules can be sourced from custom Git repositories using the `--source` (or `--src`) flag.

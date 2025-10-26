@@ -24,6 +24,7 @@ The `rules add` command adds new rules to the project. Rules must be specified b
 
 | Flag        | Description                                                                    |
 | :---------- | :----------------------------------------------------------------------------- |
+| `--global`, `-g` | Add rule to global configuration (`~/.contexture/.contexture.yaml`) instead of project configuration. |
 | `--data`    | Provide rule variables as a JSON string.                                       |
 | `--var`     | Set an individual variable (`key=value`) (can be used multiple times).           |
 | `--source`, `--src` | Specify a custom Git repository URL to pull a rule from.                       |
@@ -125,5 +126,26 @@ contexture rules add rules/project-specific-rule.md
 # Add multiple local rules
 contexture rules add rules/custom-1.md rules/custom-2.md
 ```
+
+### Adding Global Rules
+
+Global rules are stored in your user-level configuration and automatically included in all projects:
+
+```bash
+# Add a rule to global configuration
+contexture rules add @contexture/languages/go/context --global
+
+# Use shorthand flag
+contexture rules add @contexture/testing/best-practices -g
+
+# Add multiple global rules
+contexture rules add @contexture/code/clean-code @contexture/security/input-validation --global
+```
+
+**Behavior:**
+- Global rules are stored in `~/.contexture/.contexture.yaml`
+- They are automatically included when running `contexture build` in any project
+- Project-specific rules with matching IDs override global rules
+- When adding a global rule from within a project directory, the project is automatically rebuilt to include the new global rule
 
 After the rules are added, `contexture` immediately regenerates the enabled formats so the new guidance is written to `CLAUDE.md`, `.cursor/rules/`, and `.windsurf/rules/` without an additional `build` step.

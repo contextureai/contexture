@@ -96,10 +96,26 @@ generation: [build settings]
 
 ## Testing
 
+Before making changes, use Contexture's built-in query commands to understand the testing strategy:
+
+```bash
+# Ask how to test your specific change
+contexture query "how should I test changes to the config loading logic?"
+
+# Get help on testing commands
+contexture --help
+make --help
+
+# View existing test patterns
+contexture query "show me examples of unit tests in this codebase"
+```
+
 - **Unit**: `make test` - All `*_test.go` files
 - **Integration**: Git operations with real repositories
 - **E2E**: Full CLI workflow testing with fixtures
 - **Coverage**: Generates `coverage.out` for analysis
+
+**Always verify your changes work** by running the appropriate test suite before committing.
 
 ## Dependencies
 

@@ -18,6 +18,13 @@ contexture rules list [flags]
 
 The `rules list` command displays all rules that have been added to the project in a clean, terminal-friendly format. Each rule shows its path, title, and source information. The command supports pattern-based filtering to help you find specific rules quickly.
 
+The command automatically merges and displays rules from:
+1. **Global configuration** (`~/.contexture/.contexture.yaml`) - Rules available across all projects
+2. **Project configuration** (`.contexture.yaml`) - Project-specific rules
+3. **Local rules** (`rules/` directory) - Rules stored in the project
+
+When rules have matching IDs, project-specific rules take precedence over global rules.
+
 ## Flags
 
 | Flag          | Description                                                                  |

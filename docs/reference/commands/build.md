@@ -14,6 +14,13 @@ contexture build [flags]
 
 The `build` command is the primary command for generating AI assistant rule files. It executes the entire process of fetching rule content, resolving variables, processing templates, and writing the final output to the format-specific directories (e.g., `CLAUDE.md`, `.cursor/rules/`).
 
+This command automatically merges rules from:
+1. Global configuration (`~/.contexture/.contexture.yaml`)
+2. Project configuration (`.contexture.yaml`)
+3. Local rule files in the `rules/` directory
+
+Project-specific rules with matching IDs will override global rules.
+
 This command should be run whenever rules are added, removed, or updated in the configuration.
 
 ## Flags

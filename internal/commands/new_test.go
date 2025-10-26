@@ -331,7 +331,7 @@ rules: []
 			cmd := NewNewCommand(deps)
 
 			// Determine target path
-			targetPath := cmd.determineTargetPath("/project", tt.rulePath)
+			targetPath := cmd.determineTargetPath("/project", tt.rulePath, false)
 			assert.Contains(t, targetPath, tt.expectedContains)
 		})
 	}
@@ -369,7 +369,7 @@ func TestNewCommand_DetermineTargetPath_NoProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			targetPath := cmd.determineTargetPath(tempDir, tt.rulePath)
+			targetPath := cmd.determineTargetPath(tempDir, tt.rulePath, false)
 			assert.Equal(t, tt.expectedPath, targetPath)
 		})
 	}

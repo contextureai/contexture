@@ -20,6 +20,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const defaultConfigFileName = ".contexture.yaml"
+
 // InitCommand implements the init command
 type InitCommand struct {
 	projectManager *project.Manager
@@ -215,10 +217,13 @@ func InitAction(ctx context.Context, cmd *cli.Command, deps *dependencies.Depend
 func getRelativeConfigPath(_ string, location domain.ConfigLocation) string {
 	switch location {
 	case domain.ConfigLocationContexture:
-		return ".contexture/.contexture.yaml"
+		return ".contexture/" + defaultConfigFileName
 	case domain.ConfigLocationRoot:
-		return ".contexture.yaml"
+		return defaultConfigFileName
+	case domain.ConfigLocationGlobal:
+		// Global config is not applicable for init command
+		return defaultConfigFileName
 	default:
-		return ".contexture.yaml"
+		return defaultConfigFileName
 	}
 }

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"os"
 	"path/filepath"
 )
 
@@ -96,6 +97,8 @@ const (
 	ConfigLocationRoot ConfigLocation = "root"
 	// ConfigLocationContexture indicates config is stored in .contexture/ directory
 	ConfigLocationContexture ConfigLocation = "contexture"
+	// ConfigLocationGlobal indicates config is stored in global ~/.contexture/ directory
+	ConfigLocationGlobal ConfigLocation = "global"
 )
 
 // ConfigResult represents the result of loading configuration
@@ -122,7 +125,52 @@ func GetConfigPath(baseDir string, location ConfigLocation) string {
 		return filepath.Join(baseDir, GetConfigFileName())
 	case ConfigLocationContexture:
 		return filepath.Join(baseDir, GetContextureDir(), GetConfigFileName())
+	case ConfigLocationGlobal:
+		// Global location doesn't use baseDir, handled separately by Manager
+		return ""
 	default:
 		return ""
 	}
+}
+
+// RuleSource indicates where a rule comes from
+type RuleSource string
+
+const (
+	// RuleSourceGlobal indicates the rule comes from global configuration
+	RuleSourceGlobal RuleSource = "global"
+	// RuleSourceProject indicates the rule comes from project configuration
+	RuleSourceProject RuleSource = "project"
+)
+
+// RuleWithSource wraps a RuleRef with its source information
+type RuleWithSource struct {
+	RuleRef         RuleRef
+	Source          RuleSource
+	OverridesGlobal bool
+}
+
+// MergedConfig represents the result of merging global and project configs
+type MergedConfig struct {
+	Project      *Project
+	GlobalConfig *Project
+	MergedRules  []RuleWithSource
+}
+
+// GetGlobalConfigDir returns the global contexture directory
+func GetGlobalConfigDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, ".contexture"), nil
+}
+
+// GetGlobalConfigPath returns the global configuration file path
+func GetGlobalConfigPath() (string, error) {
+	dir, err := GetGlobalConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, GetConfigFileName()), nil
 }

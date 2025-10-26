@@ -37,6 +37,7 @@ func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath, work
 	name := cmd.String("name")
 	description := cmd.String("description")
 	tagsStr := cmd.String("tags")
+	isGlobal := cmd.Bool("global")
 
 	// Parse tags (only if provided)
 	var tags []string
@@ -45,7 +46,7 @@ func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath, work
 	}
 
 	// Determine the target path
-	targetPath := c.determineTargetPath(workingDir, rulePath)
+	targetPath := c.determineTargetPath(workingDir, rulePath, isGlobal)
 
 	// Check if file already exists
 	exists, err := afero.Exists(c.fs, targetPath)
@@ -95,10 +96,20 @@ func (c *NewCommand) Execute(_ context.Context, cmd *cli.Command, rulePath, work
 }
 
 // determineTargetPath determines where to create the rule file
-func (c *NewCommand) determineTargetPath(workingDir, rulePath string) string {
+func (c *NewCommand) determineTargetPath(workingDir, rulePath string, isGlobal bool) string {
 	// Normalize the rule path - remove .md extension if provided
 	// This ensures consistent handling whether user provides "my-rule" or "my-rule.md"
 	rulePath = strings.TrimSuffix(rulePath, ".md")
+
+	// If global flag is set, use global rules directory
+	if isGlobal {
+		globalDir, err := domain.GetGlobalConfigDir()
+		if err == nil {
+			rulesDir := filepath.Join(globalDir, domain.LocalRulesDir)
+			return filepath.Join(rulesDir, rulePath+".md")
+		}
+		// If we can't get global dir, fall through to normal logic
+	}
 
 	// Try to load project config
 	configResult, err := c.projectManager.LoadConfig(workingDir)
@@ -118,6 +129,10 @@ func (c *NewCommand) determineTargetPath(workingDir, rulePath string) string {
 			// Config is in .contexture.yaml at root
 			// Rules should be in ./rules/
 			rulesDir = filepath.Join(filepath.Dir(configResult.Path), domain.LocalRulesDir)
+		case domain.ConfigLocationGlobal:
+			// Global config location - use global rules directory
+			globalDir := filepath.Dir(configResult.Path)
+			rulesDir = filepath.Join(globalDir, domain.LocalRulesDir)
 		default:
 			// Fallback to current directory
 			rulesDir = filepath.Join(filepath.Dir(configResult.Path), domain.LocalRulesDir)

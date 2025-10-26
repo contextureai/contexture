@@ -103,20 +103,46 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 	refFlag := cmd.String("ref")
 	log.Debug("Parsed source and ref flags", "source", sourceFlag, "ref", refFlag)
 
-	// Get current directory and load configuration
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return contextureerrors.Wrap(err, "get current directory")
+	// Check if global flag is set
+	isGlobal := cmd.Bool("global")
+
+	var config *domain.Project
+	var configPath string
+	var currentDir string
+	var err error
+
+	if isGlobal {
+		// Initialize global config if needed
+		err = c.projectManager.InitializeGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "initialize global config")
+		}
+
+		// Load global config
+		var globalResult *domain.ConfigResult
+		globalResult, err = c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "load global config")
+		}
+		config = globalResult.Config
+		configPath = globalResult.Path
+	} else {
+		// Get current directory and load project configuration
+		currentDir, err = os.Getwd()
+		if err != nil {
+			return contextureerrors.Wrap(err, "get current directory")
+		}
+
+		var configResult *domain.ConfigResult
+		configResult, err = c.projectManager.LoadConfigWithLocalRules(currentDir)
+		if err != nil {
+			return contextureerrors.Wrap(err, "load config")
+		}
+		config = configResult.Config
+		configPath = configResult.Path
 	}
 
-	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "load config")
-	}
-	config := configResult.Config
-	configPath := configResult.Path
-
-	// Load providers from project config into registry
+	// Load providers from config into registry
 	if err := providerRegistry.LoadFromProject(config); err != nil {
 		return contextureerrors.Wrap(err, "load providers")
 	}
@@ -290,19 +316,36 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 		}
 	}
 
-	// Get the appropriate config location for the project
-	location := c.projectManager.GetConfigLocation(currentDir, false)
-	err = c.projectManager.SaveConfig(config, location, currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "save config")
+	// Save configuration to appropriate location
+	if isGlobal {
+		err = c.projectManager.SaveGlobalConfig(config)
+		if err != nil {
+			return contextureerrors.Wrap(err, "save global config")
+		}
+	} else {
+		// Get the appropriate config location for the project
+		location := c.projectManager.GetConfigLocation(currentDir, false)
+		err = c.projectManager.SaveConfig(config, location, currentDir)
+		if err != nil {
+			return contextureerrors.Wrap(err, "save config")
+		}
 	}
 
-	// Auto-generate rules after adding them (skip in JSON mode for clean output)
+	// Auto-generate rules after adding them (skip in JSON mode)
 	if !isJSONMode {
-		if err := c.generateRules(ctx, config, currentDir); err != nil {
-			log.Warn("Failed to auto-generate rules", "error", err)
-			fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
-			return nil // Exit early - rules were added but generation failed
+		if isGlobal {
+			// For global rules, try to rebuild project if we're in one
+			if err := c.tryRebuildProjectAfterGlobalAdd(ctx); err != nil {
+				// Don't fail - global rule was added successfully
+				log.Debug("Could not auto-rebuild project after global rule addition", "error", err)
+			}
+		} else {
+			// For project rules, use merged config (global + project)
+			if err := c.generateRulesWithMergedConfig(ctx, currentDir); err != nil {
+				log.Warn("Failed to auto-generate rules", "error", err)
+				fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
+				return nil // Exit early - rules were added but generation failed
+			}
 		}
 	}
 
@@ -388,23 +431,54 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	return c.ExecuteWithDeps(ctx, cmd, ruleIDs, deps)
 }
 
-// generateRules automatically generates output after adding rules
-func (c *AddCommand) generateRules(
-	ctx context.Context,
-	config *domain.Project,
-	_ string,
-) error {
-	if len(config.Rules) == 0 {
-		return nil // No rules to generate
+// tryRebuildProjectAfterGlobalAdd attempts to rebuild the current project after adding a global rule
+func (c *AddCommand) tryRebuildProjectAfterGlobalAdd(ctx context.Context) error {
+	// Get current directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return err
 	}
 
-	// Get target formats (all enabled formats)
+	// Try to load project config - if it fails, we're not in a project
+	_, projectErr := c.projectManager.LoadConfig(currentDir)
+	if projectErr != nil {
+		// Not in a project, skip rebuild (this is normal and not an error)
+		//nolint:nilerr // Intentionally returning nil - not being in a project is not an error
+		return nil
+	}
+
+	// We're in a project, rebuild with merged config
+	log.Debug("Detected project context, rebuilding with global rules included")
+	return c.generateRulesWithMergedConfig(ctx, currentDir)
+}
+
+// generateRulesWithMergedConfig generates rules using merged global + project + local config
+func (c *AddCommand) generateRulesWithMergedConfig(ctx context.Context, currentDir string) error {
+	// Load merged config with local rules
+	merged, err := c.projectManager.LoadConfigMergedWithLocalRules(currentDir)
+	if err != nil {
+		return err
+	}
+
+	// Create synthetic config with merged rules
+	config := &domain.Project{}
+	*config = *merged.Project
+	config.Rules = make([]domain.RuleRef, len(merged.MergedRules))
+	for i, rws := range merged.MergedRules {
+		config.Rules[i] = rws.RuleRef
+	}
+
+	if len(config.Rules) == 0 {
+		return nil
+	}
+
+	// Get target formats
 	targetFormats := config.GetEnabledFormats()
 	if len(targetFormats) == 0 {
 		return contextureerrors.ValidationErrorf("formats", "no enabled formats found")
 	}
 
-	log.Debug("Auto-generating rules", "rules", len(config.Rules), "formats", len(targetFormats))
+	log.Debug("Auto-generating rules with merged config", "rules", len(config.Rules), "formats", len(targetFormats))
 
 	// Use shared rule generator with consistent UI styling
 	return c.ruleGenerator.GenerateRules(ctx, config, targetFormats)

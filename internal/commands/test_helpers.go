@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/contextureai/contexture/internal/dependencies"
@@ -63,8 +64,13 @@ func runTestApp(app *cli.Command) error {
 // assertNoProjectConfigError asserts that the error indicates no project configuration
 func assertNoProjectConfigError(t *testing.T, err error) {
 	require.Error(t, err)
-	// Error message format: "load project configuration: config locate failed for <path>: no configuration file found"
-	assert.Contains(t, err.Error(), "load project configuration")
+	// Error message format can be either:
+	// "load project configuration: ..." (old format)
+	// "load configuration: load project config: ..." (new format with merged config)
+	assert.True(t,
+		strings.Contains(err.Error(), "load project configuration") ||
+			strings.Contains(err.Error(), "load configuration"),
+		"Error should mention configuration loading: %s", err.Error())
 	assert.Contains(t, err.Error(), "no configuration file found")
 }
 

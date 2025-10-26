@@ -118,16 +118,37 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 	dryRun := cmd.Bool("dry-run")
 	skipConfirmation := cmd.Bool("yes")
+	isGlobal := cmd.Bool("global")
 
-	// Load configuration using shared utility
-	configLoad, err := LoadProjectConfig(c.projectManager)
-	if err != nil {
-		return err
+	// Load configuration based on global flag
+	var config *domain.Project
+	var configPath string
+	var currentDir string
+	var err error
+
+	if isGlobal {
+		// Load global configuration
+		globalResult, err := c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "load global configuration")
+		}
+		if globalResult == nil || globalResult.Config == nil {
+			return contextureerrors.ValidationErrorf("global config", "global configuration not found - initialize with: contexture rules add -g <rule-id>")
+		}
+		config = globalResult.Config
+		configPath = globalResult.Path
+	} else {
+		// Load project configuration using shared utility
+		configLoadResult, err := LoadProjectConfig(c.projectManager)
+		if err != nil {
+			return err
+		}
+		config = configLoadResult.Config
+		configPath = configLoadResult.ConfigPath
+		currentDir = configLoadResult.CurrentDir
 	}
 
-	config := configLoad.Config
-
-	// Load providers from project config into registry
+	// Load providers from config into registry
 	if err := c.providerRegistry.LoadFromProject(config); err != nil {
 		return contextureerrors.Wrap(err, "load providers")
 	}
@@ -347,7 +368,13 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Apply updates
-	err = c.applyUpdates(ctx, updateResults, configLoad)
+	// Reconstruct ConfigLoadResult for applyUpdates
+	configLoadResult := &ConfigLoadResult{
+		Config:     config,
+		ConfigPath: configPath,
+		CurrentDir: currentDir,
+	}
+	err = c.applyUpdates(ctx, updateResults, configLoadResult, isGlobal)
 	if err != nil {
 		return err
 	}
@@ -640,6 +667,7 @@ func (c *UpdateCommand) applyUpdates(
 	ctx context.Context,
 	results []UpdateResult,
 	configLoad *ConfigLoadResult,
+	isGlobal bool,
 ) error {
 	config := configLoad.Config
 	theme := ui.DefaultTheme()
@@ -724,9 +752,16 @@ func (c *UpdateCommand) applyUpdates(
 		updatedCount++
 	}
 
-	// Save configuration using shared utility
-	if err := configLoad.SaveConfig(c.projectManager); err != nil {
-		return contextureerrors.Wrap(err, "save configuration")
+	// Save configuration based on global flag
+	if isGlobal {
+		if err := c.projectManager.SaveGlobalConfig(config); err != nil {
+			return contextureerrors.Wrap(err, "save global configuration")
+		}
+	} else {
+		// Save using shared utility for project config
+		if err := configLoad.SaveConfig(c.projectManager); err != nil {
+			return contextureerrors.Wrap(err, "save configuration")
+		}
 	}
 
 	// Display final results

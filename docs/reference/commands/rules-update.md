@@ -18,6 +18,7 @@ The `rules update` command checks all configured remote rule sources for new com
 
 | Flag        | Description                                               |
 | :---------- | :-------------------------------------------------------- |
+| `--global`, `-g` | Update rules in global configuration instead of project configuration. |
 | `--dry-run` | Show available updates without applying them.             |
 | `--yes`, `-y` | Skip the confirmation prompt and apply all updates.       |
 | `--output`, `-o` | Choose the output format: `default` (terminal) or `json`. |

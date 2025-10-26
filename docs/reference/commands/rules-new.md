@@ -29,6 +29,7 @@ This dual-mode behavior makes it convenient to create rules both in individual p
 
 | Flag               | Shorthand | Description                                                                    |
 | :----------------- | :-------- | :----------------------------------------------------------------------------- |
+| `--global`         | `-g`      | Create rule in global rules directory (`~/.contexture/rules/`) instead of project rules directory. |
 | `--name`           | `-n`      | Set the title of the rule (displayed in frontmatter and as the main heading). |
 | `--description`    | `-d`      | Set the description of the rule (displayed in frontmatter).                    |
 | `--tags`           | `-t`      | Set comma-separated tags for the rule (e.g., `security,auth,critical`).       |

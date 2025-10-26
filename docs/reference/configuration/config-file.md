@@ -4,6 +4,24 @@ description: The `.contexture.yaml` file defines the project's rules, providers,
 ---
 The `.contexture.yaml` file defines the project's rules, providers, output formats, and build settings.
 
+## Configuration Locations
+
+Contexture supports two configuration locations:
+
+### Project Configuration
+Located in the project root directory:
+- `.contexture.yaml` (root location)
+- `.contexture/.contexture.yaml` (contexture directory)
+
+### Global Configuration
+Located in your home directory at `~/.contexture/.contexture.yaml`
+
+Global configuration:
+- Applies to all projects automatically
+- Can define rules, providers, and formats
+- Project-specific rules override global rules with matching IDs
+- Modified using the `--global` or `-g` flag with rule and provider commands
+
 ## Structure
 
 ```yaml

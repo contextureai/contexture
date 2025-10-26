@@ -26,6 +26,12 @@ The `providers remove` command removes a custom provider from your `.contexture.
 
 **Important:** You cannot remove the default `@contexture` provider.
 
+## Flags
+
+| Flag          | Shorthand | Description                                                |
+| :------------ | :-------- | :--------------------------------------------------------- |
+| `--global`    | `-g`      | Remove provider from global configuration (`~/.contexture/.contexture.yaml`) instead of project configuration. |
+
 ## Usage
 
 ### Remove a Provider
