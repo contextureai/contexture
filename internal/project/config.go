@@ -1048,8 +1048,10 @@ func (m *Manager) MergeConfigs(global, project *domain.ConfigResult) *domain.Mer
 // normalizeRuleID extracts and normalizes a rule ID for comparison
 // Note: Variables are intentionally ignored - rules with the same path but different
 // variables are treated as the same rule for override detection. This means:
-//   Global: @contexture/go{style: "strict"}
-//   Project: @contexture/go{style: "relaxed"}
+//
+//	Global: @contexture/go{style: "strict"}
+//	Project: @contexture/go{style: "relaxed"}
+//
 // The project rule will override the global rule entirely.
 func (m *Manager) normalizeRuleID(ruleID string) string {
 	// Use existing RuleMatcher logic to extract path
