@@ -732,3 +732,201 @@ func findRuleByFilename(rules []*domain.InstalledRule, filename string) *domain.
 	}
 	return nil
 }
+
+func TestFormat_Write_UserRulesGeneration(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+	f := NewFormat(fs)
+
+	t.Run("user rules output to global_rules.md", func(t *testing.T) {
+		rules := []*domain.TransformedRule{
+			{
+				Rule: &domain.Rule{
+					ID:      "[contexture:languages/go/context]",
+					Title:   "Go Context",
+					Content: "Always use context.Context for cancellation",
+				},
+				Content:  "# Go Context\n\nAlways use context.Context for cancellation",
+				Filename: "languages-go-context.md",
+			},
+			{
+				Rule: &domain.Rule{
+					ID:      "[contexture:testing/unit]",
+					Title:   "Unit Testing",
+					Content: "Write unit tests for all functions",
+				},
+				Content:  "# Unit Testing\n\nWrite unit tests for all functions",
+				Filename: "testing-unit.md",
+			},
+		}
+
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "/home/user/.windsurf",
+			IsUserRules: true,
+		}
+
+		err := f.Write(rules, config)
+		require.NoError(t, err)
+
+		// Verify file was written to correct location
+		filePath := "/home/user/.windsurf/global_rules.md"
+		exists, err := afero.Exists(fs, filePath)
+		require.NoError(t, err)
+		assert.True(t, exists, "global_rules.md should exist")
+
+		// Verify content
+		content, err := afero.ReadFile(fs, filePath)
+		require.NoError(t, err)
+		contentStr := string(content)
+
+		// Should contain header
+		assert.Contains(t, contentStr, "# Windsurf Rules")
+		assert.Contains(t, contentStr, "2 contexture rules")
+		assert.Contains(t, contentStr, "Single File")
+
+		// Should contain both rules
+		assert.Contains(t, contentStr, "Go Context")
+		assert.Contains(t, contentStr, "Unit Testing")
+
+		// Should have tracking comments
+		assert.Contains(t, contentStr, "[contexture:languages/go/context]")
+		assert.Contains(t, contentStr, "[contexture:testing/unit]")
+
+		// Should have footer
+		assert.Contains(t, contentStr, "single-file mode")
+	})
+
+	t.Run("project rules output to .windsurf/rules/ directory", func(t *testing.T) {
+		rules := []*domain.TransformedRule{
+			{
+				Rule: &domain.Rule{
+					ID:      "[contexture:security/auth]",
+					Title:   "Authentication",
+					Content: "Always validate authentication tokens",
+				},
+				Content:  "# Authentication\n\nAlways validate authentication tokens",
+				Filename: "security-auth.md",
+			},
+		}
+
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "/project",
+			IsUserRules: false,
+		}
+
+		err := f.Write(rules, config)
+		require.NoError(t, err)
+
+		// Verify file was written to project directory
+		filePath := "/project/.windsurf/rules/security-auth.md"
+		exists, err := afero.Exists(fs, filePath)
+		require.NoError(t, err)
+		assert.True(t, exists, "rule file should exist in project directory")
+
+		// Verify content
+		content, err := afero.ReadFile(fs, filePath)
+		require.NoError(t, err)
+		contentStr := string(content)
+
+		assert.Contains(t, contentStr, "Authentication")
+		assert.Contains(t, contentStr, "[contexture:security/auth]")
+	})
+
+	t.Run("empty user rules does not create global_rules.md", func(t *testing.T) {
+		rules := []*domain.TransformedRule{}
+
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "/home/user2/.windsurf",
+			IsUserRules: true,
+		}
+
+		err := f.Write(rules, config)
+		require.NoError(t, err)
+
+		// With no rules, WriteFiles returns early, so no file is created
+		filePath := "/home/user2/.windsurf/global_rules.md"
+		exists, err := afero.Exists(fs, filePath)
+		require.NoError(t, err)
+		assert.False(t, exists, "empty rules should not create file")
+
+		// Directory may not even be created
+		dirExists, err := afero.DirExists(fs, "/home/user2/.windsurf")
+		require.NoError(t, err)
+		assert.False(t, dirExists, "directory should not be created for empty rules")
+	})
+
+	t.Run("user rules enforce character limit per rule", func(t *testing.T) {
+		// Create a rule that exceeds 12k character limit
+		longContent := strings.Repeat("x", 12500)
+
+		rules := []*domain.TransformedRule{
+			{
+				Rule: &domain.Rule{
+					ID:      "[contexture:test/huge-rule]",
+					Title:   "Huge Rule",
+					Content: longContent,
+				},
+				Content:  longContent,
+				Filename: "test-huge-rule.md",
+			},
+		}
+
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "/home/user/.windsurf",
+			IsUserRules: true,
+		}
+
+		err := f.Write(rules, config)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeds Windsurf per-file limit")
+		assert.Contains(t, err.Error(), "12000")
+	})
+}
+
+func TestFormat_GetOutputPath_UserRules(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+	f := NewFormat(fs)
+
+	t.Run("user rules returns BaseDir directly", func(t *testing.T) {
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "/home/user/.windsurf",
+			IsUserRules: true,
+		}
+
+		path := f.GetOutputPath(config)
+		assert.Equal(t, "/home/user/.windsurf", path)
+	})
+
+	t.Run("project rules returns BaseDir/.windsurf/rules", func(t *testing.T) {
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "/project",
+			IsUserRules: false,
+		}
+
+		path := f.GetOutputPath(config)
+		assert.Equal(t, "/project/.windsurf/rules", path)
+	})
+
+	t.Run("nil config returns default", func(t *testing.T) {
+		path := f.GetOutputPath(nil)
+		assert.Equal(t, ".windsurf/rules", path)
+	})
+
+	t.Run("empty BaseDir returns default", func(t *testing.T) {
+		config := &domain.FormatConfig{
+			Type:        domain.FormatWindsurf,
+			BaseDir:     "",
+			IsUserRules: false,
+		}
+
+		path := f.GetOutputPath(config)
+		assert.Equal(t, ".windsurf/rules", path)
+	})
+}

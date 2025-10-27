@@ -76,6 +76,10 @@ func (g *RuleGenerator) GenerateRules(
 		return contextureerrors.Wrap(err, "fetch rules")
 	}
 
+	// Sort rules deterministically for consistent output
+	parser := rule.NewRuleIDParser("", nil)
+	rules = rule.SortRulesDeterministically(rules, parser)
+
 	// Process rules (templates, validation) with progress indicator and timing
 	var processedRules []*domain.ProcessedRule
 	err = ui.WithProgress("Generated rules", func() error {

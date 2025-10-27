@@ -49,6 +49,7 @@ type FormatConfig struct {
 	Template      string              `yaml:"template,omitempty"      json:"template,omitempty"`      // Optional template file path
 	UserRulesMode UserRulesOutputMode `yaml:"userRulesMode,omitempty" json:"userRulesMode,omitempty"` // How to handle user/global rules
 	BaseDir       string              `yaml:"-"                       json:"-"`                       // Runtime option, not serialized
+	IsUserRules   bool                `yaml:"-"                       json:"-"`                       // Runtime flag: true when generating user rules to native location
 }
 
 // FormatSpecificRule represents a rule with format-specific configuration
@@ -251,8 +252,49 @@ func (fc *FormatConfig) GetEffectiveUserRulesMode() UserRulesOutputMode {
 }
 
 // ShouldOmitUserRulesMode returns true if this field should be omitted from config YAML
-// (i.e., if it's set to the default value)
+// (i.e., if it's empty OR set to the default value for this format type)
 func (fc *FormatConfig) ShouldOmitUserRulesMode() bool {
-	effective := fc.GetEffectiveUserRulesMode()
-	return fc.UserRulesMode == "" || fc.UserRulesMode == effective
+	// If empty, omit (will use default)
+	if fc.UserRulesMode == "" {
+		return true
+	}
+
+	// Get the default for this format type
+	var defaultMode UserRulesOutputMode
+	switch fc.Type {
+	case FormatWindsurf:
+		defaultMode = UserRulesNative
+	case FormatClaude:
+		defaultMode = UserRulesNative
+	case FormatCursor:
+		defaultMode = UserRulesProject
+	default:
+		defaultMode = UserRulesProject
+	}
+
+	// If set to default for this type, omit
+	return fc.UserRulesMode == defaultMode
+}
+
+// MarshalYAML implements custom YAML marshalling to omit userRulesMode when set to default
+func (fc FormatConfig) MarshalYAML() (interface{}, error) {
+	// Create anonymous struct with pointer field for omitempty to work correctly
+	obj := &struct {
+		Type          FormatType           `yaml:"type"`
+		Enabled       bool                 `yaml:"enabled"`
+		Template      string               `yaml:"template,omitempty"`
+		UserRulesMode *UserRulesOutputMode `yaml:"userRulesMode,omitempty"`
+	}{
+		Type:     fc.Type,
+		Enabled:  fc.Enabled,
+		Template: fc.Template,
+	}
+
+	// Only include UserRulesMode if it's not the default
+	if !fc.ShouldOmitUserRulesMode() {
+		mode := fc.UserRulesMode
+		obj.UserRulesMode = &mode
+	}
+
+	return obj, nil
 }

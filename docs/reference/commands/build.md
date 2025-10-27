@@ -15,11 +15,21 @@ contexture build [flags]
 The `build` command is the primary command for generating AI assistant rule files. It executes the entire process of fetching rule content, resolving variables, processing templates, and writing the final output to the format-specific directories (e.g., `CLAUDE.md`, `.cursor/rules/`).
 
 This command automatically merges rules from:
-1. Global configuration (`~/.contexture/.contexture.yaml`)
-2. Project configuration (`.contexture.yaml`)
+1. Global configuration (`~/.contexture/.contexture.yaml`) - user-level rules
+2. Project configuration (`.contexture.yaml`) - team-shared rules
 3. Local rule files in the `rules/` directory
 
 Project-specific rules with matching IDs will override global rules.
+
+### User Rules Handling
+
+The build command intelligently routes user rules (from global config) and project rules based on IDE capabilities:
+
+- **Windsurf**: User rules → `~/.windsurf/global_rules.md`, Project rules → `.windsurf/rules/`
+- **Claude**: User rules → `~/.claude/CLAUDE.md`, Project rules → `CLAUDE.md`
+- **Cursor**: Configurable via `userRulesMode` (defaults to including user rules in project)
+
+This separation prevents git conflicts when developers have different personal rules.
 
 This command should be run whenever rules are added, removed, or updated in the configuration.
 

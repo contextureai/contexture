@@ -88,6 +88,11 @@ func (s *Strategy) GetOutputPath(config *domain.FormatConfig) string {
 	if config == nil || config.BaseDir == "" {
 		return domain.WindsurfOutputDir
 	}
+	// For user rules, output directly to BaseDir (e.g., ~/.windsurf)
+	if config.IsUserRules {
+		return config.BaseDir
+	}
+	// For project rules, output to .windsurf/rules/ subdirectory
 	return filepath.Join(config.BaseDir, domain.WindsurfOutputDir)
 }
 
@@ -148,8 +153,10 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 		return contextureerrors.Wrap(err, "windsurf.WriteFiles: create output directory")
 	}
 
-	if s.mode == ModeSingleFile {
-		return s.writeSingleFile(rules, outputDir)
+	// Force single-file mode for user rules (global_rules.md)
+	useSingleFile := s.mode == ModeSingleFile || (config != nil && config.IsUserRules)
+	if useSingleFile {
+		return s.writeSingleFile(rules, outputDir, config)
 	}
 	return s.writeMultiFile(rules, outputDir)
 }
@@ -179,8 +186,12 @@ func (s *Strategy) CreateDirectories(config *domain.FormatConfig) error {
 }
 
 // writeSingleFile writes all rules to a single file
-func (s *Strategy) writeSingleFile(rules []*domain.TransformedRule, outputDir string) error {
+func (s *Strategy) writeSingleFile(rules []*domain.TransformedRule, outputDir string, config *domain.FormatConfig) error {
 	filename := singleFileFilename
+	// For user rules, use global_rules.md instead of rules.md
+	if config != nil && config.IsUserRules {
+		filename = "global_rules.md"
+	}
 	filePath := filepath.Join(outputDir, filename)
 
 	var content strings.Builder

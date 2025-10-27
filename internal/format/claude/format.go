@@ -58,6 +58,8 @@ func (s *Strategy) GetOutputPath(config *domain.FormatConfig) string {
 		baseDir = "."
 	}
 
+	// For user rules, BaseDir is already set to ~/.claude/
+	// so we just join with the filename
 	return filepath.Join(baseDir, filename)
 }
 

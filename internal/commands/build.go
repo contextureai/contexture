@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -59,15 +60,21 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 			WithSuggestions("Run 'contexture init' to create a project configuration")
 	}
 
-	// Create a synthetic project config with merged rules for generation
-	config := &domain.Project{}
-	*config = *merged.Project
-	config.Rules = make([]domain.RuleRef, len(merged.MergedRules))
-	for i, rws := range merged.MergedRules {
-		config.Rules[i] = rws.RuleRef
+	// Separate user rules from project rules
+	var projectRules, userRules []domain.RuleRef
+	for _, rws := range merged.MergedRules {
+		if rws.Source == domain.RuleSourceGlobal {
+			userRules = append(userRules, rws.RuleRef)
+		} else {
+			projectRules = append(projectRules, rws.RuleRef)
+		}
 	}
 
-	if len(config.Rules) == 0 {
+	// Create project config for generation
+	config := &domain.Project{}
+	*config = *merged.Project
+
+	if len(projectRules) == 0 && len(userRules) == 0 {
 		fmt.Fprintln(os.Stderr, "No rules configured")
 
 		// Clean up empty directories for all enabled formats even when no rules exist
@@ -97,7 +104,8 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	log.Debug("Starting build",
-		"rules", len(config.Rules),
+		"project_rules", len(projectRules),
+		"user_rules", len(userRules),
 		"formats", len(targetFormats))
 
 	// Show which formats will be built
@@ -114,8 +122,8 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		fmt.Printf("%s\n", strings.Join(formatNames, ", "))
 	}
 
-	// Use shared rule generator with consistent UI styling
-	err = c.ruleGenerator.GenerateRules(ctx, config, targetFormats)
+	// Generate rules per format based on user rules mode
+	err = c.generateWithUserRulesHandling(ctx, config, targetFormats, projectRules, userRules)
 	if err != nil {
 		return contextureerrors.Wrap(err, "generate rules")
 	}
@@ -164,6 +172,68 @@ func (c *BuildCommand) getTargetFormats(
 	}
 
 	return targetFormats
+}
+
+// generateWithUserRulesHandling generates rules for each format based on user rules mode
+func (c *BuildCommand) generateWithUserRulesHandling(
+	ctx context.Context,
+	baseConfig *domain.Project,
+	targetFormats []domain.FormatConfig,
+	projectRules, userRules []domain.RuleRef,
+) error {
+	for _, formatConfig := range targetFormats {
+		caps, _ := c.registry.GetCapabilities(formatConfig.Type)
+		mode := formatConfig.GetEffectiveUserRulesMode()
+
+		// Determine which rules to use based on mode
+		var rulesToGenerate []domain.RuleRef
+
+		switch mode {
+		case domain.UserRulesNative:
+			// For native mode, only generate project rules to project
+			// User rules will be generated to native location separately
+			rulesToGenerate = projectRules
+		case domain.UserRulesProject:
+			// For project mode, include both
+			rulesToGenerate = append(append([]domain.RuleRef{}, projectRules...), userRules...)
+		case domain.UserRulesDisabled:
+			// For disabled mode, only project rules
+			rulesToGenerate = projectRules
+		}
+
+		// Generate project rules if any
+		if len(rulesToGenerate) > 0 {
+			config := &domain.Project{}
+			*config = *baseConfig
+			config.Rules = rulesToGenerate
+
+			if err := c.ruleGenerator.GenerateRules(ctx, config, []domain.FormatConfig{formatConfig}); err != nil {
+				return err
+			}
+		}
+
+		// For native mode, generate user rules to native location separately
+		if mode == domain.UserRulesNative && caps.SupportsUserRules && len(userRules) > 0 {
+			userConfig := &domain.Project{}
+			*userConfig = *baseConfig
+			userConfig.Rules = userRules
+
+			// Create format config for user rules
+			userFormatConfig := formatConfig
+			userDir := filepath.Dir(caps.UserRulesPath)
+			userFormatConfig.BaseDir = userDir
+			userFormatConfig.IsUserRules = true // Mark as user rules generation
+
+			if err := c.ruleGenerator.GenerateRules(ctx, userConfig, []domain.FormatConfig{userFormatConfig}); err != nil {
+				log.Warn("Failed to generate user rules to native location",
+					"format", formatConfig.Type,
+					"path", caps.UserRulesPath,
+					"error", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // BuildAction is the CLI action handler for the build command

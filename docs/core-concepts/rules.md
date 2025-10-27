@@ -89,9 +89,35 @@ touch rules/project-specific.md
 contexture rules add rules/project-specific.md
 ```
 
-### Global Rules
+### Global Rules (User Rules)
 
 Global rules are stored in your user-level configuration at `~/.contexture/.contexture.yaml` and are automatically included in all projects. This is useful for rules you want to apply universally across your work.
+
+#### User Rules vs Project Rules
+
+Contexture distinguishes between two types of rules:
+
+- **User Rules**: Personal rules from global configuration (`~/.contexture/.contexture.yaml`)
+  - Apply to all your projects automatically
+  - Represent your personal preferences and workflow
+  - Output to IDE-native user rules locations when supported
+  - Never committed to version control
+
+- **Project Rules**: Team-shared rules from project configuration (`.contexture.yaml`)
+  - Specific to the project repository
+  - Shared with all team members via version control
+  - Output to project directories that get committed
+  - Define team standards and project-specific guidelines
+
+**IDE-Native User Rules Support:**
+
+Modern IDEs support separating user rules from project rules:
+
+- **Windsurf**: User rules → `~/.windsurf/global_rules.md`, Project rules → `.windsurf/rules/`
+- **Claude**: User rules → `~/.claude/CLAUDE.md`, Project rules → `CLAUDE.md`
+- **Cursor**: Configurable via `userRulesMode` in `.contexture.yaml` (defaults to including user rules in project)
+
+This separation prevents git conflicts when developers have different personal preferences while maintaining consistent team standards.
 
 #### Adding and Managing Global Rules
 

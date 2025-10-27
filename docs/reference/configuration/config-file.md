@@ -85,11 +85,12 @@ Defines the output formats to generate.
 
 **Format Fields:**
 
-| Field      | Type      | Required | Description                                     |
-| :--------- | :-------- | :------- | :---------------------------------------------- |
-| `type`     | `string`    | `true`     | The format type (`claude`, `cursor`, `windsurf`). |
-| `enabled`  | `boolean`   | `false`    | Enable/disable the format (defaults to `true`; generated configs include the explicit value for clarity). |
-| `template` | `string`    | `false`    | Template file path (Claude format only).          |
+| Field           | Type      | Required | Description                                                                                     |
+| :-------------- | :-------- | :------- | :---------------------------------------------------------------------------------------------- |
+| `type`          | `string`  | `true`   | The format type (`claude`, `cursor`, `windsurf`).                                               |
+| `enabled`       | `boolean` | `false`  | Enable/disable the format (defaults to `true`; generated configs include the explicit value for clarity). |
+| `template`      | `string`  | `false`  | Template file path (Claude format only).                                                        |
+| `userRulesMode` | `string`  | `false`  | How to handle user rules: `native` (IDE's native location), `project` (include in project), `disabled` (exclude). Defaults: Windsurf/Claude=`native`, Cursor=`project`. |
 
 **Example:**
 ```yaml
