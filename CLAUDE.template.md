@@ -15,6 +15,7 @@ Contexture is a Go CLI tool for managing AI assistant rules across multiple plat
 ### Application Commands
 - `contexture init` - Initialize project with `.contexture.yaml`
 - `contexture rules add` - Add rules by ID
+- `contexture rules new` - Create new rule files with metadata
 - `contexture rules list/remove/update` - Manage rules
 - `contexture providers list/add/remove/show` - Manage rule providers
 - `contexture config` - View/modify configuration
@@ -95,20 +96,6 @@ generation: [build settings]
 ```
 
 ## Testing
-
-Before making changes, use Contexture's built-in query commands to understand the testing strategy:
-
-```bash
-# Ask how to test your specific change
-contexture query "how should I test changes to the config loading logic?"
-
-# Get help on testing commands
-contexture --help
-make --help
-
-# View existing test patterns
-contexture query "show me examples of unit tests in this codebase"
-```
 
 - **Unit**: `make test` - All `*_test.go` files
 - **Integration**: Git operations with real repositories

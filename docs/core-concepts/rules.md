@@ -180,6 +180,22 @@ contexture rules list
 
 The project version takes precedence during `contexture build`. When you remove the project rule, the global version is used again automatically.
 
+**Important:** Rule IDs are normalized by path only (variables are ignored for override detection). This means:
+
+```yaml
+# Global config
+rules:
+  - id: "@contexture/go/context"
+    variables: {style: "strict"}
+
+# Project config
+rules:
+  - id: "@contexture/go/context"
+    variables: {style: "relaxed"}
+```
+
+Result: The project rule **overrides** the global rule entirely (uses `style: "relaxed"`). If you want both strict and relaxed versions, use different rule IDs or paths.
+
 #### Migration Guide
 
 **Moving Project Rules to Global:**

@@ -1002,11 +1002,17 @@ func (m *Manager) MergeConfigs(global, project *domain.ConfigResult) *domain.Mer
 		return result
 	}
 
-	// Build map of project rules for quick lookup
+	// Build maps for quick lookup (O(n) instead of O(n²))
 	projectRules := make(map[string]domain.RuleRef)
 	for _, rule := range project.Config.Rules {
 		normalizedID := m.normalizeRuleID(rule.ID)
 		projectRules[normalizedID] = rule
+	}
+
+	globalRuleSet := make(map[string]bool)
+	for _, globalRule := range global.Config.Rules {
+		normalizedID := m.normalizeRuleID(globalRule.ID)
+		globalRuleSet[normalizedID] = true
 	}
 
 	// Add global rules first (checking for overrides)
@@ -1016,7 +1022,7 @@ func (m *Manager) MergeConfigs(global, project *domain.ConfigResult) *domain.Mer
 			// Not overridden - add global rule
 			result.MergedRules = append(result.MergedRules, domain.RuleWithSource{
 				RuleRef:         globalRule,
-				Source:          domain.RuleSourceGlobal,
+				Source:          domain.RuleSourceUser,
 				OverridesGlobal: false,
 			})
 		}
@@ -1026,14 +1032,8 @@ func (m *Manager) MergeConfigs(global, project *domain.ConfigResult) *domain.Mer
 	for _, projectRule := range project.Config.Rules {
 		normalizedID := m.normalizeRuleID(projectRule.ID)
 
-		// Check if this overrides a global rule
-		overridesGlobal := false
-		for _, globalRule := range global.Config.Rules {
-			if m.normalizeRuleID(globalRule.ID) == normalizedID {
-				overridesGlobal = true
-				break
-			}
-		}
+		// Check if this overrides a global rule (O(1) map lookup instead of O(g) loop)
+		overridesGlobal := globalRuleSet[normalizedID]
 
 		result.MergedRules = append(result.MergedRules, domain.RuleWithSource{
 			RuleRef:         projectRule,
@@ -1046,6 +1046,11 @@ func (m *Manager) MergeConfigs(global, project *domain.ConfigResult) *domain.Mer
 }
 
 // normalizeRuleID extracts and normalizes a rule ID for comparison
+// Note: Variables are intentionally ignored - rules with the same path but different
+// variables are treated as the same rule for override detection. This means:
+//   Global: @contexture/go{style: "strict"}
+//   Project: @contexture/go{style: "relaxed"}
+// The project rule will override the global rule entirely.
 func (m *Manager) normalizeRuleID(ruleID string) string {
 	// Use existing RuleMatcher logic to extract path
 	path, err := m.matcher.ExtractPath(ruleID)

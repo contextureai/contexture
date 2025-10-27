@@ -57,35 +57,22 @@ func (c *RemoveCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs [
 	// Check if global flag is set
 	isGlobal := cmd.Bool("global")
 
-	var config *domain.Project
-	var currentDir string
-	var err error
+	// Load configuration
+	config, _, err := loadConfigByScope(c.projectManager, isGlobal)
+	if err != nil {
+		if !isGlobal {
+			return contextureerrors.Wrap(err, "load project configuration").
+				WithSuggestions("Run 'contexture init' to initialize a new project")
+		}
+		return err
+	}
 
-	if isGlobal {
-		// Load global config
-		var globalResult *domain.ConfigResult
-		globalResult, err = c.projectManager.LoadGlobalConfig()
-		if err != nil {
-			return contextureerrors.Wrap(err, "load global config")
-		}
-		if globalResult == nil {
-			return contextureerrors.ValidationErrorf("global config", "no global configuration found")
-		}
-		config = globalResult.Config
-	} else {
-		// Get current directory and load project configuration
+	var currentDir string
+	if !isGlobal {
 		currentDir, err = os.Getwd()
 		if err != nil {
 			return contextureerrors.Wrap(err, "get current directory")
 		}
-
-		var configResult *domain.ConfigResult
-		configResult, err = c.projectManager.LoadConfigWithLocalRules(currentDir)
-		if err != nil {
-			return contextureerrors.Wrap(err, "load project configuration").
-				WithSuggestions("Run 'contexture init' to initialize a new project")
-		}
-		config = configResult.Config
 	}
 
 	// Find rules to remove

@@ -299,7 +299,7 @@ rules:
 			ruleIDs[rws.RuleRef.ID] = rws.Source
 		}
 
-		assert.Equal(t, domain.RuleSourceGlobal, ruleIDs["@contexture/global-rule"])
+		assert.Equal(t, domain.RuleSourceUser, ruleIDs["@contexture/global-rule"])
 		assert.Equal(t, domain.RuleSourceProject, ruleIDs["@contexture/project-rule"])
 	})
 
@@ -419,7 +419,7 @@ formats:
 
 		assert.Len(t, merged.MergedRules, 1)
 		assert.Equal(t, "@contexture/global-only-rule", merged.MergedRules[0].RuleRef.ID)
-		assert.Equal(t, domain.RuleSourceGlobal, merged.MergedRules[0].Source)
+		assert.Equal(t, domain.RuleSourceUser, merged.MergedRules[0].Source)
 		assert.False(t, merged.MergedRules[0].OverridesGlobal)
 	})
 }
@@ -487,7 +487,7 @@ title: Local Rule
 			}
 		}
 
-		assert.True(t, sources["global"])
+		assert.True(t, sources["user"])
 		assert.True(t, sources["project"])
 		assert.True(t, sources[testLocalSource])
 	})

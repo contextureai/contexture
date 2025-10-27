@@ -145,7 +145,7 @@ func TestGlobalConfigMerging(t *testing.T) {
 		// Should have 1 rule from global
 		assert.Len(t, merged.MergedRules, 1)
 		assert.Equal(t, "@contexture/global/rule1", merged.MergedRules[0].RuleRef.ID)
-		assert.Equal(t, domain.RuleSourceGlobal, merged.MergedRules[0].Source)
+		assert.Equal(t, domain.RuleSourceUser, merged.MergedRules[0].Source)
 		assert.False(t, merged.MergedRules[0].OverridesGlobal)
 	})
 

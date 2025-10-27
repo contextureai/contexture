@@ -106,40 +106,18 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 	// Check if global flag is set
 	isGlobal := cmd.Bool("global")
 
-	var config *domain.Project
-	var configPath string
+	// Load configuration
+	config, configPath, err := loadConfigByScope(c.projectManager, isGlobal)
+	if err != nil {
+		return err
+	}
+
 	var currentDir string
-	var err error
-
-	if isGlobal {
-		// Initialize global config if needed
-		err = c.projectManager.InitializeGlobalConfig()
-		if err != nil {
-			return contextureerrors.Wrap(err, "initialize global config")
-		}
-
-		// Load global config
-		var globalResult *domain.ConfigResult
-		globalResult, err = c.projectManager.LoadGlobalConfig()
-		if err != nil {
-			return contextureerrors.Wrap(err, "load global config")
-		}
-		config = globalResult.Config
-		configPath = globalResult.Path
-	} else {
-		// Get current directory and load project configuration
+	if !isGlobal {
 		currentDir, err = os.Getwd()
 		if err != nil {
 			return contextureerrors.Wrap(err, "get current directory")
 		}
-
-		var configResult *domain.ConfigResult
-		configResult, err = c.projectManager.LoadConfigWithLocalRules(currentDir)
-		if err != nil {
-			return contextureerrors.Wrap(err, "load config")
-		}
-		config = configResult.Config
-		configPath = configResult.Path
 	}
 
 	// Load providers from config into registry

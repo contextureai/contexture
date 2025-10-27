@@ -137,8 +137,8 @@ func GetConfigPath(baseDir string, location ConfigLocation) string {
 type RuleSource string
 
 const (
-	// RuleSourceGlobal indicates the rule comes from global configuration
-	RuleSourceGlobal RuleSource = "global"
+	// RuleSourceUser indicates the rule comes from user-level (global) configuration
+	RuleSourceUser RuleSource = "user"
 	// RuleSourceProject indicates the rule comes from project configuration
 	RuleSourceProject RuleSource = "project"
 )

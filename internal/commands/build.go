@@ -63,7 +63,7 @@ func (c *BuildCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	// Separate user rules from project rules
 	var projectRules, userRules []domain.RuleRef
 	for _, rws := range merged.MergedRules {
-		if rws.Source == domain.RuleSourceGlobal {
+		if rws.Source == domain.RuleSourceUser {
 			userRules = append(userRules, rws.RuleRef)
 		} else {
 			projectRules = append(projectRules, rws.RuleRef)
