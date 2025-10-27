@@ -4,6 +4,8 @@ package rule
 import (
 	"context"
 	"reflect"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/contextureai/contexture/internal/domain"
@@ -218,4 +220,45 @@ func FilterNonDefaultVariables(variables, defaults map[string]any) map[string]an
 	}
 
 	return filtered
+}
+
+// SortRulesDeterministically sorts rules by their normalized ID for consistent output
+// This ensures that generated files have the same order every time, preventing
+// unnecessary git diffs when rules are added/removed.
+func SortRulesDeterministically(rules []*domain.Rule, parser IDParser) []*domain.Rule {
+	if len(rules) == 0 {
+		return rules
+	}
+
+	// Create a sorted copy
+	sorted := make([]*domain.Rule, len(rules))
+	copy(sorted, rules)
+
+	// Sort by normalized ID (case-insensitive, alphabetical)
+	// Use stable sort to preserve order for rules with same normalized ID
+	sort.SliceStable(sorted, func(i, j int) bool {
+		idI := normalizeRuleIDForSort(sorted[i].ID, parser)
+		idJ := normalizeRuleIDForSort(sorted[j].ID, parser)
+		return idI < idJ
+	})
+
+	return sorted
+}
+
+// normalizeRuleIDForSort extracts the path from a rule ID and normalizes it for sorting
+func normalizeRuleIDForSort(ruleID string, parser IDParser) string {
+	if parser == nil {
+		// Fallback: just use the ID lowercased
+		return strings.ToLower(ruleID)
+	}
+
+	// Parse the rule ID to extract the path
+	parsed, err := parser.ParseRuleID(ruleID)
+	if err != nil {
+		// If parsing fails, use the ID as-is (lowercased)
+		return strings.ToLower(ruleID)
+	}
+
+	// Use the rule path (normalized to lowercase for case-insensitive sorting)
+	return strings.ToLower(parsed.RulePath)
 }

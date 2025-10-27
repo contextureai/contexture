@@ -18,6 +18,7 @@ type Handler interface {
 	GetUIOption(selected bool) huh.Option[string]
 	GetDisplayName() string
 	GetDescription() string
+	GetCapabilities() domain.FormatCapabilities
 }
 
 // Registry manages available formats and their implementations
@@ -110,6 +111,16 @@ func (r *Registry) CreateFormat(
 func (r *Registry) GetHandler(formatType domain.FormatType) (Handler, bool) {
 	handler, exists := r.handlers[formatType]
 	return handler, exists
+}
+
+// GetCapabilities retrieves the capabilities for a specific format type.
+// Returns the capabilities and true if found, or empty capabilities and false if not registered.
+func (r *Registry) GetCapabilities(formatType domain.FormatType) (domain.FormatCapabilities, bool) {
+	handler, exists := r.handlers[formatType]
+	if !exists {
+		return domain.FormatCapabilities{}, false
+	}
+	return handler.GetCapabilities(), true
 }
 
 // IsSupported returns true if the format type is supported
