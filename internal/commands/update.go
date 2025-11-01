@@ -411,7 +411,23 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		RulesFailed:   rulesFailed,
 	}
 
-	return outputManager.WriteRulesUpdate(metadata)
+	err = outputManager.WriteRulesUpdate(metadata)
+	if err != nil {
+		return err
+	}
+
+	// Check for global rule updates when running in non-global mode
+	if !isGlobal && !isJSONMode {
+		if globalUpdates := c.checkGlobalUpdates(ctx); globalUpdates > 0 {
+			fmt.Println()
+			mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+			fmt.Printf("%s %s\n",
+				mutedStyle.Render("ⓘ"),
+				mutedStyle.Render(fmt.Sprintf("%d update(s) available for global rules. Update with: contexture rules update -g", globalUpdates)))
+		}
+	}
+
+	return nil
 }
 
 // checkForUpdatesWithProgress checks all rules for available updates with real-time progress display
@@ -892,6 +908,55 @@ func (c *UpdateCommand) formatRuleDisplay(result UpdateResult, status, statusTex
 	}
 
 	return mainLine
+}
+
+// checkGlobalUpdates checks if there are updates available for global rules
+// Returns the count of available updates, or 0 if no updates or no global config
+func (c *UpdateCommand) checkGlobalUpdates(ctx context.Context) int {
+	// Try to load global config
+	globalResult, err := c.projectManager.LoadGlobalConfig()
+	if err != nil || globalResult == nil || globalResult.Config == nil {
+		// No global config or error loading it
+		return 0
+	}
+
+	config := globalResult.Config
+
+	// Load providers from global config
+	if err := c.providerRegistry.LoadFromProject(config); err != nil {
+		log.Debug("Failed to load providers for global update check", "error", err)
+		return 0
+	}
+
+	const localSource = "local"
+
+	// Filter out local rules
+	var updatableRules []domain.RuleRef
+	for _, rule := range config.Rules {
+		if rule.Source != localSource {
+			updatableRules = append(updatableRules, rule)
+		}
+	}
+
+	if len(updatableRules) == 0 {
+		return 0
+	}
+
+	// Check for updates silently (no progress output)
+	updateCount := 0
+	for _, ruleRef := range updatableRules {
+		_, _, hasUpdate, err := c.checkRuleForUpdate(ctx, ruleRef, ruleRef.CommitHash)
+		if err != nil {
+			// Skip rules that error
+			continue
+		}
+
+		if hasUpdate {
+			updateCount++
+		}
+	}
+
+	return updateCount
 }
 
 // UpdateAction is the CLI action handler for the update command

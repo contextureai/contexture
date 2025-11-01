@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/contextureai/contexture/internal/dependencies"
@@ -11,6 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 )
+
+// globalCliMutex protects access to global cli variables during tests
+var globalCliMutex sync.Mutex
 
 // createTestDependencies creates test dependencies with a memory filesystem
 func createTestDependencies() *dependencies.Dependencies {
@@ -32,6 +36,9 @@ func runTestApp(app *cli.Command) error {
 	// Capture error from ExitErrHandler
 	var capturedErr error
 
+	// Protect access to global cli variables with mutex
+	globalCliMutex.Lock()
+
 	// Save original handlers
 	originalOsExiter := cli.OsExiter
 	originalExitErrHandler := app.ExitErrHandler
@@ -50,6 +57,7 @@ func runTestApp(app *cli.Command) error {
 	defer func() {
 		cli.OsExiter = originalOsExiter
 		app.ExitErrHandler = originalExitErrHandler
+		globalCliMutex.Unlock()
 	}()
 
 	// Run the app

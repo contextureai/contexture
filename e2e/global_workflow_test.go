@@ -137,13 +137,11 @@ func TestGlobalAndProjectRules(t *testing.T) {
 	result.ExpectSuccess(t).
 		ExpectStdout(t, globalRule)
 
-	// Build should include global rule
-	t.Log("Build should include global rule")
+	// Build should succeed with global rule
+	// Global rules go to ~/.claude/CLAUDE.md, not project CLAUDE.md
+	t.Log("Build should succeed with global rule")
 	result = project.Run(t, "build")
 	result.ExpectSuccess(t)
-
-	// Verify file exists
-	project.AssertFileExists(t, "CLAUDE.md")
 }
 
 // TestGlobalProvidersWorkflow tests adding providers to global config
@@ -216,9 +214,9 @@ func TestGlobalConfigWithVariables(t *testing.T) {
 	result.ExpectSuccess(t)
 
 	// Build should succeed with global variable
+	// Global rules go to ~/.claude/CLAUDE.md, not project CLAUDE.md
 	result = project.Run(t, "build")
 	result.ExpectSuccess(t)
-	project.AssertFileExists(t, "CLAUDE.md")
 
 	// Override in project with different variable
 	t.Log("Override with project rule using different variable")
@@ -226,12 +224,13 @@ func TestGlobalConfigWithVariables(t *testing.T) {
 	result.ExpectSuccess(t)
 
 	// Build should succeed with project variable override
+	// Now CLAUDE.md should exist because we added a project rule
 	result = project.Run(t, "build")
 	result.ExpectSuccess(t)
 	project.AssertFileExists(t, "CLAUDE.md")
 }
 
-// TestBuildCommandMergesGlobalAndProject tests that build merges configs correctly
+// TestBuildCommandMergesGlobalAndProject tests that build handles global rules correctly
 func TestBuildCommandMergesGlobalAndProject(t *testing.T) {
 	t.Parallel()
 	fs := afero.NewOsFs()
@@ -247,6 +246,8 @@ func TestBuildCommandMergesGlobalAndProject(t *testing.T) {
 	result := project.Run(t, "build")
 	result.ExpectSuccess(t)
 
-	// Verify file exists
-	project.AssertFileExists(t, "CLAUDE.md")
+	// Global rules should NOT appear in project CLAUDE.md
+	// They should only go to ~/.claude/CLAUDE.md
+	// Note: We can't easily test ~/.claude/CLAUDE.md in this test environment
+	// so we just verify the build succeeded without error
 }

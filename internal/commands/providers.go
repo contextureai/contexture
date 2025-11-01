@@ -28,10 +28,17 @@ func NewProvidersCommand(deps *dependencies.Dependencies) *ProvidersCommand {
 	}
 }
 
+// Provider source constants
+const (
+	providerSourceBuiltIn = "built-in"
+	providerSourceGlobal  = "global"
+	providerSourceProject = "project"
+)
+
 // ProviderWithSource tracks a provider's source
 type ProviderWithSource struct {
 	Provider domain.Provider
-	Source   string // "built-in", "global", "project"
+	Source   string // providerSourceBuiltIn, providerSourceGlobal, or providerSourceProject
 }
 
 // ListAction lists all available providers
@@ -58,7 +65,7 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 		for _, provider := range globalResult.Config.Providers {
 			providersWithSource = append(providersWithSource, ProviderWithSource{
 				Provider: provider,
-				Source:   "global",
+				Source:   providerSourceGlobal,
 			})
 			providerNames[provider.Name] = true
 		}
@@ -68,9 +75,9 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 	projectResult, err := c.projectManager.LoadConfig(currentDir)
 	if err == nil && projectResult != nil && projectResult.Config != nil {
 		for _, provider := range projectResult.Config.Providers {
-			source := "project"
+			source := providerSourceProject
 			if providerNames[provider.Name] {
-				source = "project (overrides global)"
+				source = providerSourceProject + " (overrides global)"
 			}
 			providersWithSource = append(providersWithSource, ProviderWithSource{
 				Provider: provider,
@@ -88,7 +95,7 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 			providersWithSource = append([]ProviderWithSource{
 				{
 					Provider: *defaultProvider,
-					Source:   "built-in",
+					Source:   providerSourceBuiltIn,
 				},
 			}, providersWithSource...)
 		}
@@ -333,7 +340,7 @@ func (c *ProvidersCommand) ShowAction(_ context.Context, _ *cli.Command, deps *d
 		// Check if provider exists in project config
 		projectProvider := configResult.Config.GetProviderByName(name)
 		if projectProvider != nil {
-			providerSource = "project"
+			providerSource = providerSourceProject
 		}
 
 		if err := deps.ProviderRegistry.LoadFromProject(configResult.Config); err != nil {
@@ -350,11 +357,11 @@ func (c *ProvidersCommand) ShowAction(_ context.Context, _ *cli.Command, deps *d
 	// Determine source if not already set
 	if providerSource == "" {
 		if provider.Name == domain.DefaultProviderName {
-			providerSource = "built-in"
+			providerSource = providerSourceBuiltIn
 		} else if globalResult != nil && globalResult.Config != nil {
 			globalProvider := globalResult.Config.GetProviderByName(name)
 			if globalProvider != nil {
-				providerSource = "global"
+				providerSource = providerSourceGlobal
 			}
 		}
 	}

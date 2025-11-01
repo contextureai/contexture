@@ -474,6 +474,13 @@ func (m *Manager) DiscoverLocalRules(configResult *domain.ConfigResult) ([]domai
 		// Remove .md extension to get rule ID
 		ruleID := strings.TrimSuffix(relPath, domain.MarkdownExt)
 
+		// For global local rules, use absolute path so the fetcher can find them
+		// For project local rules, use relative path
+		if configResult.Location == domain.ConfigLocationGlobal {
+			// Use absolute path for global local rules
+			ruleID = strings.TrimSuffix(path, domain.MarkdownExt)
+		}
+
 		// Create RuleRef for local rule
 		localRule := domain.RuleRef{
 			ID:     ruleID,
@@ -731,9 +738,15 @@ func (c *ConfigCleaner) CleanProject(config *domain.Project) *domain.Project {
 			Enabled: format.Enabled, // Always include enabled for clarity
 		}
 
-		// Only include BaseDir if it's not empty
+		// Preserve optional fields if set
 		if format.BaseDir != "" {
 			cleanFormat.BaseDir = format.BaseDir
+		}
+		if format.Template != "" {
+			cleanFormat.Template = format.Template
+		}
+		if format.UserRulesMode != "" {
+			cleanFormat.UserRulesMode = format.UserRulesMode
 		}
 
 		cleanConfig.Formats[i] = cleanFormat
@@ -866,6 +879,45 @@ func (m *Manager) LoadGlobalConfig() (*domain.ConfigResult, error) {
 	}, nil
 }
 
+// LoadGlobalConfigWithLocalRules loads global configuration and automatically includes local rules
+func (m *Manager) LoadGlobalConfigWithLocalRules() (*domain.ConfigResult, error) {
+	// Load the base global configuration
+	configResult, err := m.LoadGlobalConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// If no global config exists, return empty result (global config is optional)
+	if configResult.Config == nil {
+		return configResult, nil
+	}
+
+	// Discover local rules in ~/.contexture/rules/
+	localRules, err := m.DiscoverLocalRules(configResult)
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "discover global local rules")
+	}
+
+	// If we have local rules, merge them with existing rules
+	if len(localRules) > 0 {
+		// Create a copy of the config to avoid modifying the original
+		config := *configResult.Config
+		config.Rules = make([]domain.RuleRef, len(configResult.Config.Rules)+len(localRules))
+
+		// Copy existing rules first
+		copy(config.Rules, configResult.Config.Rules)
+
+		// Add local rules
+		copy(config.Rules[len(configResult.Config.Rules):], localRules)
+
+		// Update the config result
+		configResult.Config = &config
+		log.Debug("Merged global local rules with config", "totalRules", len(config.Rules), "localRules", len(localRules))
+	}
+
+	return configResult, nil
+}
+
 // SaveGlobalConfig saves the global configuration
 func (m *Manager) SaveGlobalConfig(config *domain.Project) error {
 	if config == nil {
@@ -961,10 +1013,10 @@ func (m *Manager) LoadConfigMerged(basePath string) (*domain.MergedConfig, error
 
 // LoadConfigMergedWithLocalRules loads both global and project configs, merges them, and includes local rules
 func (m *Manager) LoadConfigMergedWithLocalRules(basePath string) (*domain.MergedConfig, error) {
-	// Load global config (optional)
-	globalResult, err := m.LoadGlobalConfig()
+	// Load global config with local rules (optional)
+	globalResult, err := m.LoadGlobalConfigWithLocalRules()
 	if err != nil {
-		return nil, contextureerrors.Wrap(err, "load global config")
+		return nil, contextureerrors.Wrap(err, "load global config with local rules")
 	}
 
 	// Load project config with local rules (required)
@@ -1060,6 +1112,30 @@ func (m *Manager) normalizeRuleID(ruleID string) string {
 		// Fallback to the ID itself
 		return strings.ToLower(ruleID)
 	}
+
+	// For local rules with absolute paths, extract the relative portion
+	// This ensures that global local rules and project local rules with the same
+	// relative path are considered duplicates for override detection
+	if filepath.IsAbs(path) {
+		// Find the rules directory by looking for .contexture/rules or just /rules/
+		switch {
+		case strings.Contains(path, filepath.Join(domain.ContextureDir, domain.LocalRulesDir)):
+			// Path contains .contexture/rules
+			idx := strings.Index(path, filepath.Join(domain.ContextureDir, domain.LocalRulesDir))
+			rulesDir := path[:idx+len(filepath.Join(domain.ContextureDir, domain.LocalRulesDir))]
+			if rel, err := filepath.Rel(rulesDir, path); err == nil {
+				path = rel
+			}
+		case strings.Contains(path, string(filepath.Separator)+domain.LocalRulesDir+string(filepath.Separator)):
+			// Path contains /rules/
+			idx := strings.Index(path, string(filepath.Separator)+domain.LocalRulesDir+string(filepath.Separator))
+			rulesDir := path[:idx+len(string(filepath.Separator)+domain.LocalRulesDir)]
+			if rel, err := filepath.Rel(rulesDir, path); err == nil {
+				path = rel
+			}
+		}
+	}
+
 	return strings.ToLower(path)
 }
 

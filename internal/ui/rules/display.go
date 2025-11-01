@@ -191,23 +191,27 @@ func DisplayRuleList(rules []*domain.Rule, options DisplayOptions) error {
 			fmt.Println() // Empty line between rules
 		}
 
-		// 1. Rule path (no emojis) - extract just the path for custom rules
+		// 1. Rule path with source tag on same line
 		rulePath := extractSimpleRulePath(rule.ID)
 		if rulePath == "" {
 			rulePath = rule.ID
 		}
-		fmt.Println(styles.rulePath.Render(rulePath))
 
-		// 2. Title on next line with indentation
-		fmt.Println(styles.ruleTitle.Render(rule.Title))
+		// Print rule path with bold styling
+		fmt.Print(styles.rulePath.Render(rulePath))
 
-		// 3. Source on third line (only if non-default)
+		// Append source tag on same line with muted styling (not bold)
 		if options.ShowSource {
 			source := formatSourceForDisplay(rule)
 			if source != "" {
-				fmt.Println(styles.ruleSource.Render(source))
+				fmt.Print(" " + styles.muted.Render(source))
 			}
 		}
+
+		fmt.Println() // End the line
+
+		// 2. Title on next line with indentation
+		fmt.Println(styles.ruleTitle.Render(rule.Title))
 
 		// Optional: Additional metadata on following lines
 		var metadataLines []string
@@ -252,6 +256,18 @@ func extractSimpleRulePath(ruleID string) string {
 
 // formatSourceForDisplay formats the source information for display
 func formatSourceForDisplay(rule *domain.Rule) string {
+	// Check for user/project scope tags first
+	if rule.Source == "user" {
+		return "[global]"
+	}
+	if rule.Source == "project" || strings.HasPrefix(rule.Source, "project ") {
+		// Handle both "project" and "project (overrides global)"
+		if strings.Contains(rule.Source, "overrides global") {
+			return "[project] (overrides global)"
+		}
+		return "[project]"
+	}
+
 	// Don't show source for default repository
 	if rule.Source == "" || rule.Source == domain.DefaultRepository {
 		return ""

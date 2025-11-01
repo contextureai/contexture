@@ -90,13 +90,26 @@ func (s *Strategy) GetMetadata() *domain.FormatMetadata {
 
 // WriteFiles handles writing rules for Claude format (single file or custom template)
 func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.FormatConfig) error {
+	outputPath := s.GetOutputPath(config)
+
+	// When no rules, delete the output file if it exists
 	if len(rules) == 0 {
-		s.bf.LogDebug("No rules to write for Claude format")
+		s.bf.LogDebug("No rules to write for Claude format, deleting output file")
+		exists, err := s.bf.FileExists(outputPath)
+		if err != nil {
+			s.bf.LogDebug("Failed to check if file exists", "path", outputPath, "error", err)
+			return nil
+		}
+		if exists {
+			if err := s.bf.RemoveFile(outputPath); err != nil {
+				return contextureerrors.WithOpf("delete output file", "failed to delete %s: %w", outputPath, err)
+			}
+			s.bf.LogInfo("Deleted Claude format file", "path", outputPath)
+		}
 		return nil
 	}
 
 	s.bf.LogDebug("Writing Claude format file", "rules", len(rules))
-	outputPath := s.GetOutputPath(config)
 
 	// Check if a custom template is specified
 	if config != nil && config.Template != "" {

@@ -77,14 +77,37 @@ func (s *Strategy) GetMetadata() *domain.FormatMetadata {
 
 // WriteFiles handles writing rules for Cursor format (multi-file)
 func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.FormatConfig) error {
+	outputDir := s.GetOutputPath(config)
+
+	// When no rules, delete all files in the output directory
 	if len(rules) == 0 {
-		s.bf.LogDebug("No rules to write for Cursor format")
+		s.bf.LogDebug("No rules to write for Cursor format, deleting output directory")
+		exists, err := s.bf.DirExists(outputDir)
+		if err != nil {
+			s.bf.LogDebug("Failed to check if directory exists", "path", outputDir, "error", err)
+			return nil
+		}
+		if exists {
+			// Remove the entire rules directory
+			if err := s.bf.RemoveDirectory(outputDir); err != nil {
+				return contextureerrors.WithOpf("delete output directory", "failed to delete %s: %w", outputDir, err)
+			}
+			s.bf.LogInfo("Deleted Cursor format directory", "path", outputDir)
+
+			// Also clean up parent .cursor directory if it's now empty
+			if config != nil {
+				baseDir := config.BaseDir
+				if baseDir == "" {
+					baseDir = "."
+				}
+				parentDir := filepath.Join(baseDir, ".cursor")
+				s.bf.CleanupEmptyDirectory(parentDir)
+			}
+		}
 		return nil
 	}
 
 	s.bf.LogDebug("Writing Cursor format files", "rules", len(rules))
-
-	outputDir := s.GetOutputPath(config)
 
 	// Ensure output directory exists
 	if err := s.bf.EnsureDirectory(outputDir); err != nil {

@@ -274,6 +274,11 @@ This will fetch all rules, process templates, and write format-specific files.`,
 				Name:  "formats",
 				Usage: "Build for specific formats only (claude, cursor, windsurf)",
 			},
+			&cli.BoolFlag{
+				Name:    "force",
+				Aliases: []string{"f"},
+				Usage:   "Skip confirmation prompt when deleting files",
+			},
 		},
 		Action: a.actions.BuildAction,
 	}
