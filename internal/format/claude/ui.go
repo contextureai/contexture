@@ -2,7 +2,11 @@
 package claude
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/charmbracelet/huh"
+	"github.com/contextureai/contexture/internal/domain"
 )
 
 // Handler implements the format.Handler interface for Claude format
@@ -21,4 +25,17 @@ func (h *Handler) GetDisplayName() string {
 // GetDescription returns the description for Claude format
 func (h *Handler) GetDescription() string {
 	return "Single file output for Claude AI assistant"
+}
+
+// GetCapabilities returns the capabilities for Claude format
+func (h *Handler) GetCapabilities() domain.FormatCapabilities {
+	homeDir, _ := os.UserHomeDir()
+	userRulesPath := filepath.Join(homeDir, ".claude", "CLAUDE.md")
+
+	return domain.FormatCapabilities{
+		SupportsUserRules:    true,
+		UserRulesPath:        userRulesPath,
+		DefaultUserRulesMode: domain.UserRulesNative,
+		MaxRuleSize:          0, // No specific limit for Claude
+	}
 }

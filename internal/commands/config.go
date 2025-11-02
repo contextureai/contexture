@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/contextureai/contexture/internal/dependencies"
+	"github.com/contextureai/contexture/internal/domain"
 	contextureerrors "github.com/contextureai/contexture/internal/errors"
 	"github.com/contextureai/contexture/internal/format"
 	"github.com/contextureai/contexture/internal/project"
@@ -42,7 +43,22 @@ func NewMainConfigCommand(deps *dependencies.Dependencies) *MainConfigCommand {
 }
 
 // Execute runs the main config command (shows project configuration)
-func (c *MainConfigCommand) Execute(_ context.Context, _ *cli.Command) error {
+func (c *MainConfigCommand) Execute(_ context.Context, cmd *cli.Command) error {
+	isGlobal := cmd.Bool("global")
+
+	if isGlobal {
+		// Load and display global configuration
+		globalResult, err := c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			fmt.Println("No global configuration found")
+			fmt.Println("Create global rules with: contexture rules add -g <rule-id>")
+			return err
+		}
+
+		c.displayGlobalConfiguration(globalResult.Config, globalResult.Path)
+		return nil
+	}
+
 	// Get current directory and load configuration
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -183,6 +199,68 @@ func (c *MainConfigCommand) Execute(_ context.Context, _ *cli.Command) error {
 		"cache_dir", cacheDir)
 
 	return nil
+}
+
+// displayGlobalConfiguration displays the global configuration
+func (c *MainConfigCommand) displayGlobalConfiguration(config interface{}, configPath string) {
+	// Import needed for type assertion
+	projectConfig, ok := config.(*domain.Project)
+	if !ok {
+		fmt.Println("Error: invalid configuration type")
+		return
+	}
+
+	theme := ui.DefaultTheme()
+
+	// Style definitions
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(theme.Primary).
+		MarginTop(1)
+
+	darkMutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	pathStyle := lipgloss.NewStyle().Foreground(theme.Muted).Italic(true)
+
+	// Display global configuration header
+	fmt.Println(ui.CommandHeader("global configuration"))
+	fmt.Printf("  %s %s\n\n", darkMutedStyle.Render("path:"), pathStyle.Render(configPath))
+
+	// Display providers
+	if len(projectConfig.Providers) > 0 {
+		fmt.Println(sectionStyle.Render("Providers"))
+		for _, provider := range projectConfig.Providers {
+			fmt.Printf("  %s @%s\n", darkMutedStyle.Render("•"), provider.Name)
+			fmt.Printf("    %s %s\n", darkMutedStyle.Render("url:"), provider.URL)
+		}
+		fmt.Println()
+	}
+
+	// Display rules
+	if len(projectConfig.Rules) > 0 {
+		fmt.Println(sectionStyle.Render("Rules"))
+		for _, rule := range projectConfig.Rules {
+			fmt.Printf("  %s %s\n", darkMutedStyle.Render("•"), rule.ID)
+		}
+		fmt.Println()
+	}
+
+	// Display formats if configured
+	if len(projectConfig.Formats) > 0 {
+		fmt.Println(sectionStyle.Render("Formats"))
+		for _, formatConfig := range projectConfig.Formats {
+			status := "enabled"
+			if !formatConfig.Enabled {
+				status = "disabled"
+			}
+			fmt.Printf("  %s %s [%s]\n", darkMutedStyle.Render("•"), formatConfig.Type, status)
+		}
+		fmt.Println()
+	}
+
+	if len(projectConfig.Providers) == 0 && len(projectConfig.Rules) == 0 && len(projectConfig.Formats) == 0 {
+		fmt.Println("No global configuration set")
+		fmt.Println("Add global rules with: contexture rules add -g <rule-id>")
+	}
 }
 
 // ConfigAction is the CLI action handler for the main config command

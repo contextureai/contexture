@@ -118,16 +118,37 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 	dryRun := cmd.Bool("dry-run")
 	skipConfirmation := cmd.Bool("yes")
+	isGlobal := cmd.Bool("global")
 
-	// Load configuration using shared utility
-	configLoad, err := LoadProjectConfig(c.projectManager)
-	if err != nil {
-		return err
+	// Load configuration based on global flag
+	var config *domain.Project
+	var configPath string
+	var currentDir string
+	var err error
+
+	if isGlobal {
+		// Load global configuration
+		globalResult, err := c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "load global configuration")
+		}
+		if globalResult == nil || globalResult.Config == nil {
+			return contextureerrors.ValidationErrorf("global config", "global configuration not found - initialize with: contexture rules add -g <rule-id>")
+		}
+		config = globalResult.Config
+		configPath = globalResult.Path
+	} else {
+		// Load project configuration using shared utility
+		configLoadResult, err := LoadProjectConfig(c.projectManager)
+		if err != nil {
+			return err
+		}
+		config = configLoadResult.Config
+		configPath = configLoadResult.ConfigPath
+		currentDir = configLoadResult.CurrentDir
 	}
 
-	config := configLoad.Config
-
-	// Load providers from project config into registry
+	// Load providers from config into registry
 	if err := c.providerRegistry.LoadFromProject(config); err != nil {
 		return contextureerrors.Wrap(err, "load providers")
 	}
@@ -347,7 +368,13 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Apply updates
-	err = c.applyUpdates(ctx, updateResults, configLoad)
+	// Reconstruct ConfigLoadResult for applyUpdates
+	configLoadResult := &ConfigLoadResult{
+		Config:     config,
+		ConfigPath: configPath,
+		CurrentDir: currentDir,
+	}
+	err = c.applyUpdates(ctx, updateResults, configLoadResult, isGlobal)
 	if err != nil {
 		return err
 	}
@@ -384,7 +411,23 @@ func (c *UpdateCommand) Execute(ctx context.Context, cmd *cli.Command) error {
 		RulesFailed:   rulesFailed,
 	}
 
-	return outputManager.WriteRulesUpdate(metadata)
+	err = outputManager.WriteRulesUpdate(metadata)
+	if err != nil {
+		return err
+	}
+
+	// Check for global rule updates when running in non-global mode
+	if !isGlobal && !isJSONMode {
+		if globalUpdates := c.checkGlobalUpdates(ctx); globalUpdates > 0 {
+			fmt.Println()
+			mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+			fmt.Printf("%s %s\n",
+				mutedStyle.Render("ⓘ"),
+				mutedStyle.Render(fmt.Sprintf("%d update(s) available for global rules. Update with: contexture rules update -g", globalUpdates)))
+		}
+	}
+
+	return nil
 }
 
 // checkForUpdatesWithProgress checks all rules for available updates with real-time progress display
@@ -640,6 +683,7 @@ func (c *UpdateCommand) applyUpdates(
 	ctx context.Context,
 	results []UpdateResult,
 	configLoad *ConfigLoadResult,
+	isGlobal bool,
 ) error {
 	config := configLoad.Config
 	theme := ui.DefaultTheme()
@@ -724,9 +768,16 @@ func (c *UpdateCommand) applyUpdates(
 		updatedCount++
 	}
 
-	// Save configuration using shared utility
-	if err := configLoad.SaveConfig(c.projectManager); err != nil {
-		return contextureerrors.Wrap(err, "save configuration")
+	// Save configuration based on global flag
+	if isGlobal {
+		if err := c.projectManager.SaveGlobalConfig(config); err != nil {
+			return contextureerrors.Wrap(err, "save global configuration")
+		}
+	} else {
+		// Save using shared utility for project config
+		if err := configLoad.SaveConfig(c.projectManager); err != nil {
+			return contextureerrors.Wrap(err, "save configuration")
+		}
 	}
 
 	// Display final results
@@ -857,6 +908,55 @@ func (c *UpdateCommand) formatRuleDisplay(result UpdateResult, status, statusTex
 	}
 
 	return mainLine
+}
+
+// checkGlobalUpdates checks if there are updates available for global rules
+// Returns the count of available updates, or 0 if no updates or no global config
+func (c *UpdateCommand) checkGlobalUpdates(ctx context.Context) int {
+	// Try to load global config
+	globalResult, err := c.projectManager.LoadGlobalConfig()
+	if err != nil || globalResult == nil || globalResult.Config == nil {
+		// No global config or error loading it
+		return 0
+	}
+
+	config := globalResult.Config
+
+	// Load providers from global config
+	if err := c.providerRegistry.LoadFromProject(config); err != nil {
+		log.Debug("Failed to load providers for global update check", "error", err)
+		return 0
+	}
+
+	const localSource = "local"
+
+	// Filter out local rules
+	var updatableRules []domain.RuleRef
+	for _, rule := range config.Rules {
+		if rule.Source != localSource {
+			updatableRules = append(updatableRules, rule)
+		}
+	}
+
+	if len(updatableRules) == 0 {
+		return 0
+	}
+
+	// Check for updates silently (no progress output)
+	updateCount := 0
+	for _, ruleRef := range updatableRules {
+		_, _, hasUpdate, err := c.checkRuleForUpdate(ctx, ruleRef, ruleRef.CommitHash)
+		if err != nil {
+			// Skip rules that error
+			continue
+		}
+
+		if hasUpdate {
+			updateCount++
+		}
+	}
+
+	return updateCount
 }
 
 // UpdateAction is the CLI action handler for the update command

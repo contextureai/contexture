@@ -197,6 +197,11 @@ Examples:
   contexture rules add @contexture/go/testing --ref v1.2.0`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Add rule to global configuration (~/.contexture)",
+			},
 			&cli.StringFlag{
 				Name:  "data",
 				Usage: "Additional rule data or variables (JSON format)",
@@ -236,6 +241,11 @@ This will update the configuration and clean generated files.
 Rule IDs are required as arguments.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Remove rule from global configuration",
+			},
 			&cli.StringFlag{
 				Name:    "output",
 				Aliases: []string{"o"},
@@ -263,6 +273,11 @@ This will fetch all rules, process templates, and write format-specific files.`,
 			&cli.StringSliceFlag{
 				Name:  "formats",
 				Usage: "Build for specific formats only (claude, cursor, windsurf)",
+			},
+			&cli.BoolFlag{
+				Name:    "force",
+				Aliases: []string{"f"},
+				Usage:   "Skip confirmation prompt when deleting files",
 			},
 		},
 		Action: a.actions.BuildAction,
@@ -376,6 +391,11 @@ This will check for updates and optionally apply them.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Update global rule configuration",
+			},
+			&cli.BoolFlag{
 				Name:  "dry-run",
 				Usage: "Check for updates without applying them",
 			},
@@ -412,6 +432,11 @@ Examples:
   contexture rules new path/to/custom-rule --description "Custom rule description"`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Create rule in global rules directory (~/.contexture/rules)",
+			},
 			&cli.StringFlag{
 				Name:    "name",
 				Aliases: []string{"n"},
@@ -440,8 +465,14 @@ func (a *Application) buildConfigCommand() *cli.Command {
 
 Use subcommands to manage specific aspects of your configuration.`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
-		Flags:              []cli.Flag{},
-		Action:             a.actions.ConfigAction,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "View or modify global configuration (~/.contexture)",
+			},
+		},
+		Action: a.actions.ConfigAction,
 		Commands: []*cli.Command{
 			a.buildConfigShowCommand(),
 			a.buildConfigFormatsCommand(),
@@ -619,6 +650,13 @@ Examples:
   contexture providers add mycompany https://github.com/mycompany/rules.git
   contexture providers add team-security git@github.com:team/security-rules.git`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Add provider to global configuration",
+			},
+		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return a.actions.ProvidersAddAction(ctx, cmd, a.deps)
 		},
@@ -638,6 +676,13 @@ Note: You cannot remove the default @contexture provider.
 Examples:
   contexture providers remove mycompany`,
 		CustomHelpTemplate: helpCLI.CommandHelpTemplate,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Remove provider from global configuration",
+			},
+		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return a.actions.ProvidersRemoveAction(ctx, cmd, a.deps)
 		},

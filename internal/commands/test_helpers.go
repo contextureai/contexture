@@ -3,6 +3,8 @@ package commands
 
 import (
 	"context"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/contextureai/contexture/internal/dependencies"
@@ -10,6 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 )
+
+// globalCliMutex protects access to global cli variables during tests
+var globalCliMutex sync.Mutex
 
 // createTestDependencies creates test dependencies with a memory filesystem
 func createTestDependencies() *dependencies.Dependencies {
@@ -31,6 +36,9 @@ func runTestApp(app *cli.Command) error {
 	// Capture error from ExitErrHandler
 	var capturedErr error
 
+	// Protect access to global cli variables with mutex
+	globalCliMutex.Lock()
+
 	// Save original handlers
 	originalOsExiter := cli.OsExiter
 	originalExitErrHandler := app.ExitErrHandler
@@ -49,6 +57,7 @@ func runTestApp(app *cli.Command) error {
 	defer func() {
 		cli.OsExiter = originalOsExiter
 		app.ExitErrHandler = originalExitErrHandler
+		globalCliMutex.Unlock()
 	}()
 
 	// Run the app
@@ -63,8 +72,13 @@ func runTestApp(app *cli.Command) error {
 // assertNoProjectConfigError asserts that the error indicates no project configuration
 func assertNoProjectConfigError(t *testing.T, err error) {
 	require.Error(t, err)
-	// Error message format: "load project configuration: config locate failed for <path>: no configuration file found"
-	assert.Contains(t, err.Error(), "load project configuration")
+	// Error message format can be either:
+	// "load project configuration: ..." (old format)
+	// "load configuration: load project config: ..." (new format with merged config)
+	assert.True(t,
+		strings.Contains(err.Error(), "load project configuration") ||
+			strings.Contains(err.Error(), "load configuration"),
+		"Error should mention configuration loading: %s", err.Error())
 	assert.Contains(t, err.Error(), "no configuration file found")
 }
 

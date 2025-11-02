@@ -97,10 +97,26 @@ generation: [build settings]
 
 ## Testing
 
+Before making changes, use Contexture's built-in query commands to understand the testing strategy:
+
+```bash
+# Ask how to test your specific change
+contexture query "how should I test changes to the config loading logic?"
+
+# Get help on testing commands
+contexture --help
+make --help
+
+# View existing test patterns
+contexture query "show me examples of unit tests in this codebase"
+```
+
 - **Unit**: `make test` - All `*_test.go` files
 - **Integration**: Git operations with real repositories
 - **E2E**: Full CLI workflow testing with fixtures
 - **Coverage**: Generates `coverage.out` for analysis
+
+**Always verify your changes work** by running the appropriate test suite before committing.
 
 ## Dependencies
 
@@ -119,20 +135,6 @@ Custom error types in `internal/errors` with display formatting and exit codes.
 Go 1.25+ required. Binary name: `contexture`. CI runs on Ubuntu with matrix builds for linux/windows/darwin on amd64/arm64.
 
 # Rules
-
-# Thought Process
-
-Thought process when working on the project
-
-**Applies:** Always active
-
-
-**Tags:** process
-Think carefully and only action the specific task that I have given you, with the most concise and elegant solution that changes as little code as possible.
-
-<!-- id: [contexture(local):think] -->
-
----
 
 # Preferred Tools
 
@@ -155,3 +157,17 @@ If you need to select from multiple results, pipe to 'fzf'
 Do you need to interact with JSON? use 'jq' -- or 'yq' for YAML
 
 <!-- id: [contexture(local):tools] -->
+
+---
+
+# Thought Process
+
+Thought process when working on the project
+
+**Applies:** Always active
+
+
+**Tags:** process
+Think carefully and only action the specific task that I have given you, with the most concise and elegant solution that changes as little code as possible.
+
+<!-- id: [contexture(local):think] -->

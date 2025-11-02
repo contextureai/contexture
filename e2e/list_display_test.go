@@ -80,9 +80,10 @@ func TestListCommand_OutputFormat(t *testing.T) {
 	lines := strings.Split(result.Stdout, "\n")
 
 	// Find the rule path line and verify formatting
+	// Note: The line now includes the scope tag, e.g. "languages/go/testing [project]"
 	rulePathLineIndex := -1
 	for i, line := range lines {
-		if strings.TrimSpace(line) == "languages/go/testing" {
+		if strings.Contains(strings.TrimSpace(line), "languages/go/testing") {
 			rulePathLineIndex = i
 			break
 		}

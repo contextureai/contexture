@@ -23,6 +23,12 @@ The `providers add` command adds a new custom provider to your `.contexture.yaml
 
 Provider names should be unique and cannot conflict with the default `contexture` provider name.
 
+## Flags
+
+| Flag          | Shorthand | Description                                                |
+| :------------ | :-------- | :--------------------------------------------------------- |
+| `--global`    | `-g`      | Add provider to global configuration (`~/.contexture/.contexture.yaml`) instead of project configuration. |
+
 ## Usage
 
 ### Add a Provider with HTTPS URL

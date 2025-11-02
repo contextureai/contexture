@@ -119,14 +119,10 @@ func (cf *CommonFormat) Validate(rule *domain.Rule) (*domain.ValidationResult, e
 
 // Write outputs transformed rules using format-specific write strategy
 func (cf *CommonFormat) Write(rules []*domain.TransformedRule, config *domain.FormatConfig) error {
-	if len(rules) == 0 {
-		cf.LogDebug("No rules to write")
-		return nil
-	}
-
 	cf.LogDebug("Writing rules", "count", len(rules))
 
 	// Delegate to format-specific write implementation
+	// Format handlers handle 0 rules by deleting output files
 	return cf.strategy.WriteFiles(rules, config)
 }
 

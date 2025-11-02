@@ -348,6 +348,15 @@ func (m *TestMockHandler) GetDescription() string {
 	return "Mock format for testing"
 }
 
+func (m *TestMockHandler) GetCapabilities() domain.FormatCapabilities {
+	return domain.FormatCapabilities{
+		SupportsUserRules:    false,
+		UserRulesPath:        "",
+		DefaultUserRulesMode: domain.UserRulesProject,
+		MaxRuleSize:          0,
+	}
+}
+
 type MockBuilder struct{}
 
 func (m *MockBuilder) Build(

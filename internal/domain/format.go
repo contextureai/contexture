@@ -20,6 +20,23 @@ const (
 	FormatWindsurf FormatType = "windsurf"
 )
 
+// UserRulesOutputMode defines how user/global rules are handled for a format
+type UserRulesOutputMode string
+
+const (
+	// UserRulesNative outputs user rules to IDE's native user rules location
+	// (e.g., ~/.windsurf/global_rules.md, ~/.claude/CLAUDE.md)
+	UserRulesNative UserRulesOutputMode = "native"
+
+	// UserRulesProject injects user rules into project files
+	// (backward compatible for IDEs without native user rules support)
+	UserRulesProject UserRulesOutputMode = "project"
+
+	// UserRulesDisabled doesn't output user rules at all
+	// (useful for team projects where user rules shouldn't affect project files)
+	UserRulesDisabled UserRulesOutputMode = "disabled"
+)
+
 // String returns the string representation of the format type
 func (ft FormatType) String() string {
 	return string(ft)
@@ -27,10 +44,12 @@ func (ft FormatType) String() string {
 
 // FormatConfig represents the core format configuration
 type FormatConfig struct {
-	Type     FormatType `yaml:"type"     json:"type"     validate:"required,oneof=claude cursor windsurf"`
-	Enabled  bool       `yaml:"enabled"  json:"enabled"`
-	Template string     `yaml:"template,omitempty" json:"template,omitempty"` // Optional template file path
-	BaseDir  string     `yaml:"-"        json:"-"`                            // Runtime option, not serialized
+	Type          FormatType          `yaml:"type"                    json:"type"                    validate:"required,oneof=claude cursor windsurf"`
+	Enabled       bool                `yaml:"enabled"                 json:"enabled"`
+	Template      string              `yaml:"template,omitempty"      json:"template,omitempty"`      // Optional template file path
+	UserRulesMode UserRulesOutputMode `yaml:"userRulesMode,omitempty" json:"userRulesMode,omitempty"` // How to handle user/global rules
+	BaseDir       string              `yaml:"-"                       json:"-"`                       // Runtime option, not serialized
+	IsUserRules   bool                `yaml:"-"                       json:"-"`                       // Runtime flag: true when generating user rules to native location
 }
 
 // FormatSpecificRule represents a rule with format-specific configuration
@@ -193,4 +212,89 @@ func (tr *TransformedRule) GetAbsolutePath(baseDir string) string {
 		return baseDir + "/" + tr.Filename
 	}
 	return baseDir + "/" + tr.RelativePath
+}
+
+// FormatCapabilities describes what a format supports
+type FormatCapabilities struct {
+	// SupportsUserRules indicates if the IDE has native user-level rules support
+	SupportsUserRules bool
+
+	// UserRulesPath is the path where the IDE expects user rules (e.g., "~/.windsurf/global_rules.md")
+	// Empty if SupportsUserRules is false
+	UserRulesPath string
+
+	// DefaultUserRulesMode is the default mode for handling user rules
+	DefaultUserRulesMode UserRulesOutputMode
+
+	// MaxRuleSize is the maximum size in characters for a single rule file (0 = unlimited)
+	MaxRuleSize int
+}
+
+// GetEffectiveUserRulesMode returns the effective user rules mode for this format
+// If UserRulesMode is not set (empty), returns the default for this format type
+func (fc *FormatConfig) GetEffectiveUserRulesMode() UserRulesOutputMode {
+	// If explicitly set, use that value
+	if fc.UserRulesMode != "" {
+		return fc.UserRulesMode
+	}
+
+	// Return default based on format type
+	switch fc.Type {
+	case FormatWindsurf:
+		return UserRulesNative // Windsurf supports ~/.windsurf/global_rules.md
+	case FormatClaude:
+		return UserRulesNative // Claude supports ~/.claude/CLAUDE.md
+	case FormatCursor:
+		return UserRulesProject // Cursor doesn't support user rules, default to including them
+	default:
+		return UserRulesProject // Unknown formats default to project injection
+	}
+}
+
+// ShouldOmitUserRulesMode returns true if this field should be omitted from config YAML
+// (i.e., if it's empty OR set to the default value for this format type)
+func (fc *FormatConfig) ShouldOmitUserRulesMode() bool {
+	// If empty, omit (will use default)
+	if fc.UserRulesMode == "" {
+		return true
+	}
+
+	// Get the default for this format type
+	var defaultMode UserRulesOutputMode
+	switch fc.Type {
+	case FormatWindsurf:
+		defaultMode = UserRulesNative
+	case FormatClaude:
+		defaultMode = UserRulesNative
+	case FormatCursor:
+		defaultMode = UserRulesProject
+	default:
+		defaultMode = UserRulesProject
+	}
+
+	// If set to default for this type, omit
+	return fc.UserRulesMode == defaultMode
+}
+
+// MarshalYAML implements custom YAML marshalling to omit userRulesMode when set to default
+func (fc FormatConfig) MarshalYAML() (interface{}, error) {
+	// Create anonymous struct with pointer field for omitempty to work correctly
+	obj := &struct {
+		Type          FormatType           `yaml:"type"`
+		Enabled       bool                 `yaml:"enabled"`
+		Template      string               `yaml:"template,omitempty"`
+		UserRulesMode *UserRulesOutputMode `yaml:"userRulesMode,omitempty"`
+	}{
+		Type:     fc.Type,
+		Enabled:  fc.Enabled,
+		Template: fc.Template,
+	}
+
+	// Only include UserRulesMode if it's not the default
+	if !fc.ShouldOmitUserRulesMode() {
+		mode := fc.UserRulesMode
+		obj.UserRulesMode = &mode
+	}
+
+	return obj, nil
 }

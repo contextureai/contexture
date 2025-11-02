@@ -191,6 +191,9 @@ func NewTestProject(t *testing.T, fs afero.Fs, binaryPath string) *TestProject {
 	// Use t.TempDir() for parallel-safe temporary directories
 	testDir := t.TempDir()
 
+	// Create a unique HOME directory for this test to avoid conflicts with global config
+	tmpHome := t.TempDir()
+
 	// Get the project root directory (where the binary should be)
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -210,10 +213,16 @@ func NewTestProject(t *testing.T, fs afero.Fs, binaryPath string) *TestProject {
 
 	// No need for explicit cleanup - t.TempDir() handles it automatically
 
+	// Set up runner with custom HOME environment
+	runner := NewCLIRunner(absPath).
+		WithWorkDir(testDir).
+		WithSuppressedOutput().
+		WithEnv("HOME", tmpHome)
+
 	return &TestProject{
 		Dir:    testDir,
 		FS:     fs,
-		Runner: NewCLIRunner(absPath).WithWorkDir(testDir).WithSuppressedOutput(),
+		Runner: runner,
 	}
 }
 

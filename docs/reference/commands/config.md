@@ -14,6 +14,14 @@ contexture config [subcommand]
 
 The `config` command is used to view the project's configuration and manage output formats. When run without a subcommand, it defaults to the `show` action.
 
+By default, it displays the project configuration (`.contexture.yaml`). Use the `--global` flag to view or manage your user-level global configuration (`~/.contexture/.contexture.yaml`).
+
+## Flags
+
+| Flag          | Shorthand | Description                                                              |
+| :------------ | :-------- | :----------------------------------------------------------------------- |
+| `--global`    | `-g`      | View or manage global configuration (`~/.contexture/.contexture.yaml`) instead of project configuration. |
+
 ## Subcommands
 
 ### `show`
@@ -30,6 +38,18 @@ contexture config show
 **Aliases**
 
 -   `s`
+
+**Examples**
+
+```bash
+# View project configuration
+contexture config
+contexture config show
+
+# View global configuration
+contexture config --global
+contexture config -g
+```
 
 ### `formats`
 

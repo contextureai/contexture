@@ -28,6 +28,19 @@ func NewProvidersCommand(deps *dependencies.Dependencies) *ProvidersCommand {
 	}
 }
 
+// Provider source constants
+const (
+	providerSourceBuiltIn = "built-in"
+	providerSourceGlobal  = "global"
+	providerSourceProject = "project"
+)
+
+// ProviderWithSource tracks a provider's source
+type ProviderWithSource struct {
+	Provider domain.Provider
+	Source   string // providerSourceBuiltIn, providerSourceGlobal, or providerSourceProject
+}
+
 // ListAction lists all available providers
 func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *dependencies.Dependencies) error {
 	// Show header
@@ -36,28 +49,59 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 		Foreground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"})
 	fmt.Printf("%s\n\n", headerStyle.Render("Providers"))
 
-	// Get current directory and load configuration
+	// Get current directory
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return contextureerrors.Wrap(err, "get current directory")
 	}
 
-	// Load project config to get custom providers
-	configResult, err := c.projectManager.LoadConfig(currentDir)
-	if err != nil {
-		// If no config, just show default providers
-		fmt.Println("Default providers:")
-	} else {
-		// Load providers into registry
-		if err := deps.ProviderRegistry.LoadFromProject(configResult.Config); err != nil {
-			return contextureerrors.Wrap(err, "load providers")
+	// Collect providers with source information
+	providersWithSource := make([]ProviderWithSource, 0)
+	providerNames := make(map[string]bool)
+
+	// Load global config providers
+	globalResult, err := c.projectManager.LoadGlobalConfig()
+	if err == nil && globalResult != nil && globalResult.Config != nil {
+		for _, provider := range globalResult.Config.Providers {
+			providersWithSource = append(providersWithSource, ProviderWithSource{
+				Provider: provider,
+				Source:   providerSourceGlobal,
+			})
+			providerNames[provider.Name] = true
 		}
-		fmt.Println("Available providers:")
 	}
 
-	// List all providers from registry
-	providers := deps.ProviderRegistry.ListProviders()
-	if len(providers) == 0 {
+	// Load project config providers
+	projectResult, err := c.projectManager.LoadConfig(currentDir)
+	if err == nil && projectResult != nil && projectResult.Config != nil {
+		for _, provider := range projectResult.Config.Providers {
+			source := providerSourceProject
+			if providerNames[provider.Name] {
+				source = providerSourceProject + " (overrides global)"
+			}
+			providersWithSource = append(providersWithSource, ProviderWithSource{
+				Provider: provider,
+				Source:   source,
+			})
+			providerNames[provider.Name] = true
+		}
+	}
+
+	// Add the built-in default provider if not already overridden
+	if !providerNames[domain.DefaultProviderName] {
+		// Get default provider from registry
+		defaultProvider, err := deps.ProviderRegistry.Get(domain.DefaultProviderName)
+		if err == nil {
+			providersWithSource = append([]ProviderWithSource{
+				{
+					Provider: *defaultProvider,
+					Source:   providerSourceBuiltIn,
+				},
+			}, providersWithSource...)
+		}
+	}
+
+	if len(providersWithSource) == 0 {
 		fmt.Println("No providers configured")
 		return nil
 	}
@@ -65,19 +109,15 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 	theme := ui.DefaultTheme()
 	nameStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.Primary)
 	urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	defaultStyle := lipgloss.NewStyle().Foreground(theme.Success).Italic(true)
 
-	for _, provider := range providers {
-		// Build provider name with default indicator if applicable
-		nameWithDefault := "@" + provider.Name
-		if provider.Name == domain.DefaultProviderName {
-			nameWithDefault += " " + defaultStyle.Render("(default)")
-		}
+	for _, pws := range providersWithSource {
+		// Build provider name with source indicator
+		nameWithSource := fmt.Sprintf("@%s [%s]", pws.Provider.Name, pws.Source)
 
-		fmt.Printf("  %s\n", nameStyle.Render(nameWithDefault))
-		fmt.Printf("    %s\n", urlStyle.Render(provider.URL))
-		if provider.DefaultBranch != "" && provider.DefaultBranch != "main" {
-			fmt.Printf("    Branch: %s\n", provider.DefaultBranch)
+		fmt.Printf("  %s\n", nameStyle.Render(nameWithSource))
+		fmt.Printf("    %s\n", urlStyle.Render(pws.Provider.URL))
+		if pws.Provider.DefaultBranch != "" && pws.Provider.DefaultBranch != "main" {
+			fmt.Printf("    Branch: %s\n", pws.Provider.DefaultBranch)
 		}
 	}
 
@@ -85,7 +125,7 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 }
 
 // AddAction adds a new provider to the project configuration
-func (c *ProvidersCommand) AddAction(_ context.Context, _ *cli.Command, _ *dependencies.Dependencies, name, url string) error {
+func (c *ProvidersCommand) AddAction(_ context.Context, cmd *cli.Command, _ *dependencies.Dependencies, name, url string) error {
 	// Show header
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -105,17 +145,37 @@ func (c *ProvidersCommand) AddAction(_ context.Context, _ *cli.Command, _ *depen
 		return contextureerrors.ValidationErrorf("name", "provider name 'local' is reserved")
 	}
 
-	// Get current directory and load configuration
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return contextureerrors.Wrap(err, "get current directory")
-	}
+	isGlobal := cmd.Bool("global")
 
-	configResult, err := c.projectManager.LoadConfig(currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "load config")
+	// Load configuration based on global flag
+	var config *domain.Project
+	var err error
+
+	if isGlobal {
+		// Initialize global config if needed
+		if err := c.projectManager.InitializeGlobalConfig(); err != nil {
+			return contextureerrors.Wrap(err, "initialize global config")
+		}
+
+		// Load global configuration
+		globalResult, err := c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "load global configuration")
+		}
+		config = globalResult.Config
+	} else {
+		// Get current directory and load project configuration
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return contextureerrors.Wrap(err, "get current directory")
+		}
+
+		configResult, err := c.projectManager.LoadConfig(currentDir)
+		if err != nil {
+			return contextureerrors.Wrap(err, "load config")
+		}
+		config = configResult.Config
 	}
-	config := configResult.Config
 
 	// Check if provider already exists
 	if existing := config.GetProviderByName(name); existing != nil {
@@ -131,10 +191,20 @@ func (c *ProvidersCommand) AddAction(_ context.Context, _ *cli.Command, _ *depen
 	// Add to config
 	config.Providers = append(config.Providers, newProvider)
 
-	// Save config
-	location := c.projectManager.GetConfigLocation(currentDir, false)
-	if err := c.projectManager.SaveConfig(config, location, currentDir); err != nil {
-		return contextureerrors.Wrap(err, "save config")
+	// Save config based on global flag
+	if isGlobal {
+		if err = c.projectManager.SaveGlobalConfig(config); err != nil {
+			return contextureerrors.Wrap(err, "save global config")
+		}
+	} else {
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return contextureerrors.Wrap(err, "get current directory")
+		}
+		location := c.projectManager.GetConfigLocation(currentDir, false)
+		if err = c.projectManager.SaveConfig(config, location, currentDir); err != nil {
+			return contextureerrors.Wrap(err, "save config")
+		}
 	}
 
 	theme := ui.DefaultTheme()
@@ -146,7 +216,7 @@ func (c *ProvidersCommand) AddAction(_ context.Context, _ *cli.Command, _ *depen
 }
 
 // RemoveAction removes a provider from the project configuration
-func (c *ProvidersCommand) RemoveAction(_ context.Context, _ *cli.Command, _ *dependencies.Dependencies, name string) error {
+func (c *ProvidersCommand) RemoveAction(_ context.Context, cmd *cli.Command, _ *dependencies.Dependencies, name string) error {
 	// Show header
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -163,17 +233,34 @@ func (c *ProvidersCommand) RemoveAction(_ context.Context, _ *cli.Command, _ *de
 		return contextureerrors.ValidationErrorf("name", "cannot remove default provider '%s'", domain.DefaultProviderName)
 	}
 
-	// Get current directory and load configuration
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return contextureerrors.Wrap(err, "get current directory")
-	}
+	isGlobal := cmd.Bool("global")
 
-	configResult, err := c.projectManager.LoadConfig(currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "load config")
+	// Load configuration based on global flag
+	var config *domain.Project
+
+	if isGlobal {
+		// Load global configuration
+		globalResult, err := c.projectManager.LoadGlobalConfig()
+		if err != nil {
+			return contextureerrors.Wrap(err, "load global configuration")
+		}
+		if globalResult == nil || globalResult.Config == nil {
+			return contextureerrors.ValidationErrorf("global config", "global configuration not found")
+		}
+		config = globalResult.Config
+	} else {
+		// Get current directory and load project configuration
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return contextureerrors.Wrap(err, "get current directory")
+		}
+
+		configResult, err := c.projectManager.LoadConfig(currentDir)
+		if err != nil {
+			return contextureerrors.Wrap(err, "load config")
+		}
+		config = configResult.Config
 	}
-	config := configResult.Config
 
 	// Find and remove provider
 	found := false
@@ -192,10 +279,20 @@ func (c *ProvidersCommand) RemoveAction(_ context.Context, _ *cli.Command, _ *de
 
 	config.Providers = newProviders
 
-	// Save config
-	location := c.projectManager.GetConfigLocation(currentDir, false)
-	if err := c.projectManager.SaveConfig(config, location, currentDir); err != nil {
-		return contextureerrors.Wrap(err, "save config")
+	// Save config based on global flag
+	if isGlobal {
+		if err := c.projectManager.SaveGlobalConfig(config); err != nil {
+			return contextureerrors.Wrap(err, "save global config")
+		}
+	} else {
+		currentDir, saveErr := os.Getwd()
+		if saveErr != nil {
+			return contextureerrors.Wrap(saveErr, "get current directory")
+		}
+		location := c.projectManager.GetConfigLocation(currentDir, false)
+		if err := c.projectManager.SaveConfig(config, location, currentDir); err != nil {
+			return contextureerrors.Wrap(err, "save config")
+		}
 	}
 
 	theme := ui.DefaultTheme()
@@ -222,18 +319,32 @@ func (c *ProvidersCommand) ShowAction(_ context.Context, _ *cli.Command, deps *d
 	// Strip @ prefix if provided
 	name = strings.TrimPrefix(name, "@")
 
-	// Get current directory and load configuration
+	// Get current directory
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return contextureerrors.Wrap(err, "get current directory")
 	}
 
-	// Load project config to get custom providers
+	// Load global config providers first
+	var providerSource string
+	globalResult, err := c.projectManager.LoadGlobalConfig()
+	if err == nil && globalResult != nil && globalResult.Config != nil {
+		if err := deps.ProviderRegistry.LoadFromProject(globalResult.Config); err != nil {
+			return contextureerrors.Wrap(err, "load global providers")
+		}
+	}
+
+	// Load project config providers (these will override global if same name)
 	configResult, err := c.projectManager.LoadConfig(currentDir)
-	if err == nil {
-		// Load providers into registry
+	if err == nil && configResult != nil && configResult.Config != nil {
+		// Check if provider exists in project config
+		projectProvider := configResult.Config.GetProviderByName(name)
+		if projectProvider != nil {
+			providerSource = providerSourceProject
+		}
+
 		if err := deps.ProviderRegistry.LoadFromProject(configResult.Config); err != nil {
-			return contextureerrors.Wrap(err, "load providers")
+			return contextureerrors.Wrap(err, "load project providers")
 		}
 	}
 
@@ -243,10 +354,22 @@ func (c *ProvidersCommand) ShowAction(_ context.Context, _ *cli.Command, deps *d
 		return contextureerrors.ValidationErrorf("name", "provider '@%s' not found", name)
 	}
 
+	// Determine source if not already set
+	if providerSource == "" {
+		if provider.Name == domain.DefaultProviderName {
+			providerSource = providerSourceBuiltIn
+		} else if globalResult != nil && globalResult.Config != nil {
+			globalProvider := globalResult.Config.GetProviderByName(name)
+			if globalProvider != nil {
+				providerSource = providerSourceGlobal
+			}
+		}
+	}
+
 	theme := ui.DefaultTheme()
 	nameStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.Primary)
 	labelStyle := lipgloss.NewStyle().Bold(true)
-	defaultStyle := lipgloss.NewStyle().Foreground(theme.Success).Italic(true)
+	sourceStyle := lipgloss.NewStyle().Foreground(theme.Muted).Italic(true)
 
 	fmt.Printf("%s\n", nameStyle.Render("@"+provider.Name))
 	fmt.Printf("  %s %s\n", labelStyle.Render("URL:"), provider.URL)
@@ -256,8 +379,8 @@ func (c *ProvidersCommand) ShowAction(_ context.Context, _ *cli.Command, deps *d
 	if provider.Auth != nil {
 		fmt.Printf("  %s %s\n", labelStyle.Render("Auth:"), provider.Auth.Type)
 	}
-	if provider.Name == domain.DefaultProviderName {
-		fmt.Printf("  %s\n", defaultStyle.Render("(default provider)"))
+	if providerSource != "" {
+		fmt.Printf("  %s %s\n", labelStyle.Render("Source:"), sourceStyle.Render(providerSource))
 	}
 
 	return nil

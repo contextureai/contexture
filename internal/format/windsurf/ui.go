@@ -2,7 +2,11 @@
 package windsurf
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/charmbracelet/huh"
+	"github.com/contextureai/contexture/internal/domain"
 )
 
 // Handler implements the format.Handler interface for Windsurf format
@@ -21,4 +25,17 @@ func (h *Handler) GetDisplayName() string {
 // GetDescription returns the description for Windsurf format
 func (h *Handler) GetDescription() string {
 	return "Flexible output for Windsurf AI code editor (directory or single-file)"
+}
+
+// GetCapabilities returns the capabilities for Windsurf format
+func (h *Handler) GetCapabilities() domain.FormatCapabilities {
+	homeDir, _ := os.UserHomeDir()
+	userRulesPath := filepath.Join(homeDir, ".windsurf", "global_rules.md")
+
+	return domain.FormatCapabilities{
+		SupportsUserRules:    true,
+		UserRulesPath:        userRulesPath,
+		DefaultUserRulesMode: domain.UserRulesNative,
+		MaxRuleSize:          12000, // Windsurf supports 12,000 chars per file
+	}
 }

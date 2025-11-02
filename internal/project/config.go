@@ -434,6 +434,10 @@ func (m *Manager) DiscoverLocalRules(configResult *domain.ConfigResult) ([]domai
 		// So we just need to add the rules subdirectory
 		contextureDir := filepath.Dir(configResult.Path)
 		rulesDir = filepath.Join(contextureDir, domain.LocalRulesDir)
+	case domain.ConfigLocationGlobal:
+		// If config is global (~/.contexture/), rules directory is "~/.contexture/rules/"
+		globalDir := filepath.Dir(configResult.Path)
+		rulesDir = filepath.Join(globalDir, domain.LocalRulesDir)
 	default:
 		return nil, contextureerrors.ValidationErrorf("configResult.Location", "unknown location: %s", configResult.Location)
 	}
@@ -469,6 +473,13 @@ func (m *Manager) DiscoverLocalRules(configResult *domain.ConfigResult) ([]domai
 
 		// Remove .md extension to get rule ID
 		ruleID := strings.TrimSuffix(relPath, domain.MarkdownExt)
+
+		// For global local rules, use absolute path so the fetcher can find them
+		// For project local rules, use relative path
+		if configResult.Location == domain.ConfigLocationGlobal {
+			// Use absolute path for global local rules
+			ruleID = strings.TrimSuffix(path, domain.MarkdownExt)
+		}
 
 		// Create RuleRef for local rule
 		localRule := domain.RuleRef{
@@ -727,9 +738,15 @@ func (c *ConfigCleaner) CleanProject(config *domain.Project) *domain.Project {
 			Enabled: format.Enabled, // Always include enabled for clarity
 		}
 
-		// Only include BaseDir if it's not empty
+		// Preserve optional fields if set
 		if format.BaseDir != "" {
 			cleanFormat.BaseDir = format.BaseDir
+		}
+		if format.Template != "" {
+			cleanFormat.Template = format.Template
+		}
+		if format.UserRulesMode != "" {
+			cleanFormat.UserRulesMode = format.UserRulesMode
 		}
 
 		cleanConfig.Formats[i] = cleanFormat
@@ -809,6 +826,335 @@ func (c *ConfigCleaner) cleanGenerationConfig(
 		return cleanGen
 	}
 	return nil
+}
+
+// LoadGlobalConfig loads the global configuration from ~/.contexture
+func (m *Manager) LoadGlobalConfig() (*domain.ConfigResult, error) {
+	globalPath, err := m.getGlobalConfigPath()
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "get global config path")
+	}
+
+	// Check if global config exists
+	exists, err := m.repo.Exists(globalPath)
+	if err != nil {
+		return nil, &ConfigError{
+			Operation: "check existence",
+			Path:      globalPath,
+			Err:       err,
+		}
+	}
+
+	if !exists {
+		// Global config is optional - return empty result
+		return &domain.ConfigResult{
+			Config:   nil,
+			Location: domain.ConfigLocationGlobal,
+			Path:     globalPath,
+		}, nil
+	}
+
+	// Load and validate
+	config, err := m.repo.Load(globalPath)
+	if err != nil {
+		return nil, &ConfigError{
+			Operation: "load",
+			Path:      globalPath,
+			Err:       err,
+		}
+	}
+
+	if err := m.validator.ValidateProject(config); err != nil {
+		return nil, &ConfigError{
+			Operation: "validate",
+			Path:      globalPath,
+			Err:       err,
+		}
+	}
+
+	return &domain.ConfigResult{
+		Config:   config,
+		Location: domain.ConfigLocationGlobal,
+		Path:     globalPath,
+	}, nil
+}
+
+// LoadGlobalConfigWithLocalRules loads global configuration and automatically includes local rules
+func (m *Manager) LoadGlobalConfigWithLocalRules() (*domain.ConfigResult, error) {
+	// Load the base global configuration
+	configResult, err := m.LoadGlobalConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// If no global config exists, return empty result (global config is optional)
+	if configResult.Config == nil {
+		return configResult, nil
+	}
+
+	// Discover local rules in ~/.contexture/rules/
+	localRules, err := m.DiscoverLocalRules(configResult)
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "discover global local rules")
+	}
+
+	// If we have local rules, merge them with existing rules
+	if len(localRules) > 0 {
+		// Create a copy of the config to avoid modifying the original
+		config := *configResult.Config
+		config.Rules = make([]domain.RuleRef, len(configResult.Config.Rules)+len(localRules))
+
+		// Copy existing rules first
+		copy(config.Rules, configResult.Config.Rules)
+
+		// Add local rules
+		copy(config.Rules[len(configResult.Config.Rules):], localRules)
+
+		// Update the config result
+		configResult.Config = &config
+		log.Debug("Merged global local rules with config", "totalRules", len(config.Rules), "localRules", len(localRules))
+	}
+
+	return configResult, nil
+}
+
+// SaveGlobalConfig saves the global configuration
+func (m *Manager) SaveGlobalConfig(config *domain.Project) error {
+	if config == nil {
+		return contextureerrors.ValidationErrorf("config", "cannot be nil")
+	}
+
+	// Validate first
+	if err := m.validator.ValidateProject(config); err != nil {
+		return &ConfigError{
+			Operation: "validate",
+			Path:      "global",
+			Err:       err,
+		}
+	}
+
+	// Ensure global directory exists
+	globalDir, err := m.getGlobalConfigDir()
+	if err != nil {
+		return contextureerrors.Wrap(err, "get global config dir")
+	}
+
+	if err := m.repo.GetFilesystem().MkdirAll(globalDir, configDirPermissions); err != nil {
+		return contextureerrors.Wrap(err, "create global config directory")
+	}
+
+	// Get global config path
+	globalPath, err := m.getGlobalConfigPath()
+	if err != nil {
+		return contextureerrors.Wrap(err, "get global config path")
+	}
+
+	// Clean configuration before saving
+	cleanConfig := m.cleaner.CleanProject(config)
+
+	// Save
+	if err := m.repo.Save(cleanConfig, globalPath); err != nil {
+		return &ConfigError{
+			Operation: "save",
+			Path:      globalPath,
+			Err:       err,
+		}
+	}
+
+	return nil
+}
+
+// InitializeGlobalConfig creates a default global configuration if it doesn't exist
+func (m *Manager) InitializeGlobalConfig() error {
+	// Check if it already exists
+	globalResult, err := m.LoadGlobalConfig()
+	if err != nil {
+		return err
+	}
+
+	if globalResult != nil && globalResult.Config != nil {
+		// Already exists, nothing to do
+		return nil
+	}
+
+	// Create default global config
+	defaultConfig := &domain.Project{
+		Version: 1,
+		Formats: []domain.FormatConfig{
+			{Type: domain.FormatClaude, Enabled: true},
+			{Type: domain.FormatCursor, Enabled: true},
+			{Type: domain.FormatWindsurf, Enabled: true},
+		},
+		Rules: []domain.RuleRef{},
+	}
+
+	return m.SaveGlobalConfig(defaultConfig)
+}
+
+// LoadConfigMerged loads both global and project configs and merges them
+func (m *Manager) LoadConfigMerged(basePath string) (*domain.MergedConfig, error) {
+	// Load global config (optional)
+	globalResult, err := m.LoadGlobalConfig()
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "load global config")
+	}
+
+	// Load project config (required)
+	projectResult, err := m.LoadConfig(basePath)
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "load project config")
+	}
+
+	// Merge configurations
+	merged := m.MergeConfigs(globalResult, projectResult)
+
+	return merged, nil
+}
+
+// LoadConfigMergedWithLocalRules loads both global and project configs, merges them, and includes local rules
+func (m *Manager) LoadConfigMergedWithLocalRules(basePath string) (*domain.MergedConfig, error) {
+	// Load global config with local rules (optional)
+	globalResult, err := m.LoadGlobalConfigWithLocalRules()
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "load global config with local rules")
+	}
+
+	// Load project config with local rules (required)
+	projectResult, err := m.LoadConfigWithLocalRules(basePath)
+	if err != nil {
+		return nil, contextureerrors.Wrap(err, "load project config")
+	}
+
+	// Merge configurations
+	merged := m.MergeConfigs(globalResult, projectResult)
+
+	return merged, nil
+}
+
+// MergeConfigs merges global and project configurations
+func (m *Manager) MergeConfigs(global, project *domain.ConfigResult) *domain.MergedConfig {
+	result := &domain.MergedConfig{
+		Project:     project.Config,
+		MergedRules: []domain.RuleWithSource{},
+	}
+
+	if global != nil {
+		result.GlobalConfig = global.Config
+	}
+
+	// If no global config, just use project rules
+	if global == nil || global.Config == nil {
+		for _, rule := range project.Config.Rules {
+			result.MergedRules = append(result.MergedRules, domain.RuleWithSource{
+				RuleRef:         rule,
+				Source:          domain.RuleSourceProject,
+				OverridesGlobal: false,
+			})
+		}
+		return result
+	}
+
+	// Build maps for quick lookup (O(n) instead of O(n²))
+	projectRules := make(map[string]domain.RuleRef)
+	for _, rule := range project.Config.Rules {
+		normalizedID := m.normalizeRuleID(rule.ID)
+		projectRules[normalizedID] = rule
+	}
+
+	globalRuleSet := make(map[string]bool)
+	for _, globalRule := range global.Config.Rules {
+		normalizedID := m.normalizeRuleID(globalRule.ID)
+		globalRuleSet[normalizedID] = true
+	}
+
+	// Add global rules first (checking for overrides)
+	for _, globalRule := range global.Config.Rules {
+		normalizedID := m.normalizeRuleID(globalRule.ID)
+		if _, overridden := projectRules[normalizedID]; !overridden {
+			// Not overridden - add global rule
+			result.MergedRules = append(result.MergedRules, domain.RuleWithSource{
+				RuleRef:         globalRule,
+				Source:          domain.RuleSourceUser,
+				OverridesGlobal: false,
+			})
+		}
+	}
+
+	// Add project rules (some may override global)
+	for _, projectRule := range project.Config.Rules {
+		normalizedID := m.normalizeRuleID(projectRule.ID)
+
+		// Check if this overrides a global rule (O(1) map lookup instead of O(g) loop)
+		overridesGlobal := globalRuleSet[normalizedID]
+
+		result.MergedRules = append(result.MergedRules, domain.RuleWithSource{
+			RuleRef:         projectRule,
+			Source:          domain.RuleSourceProject,
+			OverridesGlobal: overridesGlobal,
+		})
+	}
+
+	return result
+}
+
+// normalizeRuleID extracts and normalizes a rule ID for comparison
+// Note: Variables are intentionally ignored - rules with the same path but different
+// variables are treated as the same rule for override detection. This means:
+//
+//	Global: @contexture/go{style: "strict"}
+//	Project: @contexture/go{style: "relaxed"}
+//
+// The project rule will override the global rule entirely.
+func (m *Manager) normalizeRuleID(ruleID string) string {
+	// Use existing RuleMatcher logic to extract path
+	path, err := m.matcher.ExtractPath(ruleID)
+	if err != nil {
+		// Fallback to the ID itself
+		return strings.ToLower(ruleID)
+	}
+
+	// For local rules with absolute paths, extract the relative portion
+	// This ensures that global local rules and project local rules with the same
+	// relative path are considered duplicates for override detection
+	if filepath.IsAbs(path) {
+		// Find the rules directory by looking for .contexture/rules or just /rules/
+		switch {
+		case strings.Contains(path, filepath.Join(domain.ContextureDir, domain.LocalRulesDir)):
+			// Path contains .contexture/rules
+			idx := strings.Index(path, filepath.Join(domain.ContextureDir, domain.LocalRulesDir))
+			rulesDir := path[:idx+len(filepath.Join(domain.ContextureDir, domain.LocalRulesDir))]
+			if rel, err := filepath.Rel(rulesDir, path); err == nil {
+				path = rel
+			}
+		case strings.Contains(path, string(filepath.Separator)+domain.LocalRulesDir+string(filepath.Separator)):
+			// Path contains /rules/
+			idx := strings.Index(path, string(filepath.Separator)+domain.LocalRulesDir+string(filepath.Separator))
+			rulesDir := path[:idx+len(string(filepath.Separator)+domain.LocalRulesDir)]
+			if rel, err := filepath.Rel(rulesDir, path); err == nil {
+				path = rel
+			}
+		}
+	}
+
+	return strings.ToLower(path)
+}
+
+// getGlobalConfigDir returns the global contexture directory using the homeProvider
+func (m *Manager) getGlobalConfigDir() (string, error) {
+	homeDir, err := m.homeProvider.GetHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, ".contexture"), nil
+}
+
+// getGlobalConfigPath returns the global configuration file path using the homeProvider
+func (m *Manager) getGlobalConfigPath() (string, error) {
+	dir, err := m.getGlobalConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, domain.GetConfigFileName()), nil
 }
 
 // FailsafeConfigValidator methods - all return errors due to initialization failure

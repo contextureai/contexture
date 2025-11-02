@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -103,20 +104,48 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 	refFlag := cmd.String("ref")
 	log.Debug("Parsed source and ref flags", "source", sourceFlag, "ref", refFlag)
 
-	// Get current directory and load configuration
-	currentDir, err := os.Getwd()
+	// Check if global flag is set
+	isGlobal := cmd.Bool("global")
+
+	// Load configuration
+	config, configPath, err := loadConfigByScope(c.projectManager, isGlobal)
 	if err != nil {
-		return contextureerrors.Wrap(err, "get current directory")
+		return err
 	}
 
-	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "load config")
+	var currentDir string
+	if !isGlobal {
+		currentDir, err = os.Getwd()
+		if err != nil {
+			return contextureerrors.Wrap(err, "get current directory")
+		}
 	}
-	config := configResult.Config
-	configPath := configResult.Path
 
-	// Load providers from project config into registry
+	// Warn if adding global rules when Cursor is enabled with UserRulesProject mode
+	// Only check if we're in a project context (not just adding to global config)
+	if isGlobal && !isJSONMode && currentDir == "" {
+		// Try to load project config to check for Cursor
+		cwd, cwdErr := os.Getwd()
+		if cwdErr == nil {
+			if projectConfigResult, loadErr := c.projectManager.LoadConfig(cwd); loadErr == nil {
+				for _, formatConfig := range projectConfigResult.Config.Formats {
+					if formatConfig.Enabled && formatConfig.Type == domain.FormatCursor {
+						mode := formatConfig.GetEffectiveUserRulesMode()
+						if mode == domain.UserRulesProject {
+							theme := ui.DefaultTheme()
+							mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+							fmt.Printf("%s %s\n\n",
+								mutedStyle.Render("⚠"),
+								mutedStyle.Render("Cursor does not support native global rules. Your global rules will be merged into project files, which may cause conflicts in team environments. Consider setting Cursor's userRulesMode to 'disabled' in .contexture.yaml"))
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Load providers from config into registry
 	if err := providerRegistry.LoadFromProject(config); err != nil {
 		return contextureerrors.Wrap(err, "load providers")
 	}
@@ -290,19 +319,37 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 		}
 	}
 
-	// Get the appropriate config location for the project
-	location := c.projectManager.GetConfigLocation(currentDir, false)
-	err = c.projectManager.SaveConfig(config, location, currentDir)
-	if err != nil {
-		return contextureerrors.Wrap(err, "save config")
+	// Save configuration to appropriate location
+	if isGlobal {
+		err = c.projectManager.SaveGlobalConfig(config)
+		if err != nil {
+			return contextureerrors.Wrap(err, "save global config")
+		}
+	} else {
+		// Get the appropriate config location for the project
+		location := c.projectManager.GetConfigLocation(currentDir, false)
+		err = c.projectManager.SaveConfig(config, location, currentDir)
+		if err != nil {
+			return contextureerrors.Wrap(err, "save config")
+		}
 	}
 
-	// Auto-generate rules after adding them (skip in JSON mode for clean output)
+	// Auto-generate rules after adding them (skip in JSON mode)
 	if !isJSONMode {
-		if err := c.generateRules(ctx, config, currentDir); err != nil {
-			log.Warn("Failed to auto-generate rules", "error", err)
-			fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
-			return nil // Exit early - rules were added but generation failed
+		if isGlobal {
+			// For global rules, rebuild both global locations and project if in project context
+			if err := c.rebuildAfterGlobalAdd(ctx); err != nil {
+				log.Warn("Failed to auto-generate rules", "error", err)
+				fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
+				return nil // Exit early - rules were added but generation failed
+			}
+		} else {
+			// For project rules, use merged config (global + project)
+			if err := c.generateRulesWithMergedConfig(ctx, currentDir); err != nil {
+				log.Warn("Failed to auto-generate rules", "error", err)
+				fmt.Println("Rules added but generation failed. Run 'contexture build' manually.")
+				return nil // Exit early - rules were added but generation failed
+			}
 		}
 	}
 
@@ -388,26 +435,208 @@ func (c *AddCommand) Execute(ctx context.Context, cmd *cli.Command, ruleIDs []st
 	return c.ExecuteWithDeps(ctx, cmd, ruleIDs, deps)
 }
 
-// generateRules automatically generates output after adding rules
-func (c *AddCommand) generateRules(
-	ctx context.Context,
-	config *domain.Project,
-	_ string,
-) error {
-	if len(config.Rules) == 0 {
-		return nil // No rules to generate
+// rebuildAfterGlobalAdd rebuilds outputs after adding a global rule
+// 1. Generates to native user rules locations (e.g., ~/.claude/CLAUDE.md)
+// 2. If in a project, also rebuilds project files based on UserRulesMode
+func (c *AddCommand) rebuildAfterGlobalAdd(ctx context.Context) error {
+	// Load global config with local rules to get all global rules
+	globalConfigResult, err := c.projectManager.LoadGlobalConfigWithLocalRules()
+	if err != nil {
+		return contextureerrors.Wrap(err, "load global config with local rules")
 	}
 
-	// Get target formats (all enabled formats)
-	targetFormats := config.GetEnabledFormats()
+	globalConfig := globalConfigResult.Config
+
+	// Get formats from global config that have native user rules support
+	var userFormats []domain.FormatConfig
+	for _, formatConfig := range globalConfig.Formats {
+		if !formatConfig.Enabled {
+			continue
+		}
+
+		caps, exists := c.registry.GetCapabilities(formatConfig.Type)
+		if !exists {
+			continue
+		}
+
+		// Only include formats that support native user rules
+		if caps.SupportsUserRules && caps.UserRulesPath != "" {
+			// Create format config for user rules generation
+			userFormatConfig := formatConfig
+			userDir := filepath.Dir(caps.UserRulesPath)
+			userFormatConfig.BaseDir = userDir
+			userFormatConfig.IsUserRules = true
+			userFormats = append(userFormats, userFormatConfig)
+		}
+	}
+	log.Debug("Found formats with native user rules support", "count", len(userFormats))
+
+	// Generate to native user rules locations if we have formats that support it
+	if len(userFormats) > 0 {
+		userConfig := &domain.Project{}
+		*userConfig = *globalConfig
+		// Use only global rules for user locations
+		userConfig.Rules = globalConfig.Rules
+
+		log.Debug("Auto-generating global rules to user locations", "formats", len(userFormats), "rules", len(userConfig.Rules))
+		if err := c.ruleGenerator.GenerateRulesWithScope(ctx, userConfig, userFormats, "global"); err != nil {
+			log.Error("Failed to generate global rules to user locations", "error", err)
+			return contextureerrors.Wrap(err, "generate global rules to user locations")
+		}
+		log.Debug("Successfully generated global rules to user locations")
+	}
+
+	// Check if we're in a project context
+	currentDir, err := os.Getwd()
+	if err != nil {
+		// Can't determine current directory, skip project rebuild
+		log.Debug("Cannot determine current directory, skipping project rebuild", "error", err)
+		return nil
+	}
+
+	// Try to load project config with merged rules
+	merged, projectErr := c.projectManager.LoadConfigMergedWithLocalRules(currentDir)
+	if projectErr != nil {
+		// Not in a project, this is normal - global rules were added successfully
+		//nolint:nilerr // Intentionally returning nil - not being in a project is not an error
+		return nil
+	}
+
+	// We're in a project - rebuild project files based on UserRulesMode per format
+	log.Debug("Detected project context, rebuilding based on UserRulesMode")
+
+	// Separate user (global) rules from project rules
+	var projectRules, userRules []domain.RuleRef
+	for _, rws := range merged.MergedRules {
+		if rws.Source == domain.RuleSourceUser {
+			userRules = append(userRules, rws.RuleRef)
+		} else {
+			projectRules = append(projectRules, rws.RuleRef)
+		}
+	}
+
+	// Get enabled formats from project config
+	targetFormats := merged.Project.GetEnabledFormats()
 	if len(targetFormats) == 0 {
-		return contextureerrors.ValidationErrorf("formats", "no enabled formats found")
+		return nil
 	}
 
-	log.Debug("Auto-generating rules", "rules", len(config.Rules), "formats", len(targetFormats))
+	// Group formats by which rules they need based on UserRulesMode
+	var nativeOnlyFormats []domain.FormatConfig // UserRulesNative - project rules only
+	var mergedFormats []domain.FormatConfig     // UserRulesProject - project + user rules
+	var disabledFormats []domain.FormatConfig   // UserRulesDisabled - project rules only
 
-	// Use shared rule generator with consistent UI styling
-	return c.ruleGenerator.GenerateRules(ctx, config, targetFormats)
+	for _, formatConfig := range targetFormats {
+		mode := formatConfig.GetEffectiveUserRulesMode()
+		switch mode {
+		case domain.UserRulesNative:
+			nativeOnlyFormats = append(nativeOnlyFormats, formatConfig)
+		case domain.UserRulesProject:
+			mergedFormats = append(mergedFormats, formatConfig)
+		case domain.UserRulesDisabled:
+			disabledFormats = append(disabledFormats, formatConfig)
+		}
+	}
+
+	// Generate for formats with UserRulesNative or UserRulesDisabled (project rules only)
+	projectOnlyFormats := make([]domain.FormatConfig, 0, len(nativeOnlyFormats)+len(disabledFormats))
+	projectOnlyFormats = append(projectOnlyFormats, nativeOnlyFormats...)
+	projectOnlyFormats = append(projectOnlyFormats, disabledFormats...)
+	if len(projectOnlyFormats) > 0 && len(projectRules) > 0 {
+		config := &domain.Project{}
+		*config = *merged.Project
+		config.Rules = projectRules
+
+		if err := c.ruleGenerator.GenerateRulesWithScope(ctx, config, projectOnlyFormats, "project"); err != nil {
+			return err
+		}
+	}
+
+	// Generate for formats with UserRulesProject (project + user rules)
+	if len(mergedFormats) > 0 && (len(projectRules) > 0 || len(userRules) > 0) {
+		config := &domain.Project{}
+		*config = *merged.Project
+		config.Rules = append(append([]domain.RuleRef{}, projectRules...), userRules...)
+
+		if err := c.ruleGenerator.GenerateRulesWithScope(ctx, config, mergedFormats, "project"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// generateRulesWithMergedConfig generates rules using merged global + project + local config
+// respecting UserRulesMode to determine which rules go where
+func (c *AddCommand) generateRulesWithMergedConfig(ctx context.Context, currentDir string) error {
+	// Load merged config with local rules
+	merged, err := c.projectManager.LoadConfigMergedWithLocalRules(currentDir)
+	if err != nil {
+		return err
+	}
+
+	// Separate user (global) rules from project rules
+	var projectRules, userRules []domain.RuleRef
+	for _, rws := range merged.MergedRules {
+		if rws.Source == domain.RuleSourceUser {
+			userRules = append(userRules, rws.RuleRef)
+		} else {
+			projectRules = append(projectRules, rws.RuleRef)
+		}
+	}
+
+	if len(projectRules) == 0 && len(userRules) == 0 {
+		return nil
+	}
+
+	// Get enabled formats from project config
+	targetFormats := merged.Project.GetEnabledFormats()
+	if len(targetFormats) == 0 {
+		return nil
+	}
+
+	// Group formats by which rules they need based on UserRulesMode
+	var nativeOnlyFormats []domain.FormatConfig // UserRulesNative/Disabled - project rules only
+	var mergedFormats []domain.FormatConfig     // UserRulesProject - project + user rules
+
+	for _, formatConfig := range targetFormats {
+		mode := formatConfig.GetEffectiveUserRulesMode()
+		switch mode {
+		case domain.UserRulesNative, domain.UserRulesDisabled:
+			nativeOnlyFormats = append(nativeOnlyFormats, formatConfig)
+		case domain.UserRulesProject:
+			mergedFormats = append(mergedFormats, formatConfig)
+		}
+	}
+
+	// Generate for formats with UserRulesNative or UserRulesDisabled (project rules only)
+	if len(nativeOnlyFormats) > 0 && len(projectRules) > 0 {
+		config := &domain.Project{}
+		*config = *merged.Project
+		config.Rules = projectRules
+
+		if err := c.ruleGenerator.GenerateRulesWithScope(ctx, config, nativeOnlyFormats, "project"); err != nil {
+			return err
+		}
+	}
+
+	// Generate for formats with UserRulesProject (project + user rules)
+	if len(mergedFormats) > 0 && (len(projectRules) > 0 || len(userRules) > 0) {
+		config := &domain.Project{}
+		*config = *merged.Project
+		config.Rules = append(append([]domain.RuleRef{}, projectRules...), userRules...)
+
+		if err := c.ruleGenerator.GenerateRulesWithScope(ctx, config, mergedFormats, "project"); err != nil {
+			return err
+		}
+	}
+
+	log.Debug("Auto-generating rules with merged config",
+		"project_rules", len(projectRules),
+		"user_rules", len(userRules),
+		"formats", len(targetFormats))
+
+	return nil
 }
 
 // fetchLatestCommitHash fetches the latest commit hash for a specific rule file

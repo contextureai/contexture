@@ -135,42 +135,73 @@ func (v *defaultValidator) ValidateRule(rule *domain.Rule) *domain.ValidationRes
 		return result
 	}
 
-	// Use struct validation with tags
-	if err := v.v.Struct(rule); err != nil {
-		result.Valid = false
-		v.addStructValidationErrors(err, result)
-	}
+	// Check if this is a local rule (from filesystem)
+	isLocal := rule.Source == "local"
 
-	// Additional business rules
-	if strings.TrimSpace(rule.Content) == "" {
-		result.AddError("content", "rule content cannot be empty", "EMPTY_CONTENT")
-	}
-
-	// Check for duplicate tags
-	if len(rule.Tags) > 0 {
-		seen := make(map[string]bool)
-		for _, tag := range rule.Tags {
-			if seen[tag] {
-				result.AddError("tags", "duplicate tag: "+tag, "DUPLICATE_TAG")
-				break // Only report first duplicate
-			}
-			seen[tag] = true
+	if isLocal {
+		// For local rules, only validate required fields: title and trigger
+		if strings.TrimSpace(rule.Title) == "" {
+			result.AddError("title", "is required", "REQUIRED")
+		} else if len(rule.Title) > MaxTitleLength {
+			result.AddError("title", "must be at most "+string(rune(MaxTitleLength)), "MAX")
 		}
-	}
 
-	// Validate rule ID format if present
-	if rule.ID != "" {
-		if err := v.ValidateRuleID(rule.ID); err != nil {
-			result.AddError("id", err.Error(), "INVALID_ID")
-		}
-	}
-
-	// Additional trigger validation (avoid duplicating struct validation errors)
-	if rule.Trigger != nil {
-		// Only do custom validation if struct validation passed for the trigger
-		if !v.hasStructErrors(result, "globs", "type") {
+		// Validate trigger if present
+		if rule.Trigger != nil {
 			if err := v.validateTrigger(rule.Trigger); err != nil {
 				result.AddError("trigger", err.Error(), "INVALID_TRIGGER")
+			}
+		}
+
+		// Content is still required even for local rules
+		if strings.TrimSpace(rule.Content) == "" {
+			result.AddError("content", "rule content cannot be empty", "EMPTY_CONTENT")
+		}
+
+		// Validate rule ID format if present
+		if rule.ID != "" {
+			if err := v.ValidateRuleID(rule.ID); err != nil {
+				result.AddError("id", err.Error(), "INVALID_ID")
+			}
+		}
+	} else {
+		// For remote rules, use full struct validation with tags
+		if err := v.v.Struct(rule); err != nil {
+			result.Valid = false
+			v.addStructValidationErrors(err, result)
+		}
+
+		// Additional business rules
+		if strings.TrimSpace(rule.Content) == "" {
+			result.AddError("content", "rule content cannot be empty", "EMPTY_CONTENT")
+		}
+
+		// Check for duplicate tags
+		if len(rule.Tags) > 0 {
+			seen := make(map[string]bool)
+			for _, tag := range rule.Tags {
+				if seen[tag] {
+					result.AddError("tags", "duplicate tag: "+tag, "DUPLICATE_TAG")
+					break // Only report first duplicate
+				}
+				seen[tag] = true
+			}
+		}
+
+		// Validate rule ID format if present
+		if rule.ID != "" {
+			if err := v.ValidateRuleID(rule.ID); err != nil {
+				result.AddError("id", err.Error(), "INVALID_ID")
+			}
+		}
+
+		// Additional trigger validation (avoid duplicating struct validation errors)
+		if rule.Trigger != nil {
+			// Only do custom validation if struct validation passed for the trigger
+			if !v.hasStructErrors(result, "globs", "type") {
+				if err := v.validateTrigger(rule.Trigger); err != nil {
+					result.AddError("trigger", err.Error(), "INVALID_TRIGGER")
+				}
 			}
 		}
 	}

@@ -88,6 +88,11 @@ func (s *Strategy) GetOutputPath(config *domain.FormatConfig) string {
 	if config == nil || config.BaseDir == "" {
 		return domain.WindsurfOutputDir
 	}
+	// For user rules, output directly to BaseDir (e.g., ~/.windsurf)
+	if config.IsUserRules {
+		return config.BaseDir
+	}
+	// For project rules, output to .windsurf/rules/ subdirectory
 	return filepath.Join(config.BaseDir, domain.WindsurfOutputDir)
 }
 
@@ -121,8 +126,33 @@ func (s *Strategy) GetMetadata() *domain.FormatMetadata {
 
 // WriteFiles handles writing rules for Windsurf format (single or multi-file based on mode)
 func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.FormatConfig) error {
+	outputDir := s.GetOutputPath(config)
+
+	// When no rules, delete output files/directory
 	if len(rules) == 0 {
-		s.bf.LogDebug("No rules to write for Windsurf format")
+		s.bf.LogDebug("No rules to write for Windsurf format, deleting output")
+		exists, err := s.bf.DirExists(outputDir)
+		if err != nil {
+			s.bf.LogDebug("Failed to check if directory exists", "path", outputDir, "error", err)
+			return nil
+		}
+		if exists {
+			// Remove the entire rules directory
+			if err := s.bf.RemoveDirectory(outputDir); err != nil {
+				return contextureerrors.WithOpf("delete output directory", "failed to delete %s: %w", outputDir, err)
+			}
+			s.bf.LogInfo("Deleted Windsurf format directory", "path", outputDir)
+
+			// Also clean up parent .windsurf directory if it's now empty
+			if config != nil {
+				baseDir := config.BaseDir
+				if baseDir == "" {
+					baseDir = "."
+				}
+				parentDir := filepath.Join(baseDir, ".windsurf")
+				s.bf.CleanupEmptyDirectory(parentDir)
+			}
+		}
 		return nil
 	}
 
@@ -141,15 +171,15 @@ func (s *Strategy) WriteFiles(rules []*domain.TransformedRule, config *domain.Fo
 		}
 	}
 
-	outputDir := s.GetOutputPath(config)
-
 	// Ensure output directory exists
 	if err := s.bf.EnsureDirectory(outputDir); err != nil {
 		return contextureerrors.Wrap(err, "windsurf.WriteFiles: create output directory")
 	}
 
-	if s.mode == ModeSingleFile {
-		return s.writeSingleFile(rules, outputDir)
+	// Force single-file mode for user rules (global_rules.md)
+	useSingleFile := s.mode == ModeSingleFile || (config != nil && config.IsUserRules)
+	if useSingleFile {
+		return s.writeSingleFile(rules, outputDir, config)
 	}
 	return s.writeMultiFile(rules, outputDir)
 }
@@ -179,8 +209,12 @@ func (s *Strategy) CreateDirectories(config *domain.FormatConfig) error {
 }
 
 // writeSingleFile writes all rules to a single file
-func (s *Strategy) writeSingleFile(rules []*domain.TransformedRule, outputDir string) error {
+func (s *Strategy) writeSingleFile(rules []*domain.TransformedRule, outputDir string, config *domain.FormatConfig) error {
 	filename := singleFileFilename
+	// For user rules, use global_rules.md instead of rules.md
+	if config != nil && config.IsUserRules {
+		filename = "global_rules.md"
+	}
 	filePath := filepath.Join(outputDir, filename)
 
 	var content strings.Builder

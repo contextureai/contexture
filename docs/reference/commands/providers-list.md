@@ -18,7 +18,10 @@ contexture providers list
 
 The `providers list` command displays all providers available to your project. This includes:
 - The default `@contexture` provider (always available)
-- Any custom providers you've added to your project
+- Custom providers from global configuration (`~/.contexture/.contexture.yaml`)
+- Custom providers from project configuration (`.contexture.yaml`)
+
+When providers have the same name, project-specific providers override global providers.
 
 For each provider, the command shows:
 - Provider name (with @ prefix)

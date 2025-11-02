@@ -98,32 +98,60 @@ func (f *LocalFetcher) FetchRule(_ context.Context, ruleID string) (*domain.Rule
 	}
 	log.Debug("Parsed rule ID", "originalID", ruleID, "parsedPath", parsed.RulePath, "source", parsed.Source)
 
-	// Find the correct rules directory
-	rulesDir, err := f.findRulesDirectory()
-	if err != nil {
-		return nil, contextureerrors.WithOp("FetchRule", err)
-	}
+	var rulePath string
+	var rulesDir string
 
-	// Construct full path with validation to prevent path traversal
-	rulePath := filepath.Join(rulesDir, parsed.RulePath)
-	if !strings.HasSuffix(rulePath, ".md") {
-		rulePath += ".md"
-	}
+	// Check if parsed.RulePath is already an absolute path (for global local rules)
+	if filepath.IsAbs(parsed.RulePath) {
+		// Use the absolute path directly for global local rules
+		rulePath = parsed.RulePath
+		if !strings.HasSuffix(rulePath, ".md") {
+			rulePath += ".md"
+		}
+		// Find the rules directory by looking for .contexture/rules or just rules in the path
+		// For global local rules, this will be ~/.contexture/rules/
+		switch {
+		case strings.Contains(rulePath, filepath.Join(domain.ContextureDir, domain.LocalRulesDir)):
+			// Path contains .contexture/rules
+			idx := strings.Index(rulePath, filepath.Join(domain.ContextureDir, domain.LocalRulesDir))
+			rulesDir = rulePath[:idx+len(filepath.Join(domain.ContextureDir, domain.LocalRulesDir))]
+		case strings.Contains(rulePath, string(filepath.Separator)+domain.LocalRulesDir+string(filepath.Separator)):
+			// Path contains /rules/
+			idx := strings.Index(rulePath, string(filepath.Separator)+domain.LocalRulesDir+string(filepath.Separator))
+			rulesDir = rulePath[:idx+len(string(filepath.Separator)+domain.LocalRulesDir)]
+		default:
+			// Fallback to parent directory
+			rulesDir = filepath.Dir(rulePath)
+		}
+		log.Debug("Using absolute path for global local rule", "rulePath", rulePath, "rulesDir", rulesDir)
+	} else {
+		// Find the correct rules directory for project local rules
+		rulesDir, err = f.findRulesDirectory()
+		if err != nil {
+			return nil, contextureerrors.WithOp("FetchRule", err)
+		}
 
-	// Validate path is within rules directory
-	cleanPath, err := filepath.Abs(rulePath)
-	if err != nil {
-		return nil, contextureerrors.WithOp("FetchRule", err)
-	}
+		// Construct full path with validation to prevent path traversal
+		rulePath = filepath.Join(rulesDir, parsed.RulePath)
+		if !strings.HasSuffix(rulePath, ".md") {
+			rulePath += ".md"
+		}
 
-	cleanBase, err := filepath.Abs(rulesDir)
-	if err != nil {
-		return nil, contextureerrors.WithOp("FetchRule", err)
-	}
+		// Validate path is within rules directory
+		cleanPath, err := filepath.Abs(rulePath)
+		if err != nil {
+			return nil, contextureerrors.WithOp("FetchRule", err)
+		}
 
-	// Ensure rule path is within rules directory
-	if !strings.HasPrefix(cleanPath, cleanBase+string(filepath.Separator)) && cleanPath != cleanBase {
-		return nil, contextureerrors.WithOpf("FetchRule", "rule path %q is outside rules directory", parsed.RulePath)
+		cleanBase, err := filepath.Abs(rulesDir)
+		if err != nil {
+			return nil, contextureerrors.WithOp("FetchRule", err)
+		}
+
+		// Ensure rule path is within rules directory
+		if !strings.HasPrefix(cleanPath, cleanBase+string(filepath.Separator)) && cleanPath != cleanBase {
+			return nil, contextureerrors.WithOpf("FetchRule", "rule path %q is outside rules directory", parsed.RulePath)
+		}
 	}
 
 	// Read the file
@@ -133,10 +161,20 @@ func (f *LocalFetcher) FetchRule(_ context.Context, ruleID string) (*domain.Rule
 	}
 
 	// Parse the rule - format the rule ID properly for local rules
-	formattedRuleID := fmt.Sprintf("[contexture(local):%s]", parsed.RulePath)
+	// For global local rules with absolute paths, extract just the relative path
+	relativeRulePath := parsed.RulePath
+	if filepath.IsAbs(parsed.RulePath) {
+		// Extract relative path from rulesDir to rulePath (without .md extension)
+		rulePathWithoutExt := strings.TrimSuffix(rulePath, ".md")
+		if rel, err := filepath.Rel(rulesDir, rulePathWithoutExt); err == nil {
+			relativeRulePath = rel
+		}
+	}
+
+	formattedRuleID := fmt.Sprintf("[contexture(local):%s]", relativeRulePath)
 	metadata := Metadata{
 		ID:        formattedRuleID,
-		FilePath:  parsed.RulePath,
+		FilePath:  relativeRulePath,
 		Source:    "local",
 		Ref:       "", // Local fetcher doesn't use refs
 		Variables: parsed.Variables,

@@ -51,60 +51,119 @@ func (g *RuleGenerator) GenerateRules(
 	config *domain.Project,
 	targetFormats []domain.FormatConfig,
 ) error {
-	if len(config.Rules) == 0 {
-		log.Debug("No rules configured")
-		return nil
-	}
+	return g.GenerateRulesWithScope(ctx, config, targetFormats, "")
+}
 
+// GenerateRulesWithScopeAndWarning handles the complete rule generation process with scope tags and optional warnings
+func (g *RuleGenerator) GenerateRulesWithScopeAndWarning(
+	ctx context.Context,
+	config *domain.Project,
+	targetFormats []domain.FormatConfig,
+	scope string, // "project", "global", or "" for no scope
+	hasGlobalRules bool, // whether global rules are being merged (for warnings)
+) error {
+	return g.generateRulesWithScopeInternal(ctx, config, targetFormats, scope, hasGlobalRules)
+}
+
+// GenerateRulesWithScope handles the complete rule generation process with scope tags
+func (g *RuleGenerator) GenerateRulesWithScope(
+	ctx context.Context,
+	config *domain.Project,
+	targetFormats []domain.FormatConfig,
+	scope string, // "project", "global", or "" for no scope
+) error {
+	return g.generateRulesWithScopeInternal(ctx, config, targetFormats, scope, false)
+}
+
+// generateRulesWithScopeInternal is the internal implementation
+func (g *RuleGenerator) generateRulesWithScopeInternal(
+	ctx context.Context,
+	config *domain.Project,
+	targetFormats []domain.FormatConfig,
+	scope string, // "project", "global", or "" for no scope
+	hasGlobalRules bool, // whether global rules are being merged (for warnings)
+) error {
 	if len(targetFormats) == 0 {
 		return contextureerrors.ValidationErrorf("formats", "no target formats available")
 	}
 
-	// Fetch all rules in parallel with progress indicator and timing
-	var rules []*domain.Rule
-	err := ui.WithProgress("Fetched rules", func() error {
-		var fetchErr error
-		rules, fetchErr = rule.FetchRulesParallel(
-			ctx,
-			g.ruleFetcher,
-			config.Rules,
-			config.GetGeneration().ParallelFetches,
-		)
-		return fetchErr
-	})
-	if err != nil {
-		return contextureerrors.Wrap(err, "fetch rules")
-	}
-
-	// Process rules (templates, validation) with progress indicator and timing
+	// If no rules, we still need to generate (which will trigger cleanup/deletion in format handlers)
 	var processedRules []*domain.ProcessedRule
-	err = ui.WithProgress("Generated rules", func() error {
-		var processErr error
-		processedRules, processErr = g.processRules(ctx, rules)
-		return processErr
-	})
-	if err != nil {
-		return contextureerrors.Wrap(err, "process rules")
+	if len(config.Rules) > 0 {
+		// Fetch all rules in parallel with progress indicator and timing
+		var rules []*domain.Rule
+		scopeLabel := ""
+		if scope != "" {
+			theme := ui.DefaultTheme()
+			mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+			scopeLabel = " " + mutedStyle.Render(fmt.Sprintf("[%s]", scope))
+		}
+
+		err := ui.WithProgress("Fetched rules"+scopeLabel, func() error {
+			var fetchErr error
+			rules, fetchErr = rule.FetchRulesParallel(
+				ctx,
+				g.ruleFetcher,
+				config.Rules,
+				config.GetGeneration().ParallelFetches,
+			)
+			return fetchErr
+		})
+		if err != nil {
+			return contextureerrors.Wrap(err, "fetch rules")
+		}
+
+		// Sort rules deterministically for consistent output
+		parser := rule.NewRuleIDParser("", nil)
+		rules = rule.SortRulesDeterministically(rules, parser)
+
+		// Process rules (templates, validation) with progress indicator and timing
+		err = ui.WithProgress("Generated rules"+scopeLabel, func() error {
+			var processErr error
+			processedRules, processErr = g.processRules(ctx, rules)
+			return processErr
+		})
+		if err != nil {
+			return contextureerrors.Wrap(err, "process rules")
+		}
+	} else {
+		log.Debug("No rules configured, will trigger cleanup in format handlers")
 	}
 
-	// Generate output for each format
+	// Generate output for each format (even with 0 rules to trigger cleanup)
 	for _, formatConfig := range targetFormats {
 		if err := g.generateFormat(ctx, processedRules, formatConfig); err != nil {
 			log.Warn("Failed to generate format", "format", formatConfig.Type, "error", err)
 			continue
 		}
 
-		// Show format completion without timing
-		if handler, exists := g.registry.GetHandler(formatConfig.Type); exists {
-			theme := ui.DefaultTheme()
-			successStyle := lipgloss.NewStyle().Foreground(theme.Success)
-			fmt.Printf("  %s %s\n", successStyle.Render("✓"), handler.GetDisplayName())
+		// Show format completion with scope tag (only if we had rules to process)
+		if len(processedRules) > 0 {
+			if handler, exists := g.registry.GetHandler(formatConfig.Type); exists {
+				theme := ui.DefaultTheme()
+				successStyle := lipgloss.NewStyle().Foreground(theme.Success)
+				mutedStyle := lipgloss.NewStyle().Foreground(theme.Muted)
+
+				displayName := handler.GetDisplayName()
+				if scope != "" {
+					displayName += " " + mutedStyle.Render(fmt.Sprintf("[%s]", scope))
+				}
+				fmt.Printf("  %s %s\n", successStyle.Render("✓"), displayName)
+
+				// Show warning for Cursor when global rules are being merged
+				if hasGlobalRules && formatConfig.Type == domain.FormatCursor && scope == "project" {
+					fmt.Printf("     %s %s\n",
+						mutedStyle.Render("⚠"),
+						mutedStyle.Render("Cursor does not support native global rules. Your global rules will be merged into project files, which may cause conflicts in team environments. Consider setting Cursor's userRulesMode to 'disabled' in .contexture.yaml"))
+				}
+			}
 		}
 	}
 
 	log.Debug("Rule generation completed",
 		"rules", len(processedRules),
-		"formats", len(targetFormats))
+		"formats", len(targetFormats),
+		"scope", scope)
 	return nil
 }
 

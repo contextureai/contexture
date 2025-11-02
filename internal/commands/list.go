@@ -25,6 +25,13 @@ type ListCommand struct {
 	providerRegistry *provider.Registry
 }
 
+// RuleWithSourceInfo combines a Rule with its source information
+type RuleWithSourceInfo struct {
+	Rule            *domain.Rule
+	Source          domain.RuleSource
+	OverridesGlobal bool
+}
+
 // NewListCommand creates a new list command
 func NewListCommand(deps *dependencies.Dependencies) *ListCommand {
 	return &ListCommand{
@@ -48,30 +55,85 @@ func (c *ListCommand) listInstalledRules(ctx context.Context, cmd *cli.Command) 
 		return contextureerrors.Wrap(err, "get current directory")
 	}
 
-	configResult, err := c.projectManager.LoadConfigWithLocalRules(currentDir)
+	// Load merged configuration (global + project + local rules)
+	mergedConfig, err := c.projectManager.LoadConfigMergedWithLocalRules(currentDir)
 	if err != nil {
 		return contextureerrors.Wrap(err, "load project configuration").
 			WithSuggestions("Run 'contexture init' to initialize a new project")
 	}
 
-	config := configResult.Config
-
-	// Load providers from project config into registry
-	if err := c.providerRegistry.LoadFromProject(config); err != nil {
-		return contextureerrors.Wrap(err, "load providers")
+	// Load providers from both global and project configs into registry
+	if mergedConfig.GlobalConfig != nil {
+		if err := c.providerRegistry.LoadFromProject(mergedConfig.GlobalConfig); err != nil {
+			return contextureerrors.Wrap(err, "load global providers")
+		}
+	}
+	if err := c.providerRegistry.LoadFromProject(mergedConfig.Project); err != nil {
+		return contextureerrors.Wrap(err, "load project providers")
 	}
 
-	// Fetch the actual rules from the rule references
-	rules, err := c.fetchRulesFromReferences(ctx, config.Rules)
+	// Fetch the actual rules from the merged rule references
+	rules, err := c.fetchRulesFromReferencesWithSource(ctx, mergedConfig.MergedRules)
 	if err != nil {
 		return contextureerrors.Wrap(err, "fetch rules")
 	}
 
 	// Use simple rule list display
-	return c.showRuleList(rules, cmd)
+	return c.showRuleListWithSource(rules, cmd)
+}
+
+// fetchRulesFromReferencesWithSource fetches the actual rule content from rule references with source info
+func (c *ListCommand) fetchRulesFromReferencesWithSource(
+	ctx context.Context,
+	rulesWithSource []domain.RuleWithSource,
+) ([]RuleWithSourceInfo, error) {
+	if len(rulesWithSource) == 0 {
+		return []RuleWithSourceInfo{}, nil
+	}
+
+	rules := make([]RuleWithSourceInfo, 0, len(rulesWithSource))
+	var lastError error
+
+	for _, rws := range rulesWithSource {
+		// Convert RuleRef to rule ID format expected by the fetcher
+		ruleID := rws.RuleRef.ID
+		if ruleID == "" {
+			// If no ID, skip this rule
+			continue
+		}
+
+		// Fetch the rule content
+		fetchedRule, err := c.ruleFetcher.FetchRule(ctx, ruleID)
+		if err != nil {
+			lastError = err
+			// Log the error but continue with other rules
+			fmt.Printf("Warning: Failed to fetch rule %s: %v\n", ruleID, err)
+			continue
+		}
+
+		// Merge configured variables with the fetched rule
+		if rws.RuleRef.Variables != nil {
+			fetchedRule.Variables = rws.RuleRef.Variables
+		}
+
+		rules = append(rules, RuleWithSourceInfo{
+			Rule:            fetchedRule,
+			Source:          rws.Source,
+			OverridesGlobal: rws.OverridesGlobal,
+		})
+	}
+
+	// If we failed to fetch any rules and had errors, return the last error
+	if len(rules) == 0 && len(rulesWithSource) > 0 && lastError != nil {
+		return nil, contextureerrors.Wrap(lastError, "fetch rules")
+	}
+
+	return rules, nil
 }
 
 // fetchRulesFromReferences fetches the actual rule content from rule references
+//
+//nolint:unused // Kept for potential future use
 func (c *ListCommand) fetchRulesFromReferences(
 	ctx context.Context,
 	ruleRefs []domain.RuleRef,
@@ -117,7 +179,46 @@ func (c *ListCommand) fetchRulesFromReferences(
 	return rules, nil
 }
 
+// showRuleListWithSource displays rules with source information using the configured output format
+func (c *ListCommand) showRuleListWithSource(rulesWithSource []RuleWithSourceInfo, cmd *cli.Command) error {
+	// Determine output format
+	outputFormat := output.Format(cmd.String("output"))
+
+	// Create output manager
+	outputMgr, err := output.NewManager(outputFormat)
+	if err != nil {
+		return err
+	}
+
+	// Extract just the rules for the output manager
+	rules := make([]*domain.Rule, len(rulesWithSource))
+	for i, rws := range rulesWithSource {
+		rules[i] = rws.Rule
+		// Annotate the rule ID with source information for display
+		if rws.OverridesGlobal {
+			rules[i].Source = string(domain.RuleSourceProject) + " (overrides global)"
+		} else {
+			rules[i].Source = string(rws.Source)
+		}
+	}
+
+	totalRules := len(rules)
+	pattern := cmd.String("pattern")
+
+	// Prepare metadata
+	metadata := output.ListMetadata{
+		Pattern:       pattern,
+		TotalRules:    totalRules,
+		FilteredRules: totalRules, // This will be corrected by the writers
+	}
+
+	// Write output in requested format
+	return outputMgr.WriteRulesList(rules, metadata)
+}
+
 // showRuleList displays rules using the configured output format
+//
+//nolint:unused // Kept for potential future use
 func (c *ListCommand) showRuleList(ruleList []*domain.Rule, cmd *cli.Command) error {
 	// Determine output format
 	outputFormat := output.Format(cmd.String("output"))
