@@ -179,6 +179,26 @@ func (c *AddCommand) ExecuteWithDeps(ctx context.Context, cmd *cli.Command, rule
 			// Parse rule ID
 			parsedID, err := c.ruleFetcher.ParseRuleID(processedRuleID)
 			if err != nil {
+				// Check if this is an unknown provider error and the provider exists globally
+				if strings.Contains(err.Error(), "unknown provider") && strings.HasPrefix(processedRuleID, "@") {
+					// Extract provider name from @provider/path format
+					providerName := strings.SplitN(strings.TrimPrefix(processedRuleID, "@"), "/", 2)[0]
+
+					// Check if provider exists in global config
+					if !isGlobal {
+						globalResult, globalErr := c.projectManager.LoadGlobalConfig()
+						if globalErr == nil && globalResult != nil && globalResult.Config != nil {
+							globalProvider := globalResult.Config.GetProviderByName(providerName)
+							if globalProvider != nil {
+								// Provider exists globally but not in project
+								return contextureerrors.ValidationErrorf("provider",
+									"Provider '@%s' is configured globally but not in this project.\n"+
+										"Add it to your project with: contexture providers add %s %s",
+									providerName, providerName, globalProvider.URL)
+							}
+						}
+					}
+				}
 				return contextureerrors.Wrap(err, "parse rule ID")
 			}
 

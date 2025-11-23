@@ -108,13 +108,15 @@ func (c *ProvidersCommand) ListAction(_ context.Context, _ *cli.Command, deps *d
 
 	theme := ui.DefaultTheme()
 	nameStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.Primary)
+	sourceStyle := lipgloss.NewStyle().Foreground(theme.Primary)
 	urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
 	for _, pws := range providersWithSource {
-		// Build provider name with source indicator
-		nameWithSource := fmt.Sprintf("@%s [%s]", pws.Provider.Name, pws.Source)
+		// Render provider name (bold) and source indicator (same color, not bold) separately
+		providerName := fmt.Sprintf("@%s", pws.Provider.Name)
+		sourceIndicator := fmt.Sprintf("[%s]", pws.Source)
 
-		fmt.Printf("  %s\n", nameStyle.Render(nameWithSource))
+		fmt.Printf("  %s %s\n", nameStyle.Render(providerName), sourceStyle.Render(sourceIndicator))
 		fmt.Printf("    %s\n", urlStyle.Render(pws.Provider.URL))
 		if pws.Provider.DefaultBranch != "" && pws.Provider.DefaultBranch != "main" {
 			fmt.Printf("    Branch: %s\n", pws.Provider.DefaultBranch)
